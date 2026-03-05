@@ -24,12 +24,14 @@
         <javafx.version>25.0.2</javafx.version>
 
         <jacoco.version>0.8.14</jacoco.version>
+
+        <!-- optional: macht IntelliJ-Warnung weg -->
         <argLine></argLine>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- JUnit BOM: alle junit-jupiter-* Versionen zentral -->
+            <!-- JUnit BOM -->
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
@@ -38,7 +40,7 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- JavaFX Versionen nur managen (aktiviert wird es nur in gui) -->
+            <!-- JavaFX Versionen nur managen -->
             <dependency>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-controls</artifactId>
@@ -78,7 +80,6 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.5.2</version>
                     <configuration>
-                        <!-- wichtig: JaCoCo hängt sich an argLine rein -->
                         <argLine>${argLine}</argLine>
                     </configuration>
                 </plugin>
@@ -92,7 +93,7 @@
         </pluginManagement>
 
         <plugins>
-            <!-- JaCoCo Agent: wird in allen Modulen aktiv -->
+            <!-- JaCoCo Agent überall -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -104,7 +105,7 @@
                         </goals>
                     </execution>
 
-                    <!-- Aggregierter Report: NUR im Parent ausführen -->
+                    <!-- Aggregate Report nur im Parent -->
                     <execution>
                         <id>report-aggregate</id>
                         <phase>verify</phase>

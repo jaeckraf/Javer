@@ -12,17 +12,14 @@
     <packaging>jar</packaging>
 
     <properties>
-        <!-- Name des jlink-Image-Ordners in gui/target/ -->
         <app.image.name>javer</app.image.name>
         <app.zip.name>javer-windows</app.zip.name>
 
-        <!-- (optional) TestFX Versionen -->
         <testfx.version>4.0.18</testfx.version>
         <monocle.version>21.0.2</monocle.version>
     </properties>
 
     <dependencies>
-        <!-- JavaFX nur hier -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -30,20 +27,6 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-        </dependency>
-
-        <!-- Damit Maven die Artefakte sauber findet (Packaging) -->
-        <dependency>
-            <groupId>ch.zhaw.it.pm4</groupId>
-            <artifactId>compiler</artifactId>
-            <version>${project.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>ch.zhaw.it.pm4</groupId>
-            <artifactId>vm</artifactId>
-            <version>${project.version}</version>
-            <scope>runtime</scope>
         </dependency>
 
         <!-- Optional: GUI Tests -->
@@ -63,7 +46,7 @@
 
     <build>
         <plugins>
-            <!-- GUI-Tests: JaCoCo argLine NICHT kaputt machen -->
+            <!-- TestFX + JaCoCo argLine beibehalten -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -79,7 +62,7 @@
                 </configuration>
             </plugin>
 
-            <!-- 1) jlink image bauen (bindet sich an package) -->
+            <!-- 1) jlink image bauen -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -92,57 +75,46 @@
                             <goal>jlink</goal>
                         </goals>
                         <configuration>
-                            <!-- JPMS: module/class -->
                             <mainClass>ch.zhaw.it.pm4.javer/ch.zhaw.it.pm4.javer.Launcher</mainClass>
-
                             <launcher>javer</launcher>
                             <jlinkImageName>${app.image.name}</jlinkImageName>
 
                             <noManPages>true</noManPages>
-                            <stripDebug>true</stripDebug>
+                            <stripDebug>false</stripDebug>
                             <noHeaderFiles>true</noHeaderFiles>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- 2) compiler.jar + vm.jar nach target/javer/app/ kopieren -->
+            <!-- 2) compiler/vm jars NACH jlink ins image kopieren -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.7.1</version>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
-                        <id>copy-subprograms-into-image</id>
-                        <phase>package</phase>
+                        <id>copy-subprogram-jars</id>
+                        <phase>post-integration-test</phase>
                         <goals>
-                            <goal>copy</goal>
+                            <goal>run</goal>
                         </goals>
                         <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>ch.zhaw.it.pm4</groupId>
-                                    <artifactId>compiler</artifactId>
-                                    <version>${project.version}</version>
-                                    <type>jar</type>
-                                    <outputDirectory>${project.build.directory}/${app.image.name}/app</outputDirectory>
-                                    <destFileName>compiler.jar</destFileName>
-                                </artifactItem>
-                                <artifactItem>
-                                    <groupId>ch.zhaw.it.pm4</groupId>
-                                    <artifactId>vm</artifactId>
-                                    <version>${project.version}</version>
-                                    <type>jar</type>
-                                    <outputDirectory>${project.build.directory}/${app.image.name}/app</outputDirectory>
-                                    <destFileName>vm.jar</destFileName>
-                                </artifactItem>
-                            </artifactItems>
+                            <target>
+                                <mkdir dir="${project.build.directory}/${app.image.name}/app"/>
+
+                                <copy file="${project.parent.basedir}/compiler/target/compiler-${project.version}.jar"
+                                      tofile="${project.build.directory}/${app.image.name}/app/compiler.jar" />
+
+                                <copy file="${project.parent.basedir}/vm/target/vm-${project.version}.jar"
+                                      tofile="${project.build.directory}/${app.image.name}/app/vm.jar" />
+                            </target>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- 3) Portable ZIP aus dem kompletten jlink image bauen -->
+            <!-- 3) ZIP aus dem kompletten image bauen -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
@@ -150,7 +122,7 @@
                 <executions>
                     <execution>
                         <id>zip-portable-image</id>
-                        <phase>package</phase>
+                        <phase>verify</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
@@ -161,7 +133,6 @@
                                 <format>zip</format>
                             </formats>
 
-                            <!-- packt target/javer/** in die zip -->
                             <fileSets>
                                 <fileSet>
                                     <directory>${project.build.directory}/${app.image.name}</directory>
