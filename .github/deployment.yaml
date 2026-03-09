@@ -30,11 +30,11 @@ jobs:
       - name: 'Build with Maven'
         run: mvn clean package
 
-      # Copy the executable JAR to the root directory
-      - name: 'Copy executable JAR'
+      # Copy the shaded JAR to the root directory
+      - name: 'Copy shaded JAR'
         run: |
-          JAR_FILE=$(find . -name "*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" | head -n 1)
-          cp "$JAR_FILE" ./application.jar
+          SHADED_JAR=$(find ./target -name "*-shaded.jar" | head -n 1)
+          cp "$SHADED_JAR" ./application-shaded.jar
 
       # Configure Git
       - name: 'Configure Git'
@@ -42,10 +42,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Commit and push the JAR file
-      - name: 'Commit and Push JAR'
+      # Commit and push the changes
+      - name: 'Commit and Push Changes'
         run: |
-          git add application.jar
-          git commit -m "Add built executable JAR"
+          git add application-shaded.jar README.md
+          git commit -m "Add shaded JAR and update README"
           git push origin main
-
