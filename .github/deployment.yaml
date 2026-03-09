@@ -47,4 +47,4 @@ jobs:
         run: |
           git add application-shaded.jar README.md
           git commit -m "Add shaded JAR and update README"
-          git push origin main
+          git push origin ${{ github.event.inputs.branch }}
