@@ -1,0 +1,50 @@
+name: 'Deployment'
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+  push:
+    branches:
+      - main
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout repository'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      # Set up Java
+      - name: 'Set up JDK'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      # Build the Maven project
+      - name: 'Build with Maven'
+        run: mvn clean package
+
+      # Copy the shaded JAR to the root directory
+      - name: 'Copy shaded JAR'
+        run: |
+          SHADED_JAR=$(find ./target -name "*-shaded.jar" | head -n 1)
+          cp "$SHADED_JAR" ./application-shaded.jar
+
+      # Configure Git
+      - name: 'Configure Git'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Commit and push the changes
+      - name: 'Commit and Push Changes'
+        run: |
+          git add application-shaded.jar README.md
+          git commit -m "Add shaded JAR and update README"
+          git push origin ${{ github.event.inputs.branch }}
