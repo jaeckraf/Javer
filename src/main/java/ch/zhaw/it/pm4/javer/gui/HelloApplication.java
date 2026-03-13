@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer;
+package ch.zhaw.it.pm4.javer.gui;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

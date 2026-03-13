@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer;
+package ch.zhaw.it.pm4.javer.gui;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
