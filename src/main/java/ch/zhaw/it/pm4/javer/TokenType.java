@@ -42,6 +42,12 @@ public enum TokenType {
     
     // Special
     EOF,         // End of file
-    UNKNOWN
+    UNKNOWN;
+    
+    // TODO: Review grammar specification and update TokenType enum with correct token types
+    // - Read the language grammar document
+    // - Identify all required token types (keywords, operators, delimiters, etc.)
+    // - Add missing token types to TokenType enum
+    // - Remove any unused token types
+    // - Update tests if needed
 }
-
