@@ -6,8 +6,8 @@ package ch.zhaw.it.pm4.javer;
 public enum TokenType {
     // Literals
     NUMBER,
-    STRING,
     IDENTIFIER,
+
     
     // Keywords
     IF,
@@ -15,7 +15,24 @@ public enum TokenType {
     WHILE,
     FOR,
     RETURN,
-    
+    ENUM,
+    FUNCTION,
+    BREAK,
+    CONTINUE,
+    SWITCH,
+    CASE,
+    DEFAULT,
+
+    //Types and Return types
+    STRUCT,
+    INTEGER,
+    DOUBLE,
+    BOOLEAN,
+    STRING,
+    CHARACTER,
+    VOID,
+
+
     // Operators
     PLUS,
     MINUS,
@@ -28,26 +45,23 @@ public enum TokenType {
     GREATER_THAN,
     LESS_EQUAL,
     GREATER_EQUAL,
+    OR,
+    AND,
+    NOT,
     
     // Delimiters
-    LPAREN,      // (
-    RPAREN,      // )
-    LBRACE,      // {
-    RBRACE,      // }
-    LBRACKET,    // [
-    RBRACKET,    // ]
+    LEFT_PARENTHESIS,      // (
+    RIGHT_PARENTHESIS,      // )
+    LEFT_BRACE,      // {
+    RIGHT_BRACE,      // }
+    LEFT_BRACKET,    // [
+    RIGHT_BRACKET,    // ]
     SEMICOLON,
     COMMA,
     DOT,
     
-    // Special
-    EOF,         // End of file
-    UNKNOWN;
-    
-    // TODO: Review grammar specification and update TokenType enum with correct token types
-    // - Read the language grammar document
-    // - Identify all required token types (keywords, operators, delimiters, etc.)
-    // - Add missing token types to TokenType enum
-    // - Remove any unused token types
-    // - Update tests if needed
+    // SpecialW
+    END_OF_FILE,         // End of file
+    UNKNOWN
+
 }
