@@ -50,7 +50,7 @@ class TokenTest {
     @DisplayName("Should accept position 0 (minimum valid value)")
     void testTokenPositionZeroIsValid() {
         assertDoesNotThrow(() -> {
-            new Token(TokenType.EOF, "", 0);
+            new Token(TokenType.END_OF_FILE, "", 0);
         });
     }
     
@@ -58,7 +58,7 @@ class TokenTest {
     @DisplayName("Should accept null value (edge case)")
     void testTokenValueCanBeNull() {
         assertDoesNotThrow(() -> {
-            new Token(TokenType.EOF, null, 0);
+            new Token(TokenType.END_OF_FILE, null, 0);
         });
     }
 }
