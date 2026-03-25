@@ -14,20 +14,20 @@ class TokenPositionTest {
     @Test
     @DisplayName("Should create TokenPosition with valid values")
     void testValidTokenPosition() {
-        TokenPosition pos = new TokenPosition(0, 5, 1);
-        assertEquals(0, pos.startColumn());
+        TokenPosition pos = new TokenPosition(1, 5, 1);
+        assertEquals(1, pos.startColumn());
         assertEquals(5, pos.endColumn());
         assertEquals(1, pos.lineNumber());
     }
 
     @Test
-    @DisplayName("Should throw IllegalArgumentException when startColumn is negative")
-    void testStartColumnNegative() {
+    @DisplayName("Should throw IllegalArgumentException when startColumn is less than 1")
+    void testStartColumnLessThanOne() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            new TokenPosition(-1, 5, 1);
+            new TokenPosition(0, 5, 1);
         });
-        assertTrue(exception.getMessage().contains("Start column cannot be negative"));
-        assertTrue(exception.getMessage().contains("-1"));
+        assertTrue(exception.getMessage().contains("Start column must be at least 1"));
+        assertTrue(exception.getMessage().contains("0"));
     }
 
     @Test
@@ -44,7 +44,7 @@ class TokenPositionTest {
     @DisplayName("Should throw IllegalArgumentException when lineNumber is less than 1")
     void testLineNumberLessThanOne() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            new TokenPosition(0, 5, 0);
+            new TokenPosition(1, 5, 0);
         });
         assertTrue(exception.getMessage().contains("Line number must be at least 1"));
         assertTrue(exception.getMessage().contains("0"));
@@ -62,7 +62,7 @@ class TokenPositionTest {
     @DisplayName("Should allow minimum valid values")
     void testMinimumValidValues() {
         assertDoesNotThrow(() -> {
-            new TokenPosition(0, 0, 1);
+            new TokenPosition(1, 1, 1);
         });
     }
 

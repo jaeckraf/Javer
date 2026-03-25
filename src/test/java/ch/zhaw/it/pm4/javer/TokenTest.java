@@ -15,7 +15,7 @@ class TokenTest {
     @DisplayName("Should throw NullPointerException with correct message when type is null")
     void testTokenTypeCannotBeNull() {
         NullPointerException exception = assertThrows(NullPointerException.class, () -> {
-            new Token(null, "value", new TokenPosition(0, 1, 1));
+            new Token(null, "value", new TokenPosition(1, 2, 1));
         });
         assertEquals("Token type cannot be null", exception.getMessage());
     }
@@ -33,7 +33,7 @@ class TokenTest {
     @DisplayName("Should accept position with valid values")
     void testTokenPositionValid() {
         assertDoesNotThrow(() -> {
-            new Token(TokenType.LEFT_PARENTHESIS, "", new TokenPosition(0, 1, 1));
+            new Token(TokenType.LEFT_PARENTHESIS, "", new TokenPosition(1, 2, 1));
         });
     }
     
@@ -41,7 +41,7 @@ class TokenTest {
     @DisplayName("Should accept null value (edge case)")
     void testTokenValueCanBeNull() {
         assertDoesNotThrow(() -> {
-            new Token(TokenType.LEFT_PARENTHESIS, null, new TokenPosition(0, 1, 1));
+            new Token(TokenType.LEFT_PARENTHESIS, null, new TokenPosition(1, 2, 1));
         });
     }
 }

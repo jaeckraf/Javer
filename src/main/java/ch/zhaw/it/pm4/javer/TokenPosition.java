@@ -8,14 +8,14 @@ public record TokenPosition(int startColumn, int endColumn, int lineNumber) {
     /**
      * Creates a new TokenPosition with the specified start column, end column, and line number.
      *
-     * @param startColumn the starting column of the token (must be >= 0)
+     * @param startColumn the starting column of the token (must be >= 1)
      * @param endColumn   the ending column of the token (must be >= startColumn)
      * @param lineNumber  the line number of the token (must be >= 1)
      * @throws IllegalArgumentException if any parameter is invalid
      */
     public TokenPosition {
-        if (startColumn < 0) {
-            throw new IllegalArgumentException("Start column cannot be negative: " + startColumn);
+        if (startColumn < 1) {
+            throw new IllegalArgumentException("Start column must be at least 1: " + startColumn);
         }
         if (endColumn < startColumn) {
             throw new IllegalArgumentException("End column cannot be less than start column: " + endColumn + " < " + startColumn);
