@@ -70,6 +70,6 @@ class TokenPositionTest {
     @DisplayName("Should have correct toString output")
     void testToString() {
         TokenPosition pos = new TokenPosition(1, 10, 2);
-        assertEquals("TokenPosition{startColumn=1, endColumn=10, lineNumber=2}", pos.toString());
+        assertEquals("[1 : 10 : 2]", pos.toString());
     }
 }

@@ -57,6 +57,6 @@ public record TokenPosition(int startColumn, int endColumn, int lineNumber) {
 
     @Override
     public String toString() {
-        return String.format("TokenPosition{startColumn=%d, endColumn=%d, lineNumber=%d}", startColumn, endColumn, lineNumber);
+        return String.format("[%d : %d : %d]", startColumn, endColumn, lineNumber);
     }
 }
