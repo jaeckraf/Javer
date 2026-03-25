@@ -15,42 +15,25 @@ class TokenTest {
     @DisplayName("Should throw NullPointerException with correct message when type is null")
     void testTokenTypeCannotBeNull() {
         NullPointerException exception = assertThrows(NullPointerException.class, () -> {
-            new Token(null, "value", 0);
+            new Token(null, "value", new TokenPosition(0, 1, 1));
         });
         assertEquals("Token type cannot be null", exception.getMessage());
     }
     
     @Test
-    @DisplayName("Should throw IllegalArgumentException when position is negative")
-    void testTokenPositionCannotBeNegative() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Token(TokenType.NUMBER, "123", -1);
+    @DisplayName("Should throw NullPointerException with correct message when position is null")
+    void testTokenPositionCannotBeNull() {
+        NullPointerException exception = assertThrows(NullPointerException.class, () -> {
+            new Token(TokenType.LEFT_PARENTHESIS, "value", null);
         });
+        assertEquals("Token position cannot be null", exception.getMessage());
     }
     
     @Test
-    @DisplayName("Should throw IllegalArgumentException with correct message when position is negative")
-    void testTokenPositionNegativeExceptionMessage() {
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            new Token(TokenType.IDENTIFIER, "foo", -5);
-        });
-        assertTrue(exception.getMessage().contains("Token position cannot be negative"));
-        assertTrue(exception.getMessage().contains("-5"));
-    }
-    
-    @Test
-    @DisplayName("Should throw IllegalArgumentException when position is -1")
-    void testTokenPositionMinusOne() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Token(TokenType.STRING, "hello", -1);
-        });
-    }
-    
-    @Test
-    @DisplayName("Should accept position 0 (minimum valid value)")
-    void testTokenPositionZeroIsValid() {
+    @DisplayName("Should accept position with valid values")
+    void testTokenPositionValid() {
         assertDoesNotThrow(() -> {
-            new Token(TokenType.END_OF_FILE, "", 0);
+            new Token(TokenType.LEFT_PARENTHESIS, "", new TokenPosition(0, 1, 1));
         });
     }
     
@@ -58,9 +41,7 @@ class TokenTest {
     @DisplayName("Should accept null value (edge case)")
     void testTokenValueCanBeNull() {
         assertDoesNotThrow(() -> {
-            new Token(TokenType.END_OF_FILE, null, 0);
+            new Token(TokenType.LEFT_PARENTHESIS, null, new TokenPosition(0, 1, 1));
         });
     }
 }
-
-
