@@ -30,7 +30,7 @@ public class Token {
      * 
      * @return the TokenType of this token
      */
-    public TokenType getType() {
+    public TokenType getTokenType() {
         return type;
     }
     
