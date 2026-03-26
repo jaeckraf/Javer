@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.diagnostics;
+package ch.zhaw.it.pm4.javer.compiler.diagnostics;
 
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 

@@ -2,7 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.parser;
 
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
-import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.*;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.*;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.binary.*;
