@@ -2,8 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.parser;
 
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.CompilationUnitParserNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.ParserNode;
 import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
 import java.util.List;
 
