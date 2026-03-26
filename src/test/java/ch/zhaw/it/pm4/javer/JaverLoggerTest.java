@@ -1,5 +1,6 @@
 package ch.zhaw.it.pm4.javer;
 
+import ch.zhaw.it.pm4.javer.compiler.JaverLogger;
 import org.junit.jupiter.api.*;
 import java.util.ArrayList;
 import java.util.List;

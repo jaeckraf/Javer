@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer;
+package ch.zhaw.it.pm4.javer.compiler;
 
 import java.io.IOException;
 import java.util.logging.*;
@@ -52,4 +52,5 @@ public class JaverLogger {
     public static void debug(String message) {
         LOGGER.fine(message);
     }
+
 }
