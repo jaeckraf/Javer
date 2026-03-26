@@ -1,9 +1,9 @@
-package ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements;
+package ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.loops;
 
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.TopLevelParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.ParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.visitor.ParseNodeVisitor;
 
-public class SwitchStmtParseNode extends StatementParseNode {
+public class ForInitParseNode extends ParseNode {
 
     /**
      * {@inheritDoc}

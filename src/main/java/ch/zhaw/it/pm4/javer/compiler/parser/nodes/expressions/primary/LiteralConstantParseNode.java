@@ -1,8 +1,9 @@
-package ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions;
+package ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.primary;
 
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ExpressionParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.visitor.ParseNodeVisitor;
 
-public class ConditionalParseNode extends ExpressionParseNode {
+public class LiteralConstantParseNode extends ExpressionParseNode {
 
     /**
      * {@inheritDoc}

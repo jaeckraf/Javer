@@ -3,6 +3,23 @@ package ch.zhaw.it.pm4.javer.compiler.parser;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.binary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.primary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ternary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.unary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.loops.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.types.*;
+
 import java.util.List;
 
 /**
@@ -43,11 +60,11 @@ public class Parser {
      * the root {@code compilationUnit} grammar rule. It iterates through the
      * token stream and constructs the highest level of the syntax tree.
      *
-     * @return The root node ({@link CompilationUnitParserNode}) of the resulting
+     * @return The root node ({@link CompilationUnitParseNode}) of the resulting
      * Concrete Syntax Tree (CST).
      */
-    public CompilationUnitParserNode parse() {
-        CompilationUnitParserNode rootNode = new CompilationUnitParserNode();
+    public CompilationUnitParseNode parse() {
+        CompilationUnitParseNode rootNode = new CompilationUnitParseNode();
 
         // Dummy loop for Sprint 1: pretend to process the tokens so we reach EOF
         while (!isAtEnd()) {
@@ -68,7 +85,7 @@ public class Parser {
     }
 
     private boolean isAtEnd() {
-        return currentPosition >= tokens.size() || tokens.get(currentPosition).getType() == TokenType.EOF;
+        return currentPosition >= tokens.size() || tokens.get(currentPosition).getTokenType() == TokenType.SPECIAL_END_OF_FILE;
     }
 
     private Token advance() {
@@ -77,7 +94,7 @@ public class Parser {
     }
 
     private boolean match(TokenType expectedType) {
-        if (peek().getType() == expectedType) {
+        if (peek().getTokenType() == expectedType) {
             advance();
             return true;
         }
@@ -85,7 +102,7 @@ public class Parser {
     }
 
     private Token consume(TokenType expectedType, String errorMessage) {
-        if (peek().getType() == expectedType) {
+        if (peek().getTokenType() == expectedType) {
             return advance();
         }
 
@@ -94,56 +111,86 @@ public class Parser {
         return peek();
     }
 
-    private ParserNode parseTopLevelDeclaration() { return null; }
-    private ParserNode parseEnumDecl() { return null; }
-    private ParserNode parseEnumItem() { return null; }
-    private ParserNode parseStructDecl() { return null; }
-    private ParserNode parseStructField() { return null; }
-    private ParserNode parseFunction() { return null; }
-    private ParserNode parseFParam() { return null; }
+    private BinaryExpressionParseNode praseBinaryExpressionParseNode() { throw new IllegalStateException(); }
 
-    private ParserNode parseType() { return null; }
-    private ParserNode parseTypeHead() { return null; }
-    private ParserNode parseRType() { return null; }
+    private ArrayInitParseNode praseArrayInitParseNode() { throw new IllegalStateException(); }
 
-    private ParserNode parseBlock() { return null; }
-    private ParserNode parseStatement() { return null; }
-    private ParserNode parseCheck() { return null; }
-    private ParserNode parseIfStmt() { return null; }
-    private ParserNode parseWhileStmt() { return null; }
-    private ParserNode parseDoWhileStmt() { return null; }
-    private ParserNode parseForStmt() { return null; }
-    private ParserNode parseForInit() { return null; }
-    private ParserNode parseForUpdate() { return null; }
-    private ParserNode parseSwitchStmt() { return null; }
-    private ParserNode parseCase() { return null; }
-    private ParserNode parseCaseLabel() { return null; }
-    private ParserNode parseEnumAccess() { return null; }
-    private ParserNode parseJumpStmt() { return null; }
-    private ParserNode parseVarDecl() { return null; }
+    private VarInitParseNode praseVarInitParseNode() { throw new IllegalStateException(); }
 
-    private ParserNode parseInitializer() { return null; }
-    private ParserNode parseArrayInit() { return null; }
-    private ParserNode parseVarInit() { return null; }
+    private CallExpressionParseNode praseCallExpressionParseNode() { throw new IllegalStateException(); }
 
-    private ParserNode parseExpressionList() { return null; }
-    private ParserNode parseExpression() { return null; }
-    private ParserNode parseAssignment() { return null; }
-    private ParserNode parseConditional() { return null; }
-    private ParserNode parseLogicalOr() { return null; }
-    private ParserNode parseLogicalAnd() { return null; }
-    private ParserNode parseInclusiveOr() { return null; }
-    private ParserNode parseExclusiveOr() { return null; }
-    private ParserNode parseAndExpr() { return null; }
-    private ParserNode parseEqExpr() { return null; }
-    private ParserNode parseRelExpr() { return null; }
-    private ParserNode parseShiftExpr() { return null; }
-    private ParserNode parseAddExpr() { return null; }
-    private ParserNode parseMulExpr() { return null; }
-    private ParserNode parseUnaryExpr() { return null; }
-    private ParserNode parsePostfix() { return null; }
-    private ParserNode parsePostfixOp() { return null; }
-    private ParserNode parseIndex() { return null; }
-    private ParserNode parsePrimary() { return null; }
-    private ParserNode parseLitConstant() { return null; }
+    private EnumAccessExpressionParseNode praseEnumAccessExpressionParseNode() { throw new IllegalStateException(); }
+
+    private IndexParseNode praseIndexParseNode() { throw new IllegalStateException(); }
+
+    private LiteralConstantParseNode praseLiteralConstantParseNode() { throw new IllegalStateException(); }
+
+    private NameAccessExpressionParseNode praseNameAccessExpressionParseNode() { throw new IllegalStateException(); }
+
+    private ParenthesizedExpressionParseNode praseParenthesizedExpressionParseNode() { throw new IllegalStateException(); }
+
+    private ConditionalParseNode praseConditionalParseNode() { throw new IllegalStateException(); }
+
+    private UnaryExpressionParseNode praseUnaryExpressionParseNode() { throw new IllegalStateException(); }
+
+    private AssignmentParseNode praseAssignmentParseNode() { throw new IllegalStateException(); }
+
+    private ExpressionParseNode praseExpressionParseNode() { throw new IllegalStateException(); }
+
+    private PostfixParseNode prasePostfixParseNode() { throw new IllegalStateException(); }
+
+    private BreakStmtParseNode praseBreakStmtParseNode() { throw new IllegalStateException(); }
+
+    private ContinueStmtParseNode praseContinueStmtParseNode() { throw new IllegalStateException(); }
+
+    private ReturnStmtParseNode praseReturnStmtParseNode() { throw new IllegalStateException(); }
+
+    private CaseClauseParseNode praseCaseClauseParseNode() { throw new IllegalStateException(); }
+
+    private DefaultClauseParseNode praseDefaultClauseParseNode() { throw new IllegalStateException(); }
+
+    private SwitchStmtParseNode praseSwitchStmtParseNode() { throw new IllegalStateException(); }
+
+    private IfStmtParseNode praseIfStmtParseNode() { throw new IllegalStateException(); }
+
+    private DoWhileStmtParseNode praseDoWhileStmtParseNode() { throw new IllegalStateException(); }
+
+    private ForInitParseNode praseForInitParseNode() { throw new IllegalStateException(); }
+
+    private ForStmtParseNode praseForStmtParseNode() { throw new IllegalStateException(); }
+
+    private ForUpdateParseNode praseForUpdateParseNode() { throw new IllegalStateException(); }
+
+    private WhileStmtParseNode praseWhileStmtParseNode() { throw new IllegalStateException(); }
+
+    private BlockParseNode praseBlockParseNode() { throw new IllegalStateException(); }
+
+    private ExpressionStatementParseNode praseExpressionStatementParseNode() { throw new IllegalStateException(); }
+
+    private VarDeclarationParseNode praseVarDeclarationParseNode() { throw new IllegalStateException(); }
+
+    private EnumDeclarationParseNode praseEnumDeclarationParseNode() { throw new IllegalStateException(); }
+
+    private EnumItemParseNode praseEnumItemParseNode() { throw new IllegalStateException(); }
+
+    private FunctionParameterParseNode praseFunctionParameterParseNode() { throw new IllegalStateException(); }
+
+    private FunctionParseNode praseFunctionParseNode() { throw new IllegalStateException(); }
+
+    private StructDeclarationParseNode praseStructDeclarationParseNode() { throw new IllegalStateException(); }
+
+    private StructItemParseNode praseStructItemParseNode() { throw new IllegalStateException(); }
+
+    private ArrayTypeParseNode praseArrayTypeParseNode() { throw new IllegalStateException(); }
+
+    private AtomicTypeParseNode praseAtomicTypeParseNode() { throw new IllegalStateException(); }
+
+    private EnumTypeParseNode praseEnumTypeParseNode() { throw new IllegalStateException(); }
+
+    private StructTypeParseNode praseStructTypeParseNode() { throw new IllegalStateException(); }
+
+    private VoidTypeParseNode praseVoidTypeParseNode() { throw new IllegalStateException(); }
+
+    private CompilationUnitParseNode praseCompilationUnitParseNode() { throw new IllegalStateException(); }
+
 }

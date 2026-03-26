@@ -1,9 +1,9 @@
-package ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements;
+package ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.loops;
 
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.TopLevelParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.StatementParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.visitor.ParseNodeVisitor;
 
-public class DoWhileStmtParseNode extends StatementParseNode {
+public class WhileStmtParseNode extends StatementParseNode {
 
     /**
      * {@inheritDoc}

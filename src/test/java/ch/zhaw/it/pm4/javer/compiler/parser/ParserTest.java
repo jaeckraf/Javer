@@ -1,7 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
-import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;

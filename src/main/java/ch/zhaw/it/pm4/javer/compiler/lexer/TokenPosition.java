@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer;
+package ch.zhaw.it.pm4.javer.compiler.lexer;
 
 /**
  * Immutable class representing the position of a token in the source code.

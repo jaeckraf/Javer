@@ -1,9 +1,9 @@
-package ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements;
+package ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function;
 
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.TopLevelParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.visitor.ParseNodeVisitor;
 
-public class ForStmtParseNode extends StatementParseNode {
+public class FunctionParseNode extends TopLevelParseNode {
 
     /**
      * {@inheritDoc}
