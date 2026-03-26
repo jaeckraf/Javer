@@ -4,6 +4,7 @@ module ch.zhaw.it.pm4.javer {
     requires javafx.fxml;
 
 
-    opens ch.zhaw.it.pm4.javer to javafx.fxml;
+    opens ch.zhaw.it.pm4.javer.gui to javafx.fxml;
     exports ch.zhaw.it.pm4.javer;
+    exports ch.zhaw.it.pm4.javer.gui;
 }
