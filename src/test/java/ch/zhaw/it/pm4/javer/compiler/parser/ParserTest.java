@@ -77,126 +77,248 @@ class ParserTest {
 
     @Test
     @Disabled("Todo")
-    public void testBinaryExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testBinaryExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testArrayInitParseNode() { fail("Not implemented and tested yet."); }
+    public void testArrayInitParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testVarInitParseNode() { fail("Not implemented and tested yet."); }
+    public void testVarInitParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testCallExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testCallExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testEnumAccessExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testEnumAccessExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testIndexParseNode() { fail("Not implemented and tested yet."); }
+    public void testIndexParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testLiteralConstantParseNode() { fail("Not implemented and tested yet."); }
+    public void testLiteralConstantParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testNameAccessExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testNameAccessExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testParenthesizedExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testParenthesizedExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testConditionalParseNode() { fail("Not implemented and tested yet."); }
+    public void testConditionalParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testUnaryExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testUnaryExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testAssignmentParseNode() { fail("Not implemented and tested yet."); }
+    public void testAssignmentParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testExpressionParseNode() { fail("Not implemented and tested yet."); }
+    public void testExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testPostfixParseNode() { fail("Not implemented and tested yet."); }
+    public void testPostfixParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testBreakStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testBreakStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testContinueStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testContinueStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testReturnStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testReturnStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testCaseClauseParseNode() { fail("Not implemented and tested yet."); }
+    public void testCaseClauseParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testDefaultClauseParseNode() { fail("Not implemented and tested yet."); }
+    public void testDefaultClauseParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testSwitchStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testSwitchStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testIfStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testIfStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testDoWhileStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testDoWhileStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testForInitParseNode() { fail("Not implemented and tested yet."); }
+    public void testForInitParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testForStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testForStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testForUpdateParseNode() { fail("Not implemented and tested yet."); }
+    public void testForUpdateParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testWhileStmtParseNode() { fail("Not implemented and tested yet."); }
+    public void testWhileStmtParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testBlockParseNode() { fail("Not implemented and tested yet."); }
+    public void testBlockParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testExpressionStatementParseNode() { fail("Not implemented and tested yet."); }
+    public void testExpressionStatementParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testVarDeclarationParseNode() { fail("Not implemented and tested yet."); }
+    public void testVarDeclarationParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testEnumDeclarationParseNode() { fail("Not implemented and tested yet."); }
+    public void testEnumDeclarationParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testEnumItemParseNode() { fail("Not implemented and tested yet."); }
+    public void testEnumItemParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testFunctionParameterParseNode() { fail("Not implemented and tested yet."); }
+    public void testFunctionParameterParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testFunctionParseNode() { fail("Not implemented and tested yet."); }
+    public void testFunctionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testStructDeclarationParseNode() { fail("Not implemented and tested yet."); }
+    public void testStructDeclarationParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testStructItemParseNode() { fail("Not implemented and tested yet."); }
+    public void testStructItemParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testArrayTypeParseNode() { fail("Not implemented and tested yet."); }
+    public void testArrayTypeParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testAtomicTypeParseNode() { fail("Not implemented and tested yet."); }
+    public void testAtomicTypeParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testEnumTypeParseNode() { fail("Not implemented and tested yet."); }
+    public void testEnumTypeParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testStructTypeParseNode() { fail("Not implemented and tested yet."); }
+    public void testStructTypeParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testVoidTypeParseNode() { fail("Not implemented and tested yet."); }
+    public void testVoidTypeParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
     @Test
     @Disabled("Todo")
-    public void testCompilationUnitParseNode() { fail("Not implemented and tested yet."); }
+    public void testCompilationUnitParseNode() {
+        fail("Not implemented and tested yet.");
+    }
 
 }
