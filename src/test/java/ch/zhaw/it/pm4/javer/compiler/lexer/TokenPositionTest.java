@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.lexer;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 

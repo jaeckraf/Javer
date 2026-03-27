@@ -1,404 +1,127 @@
 package ch.zhaw.it.pm4.javer.compiler.parser.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.binary.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.*;
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.CompilationUnitParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.ParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.AssignmentParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ExpressionListParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.PostfixParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.binary.BinaryExpressionParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.ArrayInitParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.VarInitParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.primary.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ternary.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.unary.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ternary.ConditionalParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.unary.UnaryExpressionParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.BlockParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.ExpressionStatementParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.VarDeclarationParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.IfStmtParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.BreakStmtParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.ContinueStmtParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.ReturnStmtParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.CaseClauseParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.DefaultClauseParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.SwitchStmtParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.loops.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.EnumDeclarationParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.EnumItemParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.FunctionParameterParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.FunctionParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.StructDeclarationParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.StructItemParseNode;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.types.*;
 
+import java.util.Optional;
+
+@JacocoGenerated("Dummy class, remove when implemented.")
 public abstract class ParseNodeVisitorBase<T> implements ParseNodeVisitor<T> {
 
-    protected T visitDefault(ParseNode node) {
-        return null;
+    protected Optional<T> visitDefault(ParseNode node) {
+        return Optional.empty();
     }
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(BinaryExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(BinaryExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ArrayInitParseNode node) {
-        return null;
-    }
+    public abstract T visit(ArrayInitParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(VarInitParseNode node) {
-        return null;
-    }
+    public abstract T visit(VarInitParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(CallExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(CallExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(EnumAccessExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(EnumAccessExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(IndexParseNode node) {
-        return null;
-    }
+    public abstract T visit(IndexParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(LiteralConstantParseNode node) {
-        return null;
-    }
+    public abstract T visit(LiteralConstantParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(NameAccessExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(NameAccessExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(NewExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(NewExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ParenthesizedExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(ParenthesizedExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ConditionalParseNode node) {
-        return null;
-    }
+    public abstract T visit(ConditionalParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(UnaryExpressionParseNode node) {
-        return null;
-    }
+    public abstract T visit(UnaryExpressionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(AssignmentParseNode node) {
-        return null;
-    }
+    public abstract T visit(AssignmentParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ExpressionListParseNode node) {
-        return null;
-    }
+    public abstract T visit(ExpressionListParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(PostfixParseNode node) {
-        return null;
-    }
+    public abstract T visit(PostfixParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(BreakStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(BreakStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ContinueStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(ContinueStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ReturnStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(ReturnStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(CaseClauseParseNode node) {
-        return null;
-    }
+    public abstract T visit(CaseClauseParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(DefaultClauseParseNode node) {
-        return null;
-    }
+    public abstract T visit(DefaultClauseParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(SwitchStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(SwitchStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(IfStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(IfStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(DoWhileStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(DoWhileStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ForInitParseNode node) {
-        return null;
-    }
+    public abstract T visit(ForInitParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ForStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(ForStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ForUpdateParseNode node) {
-        return null;
-    }
+    public abstract T visit(ForUpdateParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(WhileStmtParseNode node) {
-        return null;
-    }
+    public abstract T visit(WhileStmtParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(BlockParseNode node) {
-        return null;
-    }
+    public abstract T visit(BlockParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ExpressionStatementParseNode node) {
-        return null;
-    }
+    public abstract T visit(ExpressionStatementParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(VarDeclarationParseNode node) {
-        return null;
-    }
+    public abstract T visit(VarDeclarationParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(EnumDeclarationParseNode node) {
-        return null;
-    }
+    public abstract T visit(EnumDeclarationParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(EnumItemParseNode node) {
-        return null;
-    }
+    public abstract T visit(EnumItemParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(FunctionParameterParseNode node) {
-        return null;
-    }
+    public abstract T visit(FunctionParameterParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(FunctionParseNode node) {
-        return null;
-    }
+    public abstract T visit(FunctionParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(StructDeclarationParseNode node) {
-        return null;
-    }
+    public abstract T visit(StructDeclarationParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(StructItemParseNode node) {
-        return null;
-    }
+    public abstract T visit(StructItemParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(ArrayTypeParseNode node) {
-        return null;
-    }
+    public abstract T visit(ArrayTypeParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(AtomicTypeParseNode node) {
-        return null;
-    }
+    public abstract T visit(AtomicTypeParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(EnumTypeParseNode node) {
-        return null;
-    }
+    public abstract T visit(EnumTypeParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(StructTypeParseNode node) {
-        return null;
-    }
+    public abstract T visit(StructTypeParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(VoidTypeParseNode node) {
-        return null;
-    }
+    public abstract T visit(VoidTypeParseNode node);
 
-    /**
-     * @param node
-     * @return
-     */
-    @Override
-    public T visit(CompilationUnitParseNode node) {
-        return null;
-    }
+    public abstract T visit(CompilationUnitParseNode node);
 
 }
