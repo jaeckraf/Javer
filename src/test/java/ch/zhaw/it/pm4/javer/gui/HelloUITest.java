@@ -1,5 +1,6 @@
-package ch.zhaw.it.pm4.javer;
+package ch.zhaw.it.pm4.javer.gui;
 
+import ch.zhaw.it.pm4.javer.HelloApplication;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;

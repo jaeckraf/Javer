@@ -1,32 +1,20 @@
 package ch.zhaw.it.pm4.javer.compiler.parser.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.AssignmentParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ExpressionParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.PostfixParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.binary.BinaryExpressionParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.ArrayInitParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.VarInitParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.binary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.init.*;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.primary.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ternary.ConditionalParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.unary.UnaryExpressionParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.BlockParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.ExpressionStatementParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.VarDeclarationParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.IfStmtParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.BreakStmtParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.ContinueStmtParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.ReturnStmtParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.CaseClauseParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.DefaultClauseParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.SwitchStmtParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.ternary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.expressions.unary.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.jumps.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.branching.switchcase.*;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.statements.loops.*;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.EnumDeclarationParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.EnumItemParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.FunctionParameterParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.FunctionParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.StructDeclarationParseNode;
-import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.StructItemParseNode;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.enums.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.function.*;
+import ch.zhaw.it.pm4.javer.compiler.parser.nodes.toplevel.struct.*;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.types.*;
 
 public abstract class ParseNodeVisitorBase<T> implements ParseNodeVisitor<T> {
@@ -112,6 +100,15 @@ public abstract class ParseNodeVisitorBase<T> implements ParseNodeVisitor<T> {
      * @return
      */
     @Override
+    public T visit(NewExpressionParseNode node) {
+        return null;
+    }
+
+    /**
+     * @param node
+     * @return
+     */
+    @Override
     public T visit(ParenthesizedExpressionParseNode node) {
         return null;
     }
@@ -148,7 +145,7 @@ public abstract class ParseNodeVisitorBase<T> implements ParseNodeVisitor<T> {
      * @return
      */
     @Override
-    public T visit(ExpressionParseNode node) {
+    public T visit(ExpressionListParseNode node) {
         return null;
     }
 

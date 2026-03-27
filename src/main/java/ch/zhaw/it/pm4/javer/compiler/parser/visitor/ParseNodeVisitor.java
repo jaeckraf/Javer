@@ -35,6 +35,8 @@ public interface ParseNodeVisitor<T> {
 
     T visit(NameAccessExpressionParseNode node);
 
+    T visit(NewExpressionParseNode node);
+
     T visit(ParenthesizedExpressionParseNode node);
 
     T visit(ConditionalParseNode node);
@@ -43,7 +45,7 @@ public interface ParseNodeVisitor<T> {
 
     T visit(AssignmentParseNode node);
 
-    T visit(ExpressionParseNode node);
+    T visit(ExpressionListParseNode node);
 
     T visit(PostfixParseNode node);
 

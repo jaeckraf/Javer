@@ -125,6 +125,12 @@ class ParserTest {
 
     @Test
     @Disabled("Todo")
+    public void testNewExpressionParseNode() {
+        fail("Not implemented and tested yet.");
+    }
+
+    @Test
+    @Disabled("Todo")
     public void testParenthesizedExpressionParseNode() {
         fail("Not implemented and tested yet.");
     }
@@ -149,7 +155,7 @@ class ParserTest {
 
     @Test
     @Disabled("Todo")
-    public void testExpressionParseNode() {
+    public void testExpressionListParseNode() {
         fail("Not implemented and tested yet.");
     }
 

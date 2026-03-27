@@ -1,6 +1,5 @@
-package ch.zhaw.it.pm4.javer;
+package ch.zhaw.it.pm4.javer.compiler.lexer;
 
-import ch.zhaw.it.pm4.javer.compiler.lexer.TokenPosition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
