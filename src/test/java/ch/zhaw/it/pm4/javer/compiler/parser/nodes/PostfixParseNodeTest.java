@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.parser.nodes.types;
+package ch.zhaw.it.pm4.javer.compiler.parser.nodes;
 
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.MockParseNodeVisitor;
 import org.junit.jupiter.api.AfterEach;
@@ -7,14 +7,14 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ArrayTypeParseNodeTest {
+class PostfixParseNodeTest {
 
-    private ArrayTypeParseNode node;
+    private PostfixParseNode node;
     private MockParseNodeVisitor visitor;
 
     @BeforeEach
     void setUp() {
-        node = new ArrayTypeParseNode();
+        node = new PostfixParseNode();
         visitor = new MockParseNodeVisitor();
     }
 
