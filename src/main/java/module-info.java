@@ -6,8 +6,9 @@ module ch.zhaw.it.pm4.javer {
     requires java.logging;
 
 
-    opens ch.zhaw.it.pm4.javer to javafx.fxml;
+    opens ch.zhaw.it.pm4.javer.gui to javafx.fxml;
     exports ch.zhaw.it.pm4.javer;
+    exports ch.zhaw.it.pm4.javer.gui;
     exports ch.zhaw.it.pm4.javer.compiler.lexer;
     opens ch.zhaw.it.pm4.javer.compiler.lexer to javafx.fxml;
 
