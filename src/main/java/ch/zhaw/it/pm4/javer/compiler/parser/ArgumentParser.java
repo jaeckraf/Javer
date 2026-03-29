@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
+import java.util.Arrays;
+import java.util.Iterator;
+
 /**
  * Parses raw command-line arguments into a structured {@link CompilerArguments} object.
  */
@@ -22,39 +25,48 @@ public class ArgumentParser {
             return new CompilerArguments(null, null);
         }
 
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
+        Iterator<String> argIterator = Arrays.asList(args).iterator();
+
+        while (argIterator.hasNext()) {
+            String arg = argIterator.next();
 
             switch (arg) {
-                case "-i":
-                case "--input":
-                    if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-                        inputFile = args[++i];
-                    } else {
-                        throw new IllegalArgumentException("Missing value for input option: '" + arg + "'");
-                    }
-                    break;
-
-                case "-o":
-                case "--output":
-                    if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-                        outputFile = args[++i];
-                    } else {
-                        throw new IllegalArgumentException("Missing value for output option: '" + arg + "'");
-                    }
-                    break;
-
-                default:
+                case "-i", "--input"  -> inputFile = extractValue(argIterator, arg);
+                case "-o", "--output" -> outputFile = extractValue(argIterator, arg);
+                default -> {
                     if (arg.startsWith("-")) {
                         throw new IllegalArgumentException("Unknown compiler option: '" + arg + "'");
-                    } else {
-                        throw new IllegalArgumentException(
-                                "Unexpected argument: '" + arg + "'. Please use flags, e.g., '-i " + arg + "'"
-                        );
                     }
+                    throw new IllegalArgumentException(
+                            "Unexpected argument: '" + arg + "'. Please use flags, e.g., '-i " + arg + "'"
+                    );
+                }
+            }
+        }
+
+        if (inputFile == null) {
+            throw new IllegalArgumentException("An input file (-i or --input) is required.");
+        }
+
+        if (outputFile == null) {
+            int dotIndex = inputFile.lastIndexOf('.');
+            if (dotIndex != -1) {
+                outputFile = inputFile.substring(0, dotIndex) + ".jbc";
+            } else {
+                outputFile = inputFile + ".jbc";
             }
         }
 
         return new CompilerArguments(inputFile, outputFile);
+    }
+
+    private String extractValue(Iterator<String> iterator, String currentFlag) {
+        if (iterator.hasNext()) {
+            String nextValue = iterator.next();
+            if (!nextValue.startsWith("-")) {
+                return nextValue;
+            }
+        }
+        throw new IllegalArgumentException("Missing value for option: '" + currentFlag + "'");
     }
 }

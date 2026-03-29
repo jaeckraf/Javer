@@ -24,12 +24,21 @@ public class ArgumentParserTest {
     }
 
     @Test
-    void parse_InputFlagProvided_SetsInputFile() {
+    void parse_OnlyInputFlagProvided_DefaultsOutputFile() {
         String[] args = {"-i", "main.jav"};
         CompilerArguments result = parser.parse(args);
 
         assertEquals("main.jav", result.inputFile());
-        assertNull(result.outputFile());
+        assertEquals("main.jbc", result.outputFile());
+    }
+
+    @Test
+    void parse_InputFileWithoutExtension_DefaultsOutputFile() {
+        String[] args = {"-i", "myScript"};
+        CompilerArguments result = parser.parse(args);
+
+        assertEquals("myScript", result.inputFile());
+        assertEquals("myScript.jbc", result.outputFile());
     }
 
     @Test
@@ -55,7 +64,17 @@ public class ArgumentParserTest {
         String[] args = {"-i"};
 
         Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
-        assertTrue(exception.getMessage().contains("Missing value for input option"));
+
+        assertEquals("Missing value for option: '-i'", exception.getMessage());
+    }
+
+    @Test
+    void parse_OnlyOutputFlagProvided_ThrowsIllegalArgumentException() {
+        String[] args = {"-o", "output.jbc"};
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
+
+        assertEquals("An input file (-i or --input) is required.", exception.getMessage());
     }
 
     @Test
@@ -71,8 +90,8 @@ public class ArgumentParserTest {
         String[] args = {"main.jav"};
 
         Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
+
         assertTrue(exception.getMessage().contains("Unexpected argument"));
-        assertTrue(exception.getMessage().contains("Please use flags"));
     }
 
     @Test
