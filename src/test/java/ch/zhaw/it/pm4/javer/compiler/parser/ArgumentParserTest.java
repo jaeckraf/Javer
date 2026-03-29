@@ -1,5 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
+import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -8,10 +9,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class ArgumentParserTest {
     private ArgumentParser parser;
+    private DiagnosticBag diagnostics;
 
     @BeforeEach
     void setUp() {
-        parser = new ArgumentParser();
+        diagnostics = new DiagnosticBag();
+        parser = new ArgumentParser(diagnostics);
     }
 
     @Test
@@ -21,6 +24,7 @@ public class ArgumentParserTest {
 
         assertFalse(result.hasInputFile(), "Input file should be null or empty.");
         assertNull(result.outputFile(), "Output file should be null.");
+        assertFalse(diagnostics.hasErrors(), "Should not report errors for empty arguments.");
     }
 
     @Test
@@ -30,6 +34,7 @@ public class ArgumentParserTest {
 
         assertEquals("main.jav", result.inputFile());
         assertEquals("main.jbc", result.outputFile());
+        assertFalse(diagnostics.hasErrors(), "Should not report errors for valid input.");
     }
 
     @Test
@@ -39,6 +44,7 @@ public class ArgumentParserTest {
 
         assertEquals("myScript", result.inputFile());
         assertEquals("myScript.jbc", result.outputFile());
+        assertFalse(diagnostics.hasErrors(), "Should not report errors for valid input.");
     }
 
     @Test
@@ -48,6 +54,7 @@ public class ArgumentParserTest {
 
         assertEquals("main.jav", result.inputFile());
         assertEquals("output.jbc", result.outputFile());
+        assertFalse(diagnostics.hasErrors(), "Should not report errors for valid input.");
     }
 
     @Test
@@ -57,41 +64,44 @@ public class ArgumentParserTest {
 
         assertEquals("code.jav", result.inputFile());
         assertEquals("out.jbc", result.outputFile());
+        assertFalse(diagnostics.hasErrors(), "Should not report errors for valid input.");
     }
 
     @Test
-    void parse_MissingValueForInputFlag_ThrowsIllegalArgumentException() {
+    void parse_MissingValueForInputFlag_ReportsError() {
         String[] args = {"-i"};
+        parser.parse(args);
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
-
-        assertEquals("Missing value for option: '-i'", exception.getMessage());
+        assertTrue(diagnostics.hasErrors(), "Should report an error for missing value.");
+        assertTrue(diagnostics.getErrors().contains("Missing value for option: '-i'"));
     }
 
     @Test
-    void parse_OnlyOutputFlagProvided_ThrowsIllegalArgumentException() {
+    void parse_OnlyOutputFlagProvided_ReportsError() {
         String[] args = {"-o", "output.jbc"};
+        parser.parse(args);
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
-
-        assertEquals("An input file (-i or --input) is required.", exception.getMessage());
+        assertTrue(diagnostics.hasErrors(), "Should report an error for missing input file.");
+        assertTrue(diagnostics.getErrors().contains("An input file (-i or --input) is required."));
     }
 
     @Test
-    void parse_UnknownFlag_ThrowsIllegalArgumentException() {
+    void parse_UnknownFlag_ReportsError() {
         String[] args = {"-v", "main.jav"};
+        parser.parse(args);
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
-        assertTrue(exception.getMessage().contains("Unknown compiler option"));
+        assertTrue(diagnostics.hasErrors(), "Should report an error for unknown flag.");
+        assertTrue(diagnostics.getErrors().contains("Unknown compiler option: '-v'"));
     }
 
     @Test
-    void parse_PositionalArgumentWithoutFlag_ThrowsIllegalArgumentException() {
+    void parse_PositionalArgumentWithoutFlag_ReportsError() {
         String[] args = {"main.jav"};
+        parser.parse(args);
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
-
-        assertTrue(exception.getMessage().contains("Unexpected argument"));
+        assertTrue(diagnostics.hasErrors(), "Should report an error for positional argument.");
+        // Use anyMatch since the error message contains dynamic strings
+        assertTrue(diagnostics.getErrors().stream().anyMatch(e -> e.contains("Unexpected argument")));
     }
 
     @Test
