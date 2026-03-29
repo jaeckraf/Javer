@@ -19,7 +19,7 @@ class HelloUITest {
     @Start
     public void start(Stage stage) throws IOException {
         // We load the main view exactly how HelloApplication.java does it
-        FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("hello-view.fxml"));
+        FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 320, 240);
         stage.setScene(scene);
         stage.show();
