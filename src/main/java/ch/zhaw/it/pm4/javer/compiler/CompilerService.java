@@ -13,7 +13,8 @@ import java.util.List;
 
 /**
  * Service class that orchestrates the compiler pipeline.
- * It coordinates the steps of Lexing, Parsing, and potentially Semantic Analysis and Code Generation.
+ * It coordinates the steps of Lexing, Parsing, and potentially Semantic
+ * Analysis and Code Generation.
  */
 public class CompilerService {
 
@@ -27,11 +28,12 @@ public class CompilerService {
      * Compiles raw source code and returns a comprehensive Result object.
      * 
      * @param sourceCode The source code string to compile.
-     * @return A {@link CompilationResult} containing success/failure status and error messages.
+     * @return A {@link CompilationResult} containing success/failure status and
+     *         error messages.
      */
     public CompilationResult compile(String sourceCode) {
         JaverLogger.info("Compilation process started.");
-        
+
         if (sourceCode == null || sourceCode.isBlank()) {
             JaverLogger.warning("Empty source code provided. Compilation aborted.");
             return new CompilationResult(true, List.of(), new CompilationUnitParseNode());
@@ -39,19 +41,16 @@ public class CompilerService {
 
         diagnostics.clear();
 
-        // Step 1: Lexing (Stub)
-        // In the future, this will be replaced by a real Lexer instance.
         List<Token> tokens = lexStub(sourceCode);
         JaverLogger.info("Lexing stage completed (Stub used).");
 
-        // Step 2: Parsing
         Parser parser = new Parser(tokens, diagnostics);
         CompilationUnitParseNode syntaxTree = parser.parse();
         JaverLogger.info("Parsing stage completed.");
 
         boolean success = !diagnostics.hasErrors();
         List<String> errors = diagnostics.getErrors();
-        
+
         if (success) {
             JaverLogger.info("Compilation successful.");
         } else {
@@ -68,7 +67,8 @@ public class CompilerService {
     private List<Token> lexStub(String sourceCode) {
         List<Token> tokens = new ArrayList<>();
         // Real lexing logic would tokenize sourceCode here.
-        // For integration purposes, we just return an EOF token so the Parser can finish successfully.
+        // For integration purposes, we just return an EOF token so the Parser can
+        // finish successfully.
         tokens.add(new Token(TokenType.SPECIAL_END_OF_FILE, "", new TokenPosition(1, 1, 1)));
         return tokens;
     }
