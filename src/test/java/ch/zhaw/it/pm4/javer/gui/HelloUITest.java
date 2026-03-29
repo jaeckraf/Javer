@@ -2,16 +2,17 @@ package ch.zhaw.it.pm4.javer.gui;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.TextArea;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.testfx.api.FxAssert;
 import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
-import org.testfx.matcher.control.LabeledMatchers;
 
 import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(ApplicationExtension.class)
 class HelloUITest {
@@ -26,8 +27,16 @@ class HelloUITest {
     }
 
     @Test
-    void should_click_button_and_change_text(FxRobot robot) {
-        robot.clickOn("#helloButton");
-        FxAssert.verifyThat("#welcomeText", LabeledMatchers.hasText("Welcome to JavaFX Application!"));
+    void should_click_button_and_show_compiler_texts(FxRobot robot) {
+        robot.clickOn("#runCompilerButton");
+
+        TextArea consoleOutput = robot.lookup("#consoleOutput")
+                .queryAs(TextArea.class);
+
+        String text = consoleOutput.getText();
+
+        assertTrue(text.contains("Starting compiler..."));
+        assertTrue(text.contains("Mock compiling..."));
+        assertTrue(text.contains("Compiler finished successfully."));
     }
 }
