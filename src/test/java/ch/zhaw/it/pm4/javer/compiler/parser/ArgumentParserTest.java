@@ -24,8 +24,8 @@ public class ArgumentParserTest {
     }
 
     @Test
-    void parse_OneFileArgument_SetsInputFile() {
-        String[] args = {"main.jav"};
+    void parse_InputFlagProvided_SetsInputFile() {
+        String[] args = {"-i", "main.jav"};
         CompilerArguments result = parser.parse(args);
 
         assertEquals("main.jav", result.inputFile());
@@ -33,8 +33,8 @@ public class ArgumentParserTest {
     }
 
     @Test
-    void parse_TwoFileArguments_SetsInputAndOutputFile() {
-        String[] args = {"main.jav", "output.jbc"};
+    void parse_InputAndOutputFlagsProvided_SetsBothFiles() {
+        String[] args = {"-i", "main.jav", "-o", "output.jbc"};
         CompilerArguments result = parser.parse(args);
 
         assertEquals("main.jav", result.inputFile());
@@ -42,25 +42,37 @@ public class ArgumentParserTest {
     }
 
     @Test
-    void parse_ArgumentStartingWithDash_ThrowsIllegalArgumentException() {
+    void parse_OutputBeforeInput_SetsBothFilesCorrectly() {
+        String[] args = {"-o", "out.jbc", "-i", "code.jav"};
+        CompilerArguments result = parser.parse(args);
+
+        assertEquals("code.jav", result.inputFile());
+        assertEquals("out.jbc", result.outputFile());
+    }
+
+    @Test
+    void parse_MissingValueForInputFlag_ThrowsIllegalArgumentException() {
+        String[] args = {"-i"};
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
+        assertTrue(exception.getMessage().contains("Missing value for input option"));
+    }
+
+    @Test
+    void parse_UnknownFlag_ThrowsIllegalArgumentException() {
         String[] args = {"-v", "main.jav"};
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            parser.parse(args);
-        });
-
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
         assertTrue(exception.getMessage().contains("Unknown compiler option"));
     }
 
     @Test
-    void parse_TooManyArguments_ThrowsIllegalArgumentException() {
-        String[] args = {"main.jav", "out.jbc", "extra.txt"};
+    void parse_PositionalArgumentWithoutFlag_ThrowsIllegalArgumentException() {
+        String[] args = {"main.jav"};
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-            parser.parse(args);
-        });
-
-        assertTrue(exception.getMessage().contains("Too many arguments provided"));
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> parser.parse(args));
+        assertTrue(exception.getMessage().contains("Unexpected argument"));
+        assertTrue(exception.getMessage().contains("Please use flags"));
     }
 
     @Test

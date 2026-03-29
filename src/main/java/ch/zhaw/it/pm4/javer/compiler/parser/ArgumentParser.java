@@ -6,14 +6,13 @@ package ch.zhaw.it.pm4.javer.compiler.parser;
 public class ArgumentParser {
 
     /**
-     * Parses the given array of arguments.
+     * Parses the given array of arguments using a scalable flag-based approach.
      * <p>
-     * Current Constraint: Only file paths are allowed. If the parser detects
-     * a flag (an argument starting with '-'), it will reject it.
+     * Expected format: -i <inputFile> [-o <outputFile>]
      *
      * @param args The command-line arguments passed from the main method.
      * @return A structured {@link CompilerArguments} object.
-     * @throws IllegalArgumentException if an invalid flag or too many arguments are provided.
+     * @throws IllegalArgumentException if an invalid flag is provided or a value is missing.
      */
     public CompilerArguments parse(String[] args) throws IllegalArgumentException {
         String inputFile = null;
@@ -23,21 +22,36 @@ public class ArgumentParser {
             return new CompilerArguments(null, null);
         }
 
-        for (String arg : args) {
-            if (arg.startsWith("-")) {
-                throw new IllegalArgumentException(
-                        "Unknown compiler option: '" + arg + "'. Only file paths are allowed at the moment."
-                );
-            }
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
 
-            if (inputFile == null) {
-                inputFile = arg;
-            } else if (outputFile == null) {
-                outputFile = arg;
-            } else {
-                throw new IllegalArgumentException(
-                        "Too many arguments provided. Expected at most an input file and an output file."
-                );
+            switch (arg) {
+                case "-i":
+                case "--input":
+                    if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+                        inputFile = args[++i];
+                    } else {
+                        throw new IllegalArgumentException("Missing value for input option: '" + arg + "'");
+                    }
+                    break;
+
+                case "-o":
+                case "--output":
+                    if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+                        outputFile = args[++i];
+                    } else {
+                        throw new IllegalArgumentException("Missing value for output option: '" + arg + "'");
+                    }
+                    break;
+
+                default:
+                    if (arg.startsWith("-")) {
+                        throw new IllegalArgumentException("Unknown compiler option: '" + arg + "'");
+                    } else {
+                        throw new IllegalArgumentException(
+                                "Unexpected argument: '" + arg + "'. Please use flags, e.g., '-i " + arg + "'"
+                        );
+                    }
             }
         }
 
