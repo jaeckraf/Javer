@@ -1,6 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

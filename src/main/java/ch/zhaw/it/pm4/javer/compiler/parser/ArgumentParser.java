@@ -1,6 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import ch.zhaw.it.pm4.javer.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 import java.util.Arrays;
 import java.util.Iterator;
 
