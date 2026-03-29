@@ -7,11 +7,12 @@ module ch.zhaw.it.pm4.javer {
 
 
     opens ch.zhaw.it.pm4.javer.gui to javafx.fxml;
+    opens ch.zhaw.it.pm4.javer to javafx.fxml;
     exports ch.zhaw.it.pm4.javer;
     exports ch.zhaw.it.pm4.javer.gui;
+    exports ch.zhaw.it.pm4.javer.compiler;
     exports ch.zhaw.it.pm4.javer.compiler.lexer;
-    opens ch.zhaw.it.pm4.javer.compiler.lexer to javafx.fxml;
-
     exports ch.zhaw.it.pm4.javer.compiler.diagnostics;
+    opens ch.zhaw.it.pm4.javer.compiler.lexer to javafx.fxml;
     opens ch.zhaw.it.pm4.javer.compiler.diagnostics to javafx.fxml;
 }
