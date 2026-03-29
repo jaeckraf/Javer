@@ -33,13 +33,21 @@ public class CompilerUITest {
         // Click Compile
         robot.clickOn("#compileButton");
         
+        // Wait for asynchronous Task (simulate GUI 400ms + compiler 400ms + VM 1200ms)
+        try {
+            Thread.sleep(2500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        org.testfx.util.WaitForAsyncUtils.waitForFxEvents(); // Ensure Platform.runLater has painted
+
         // Verify output area shows success (stub always succeeds)
         FxAssert.verifyThat("#outputArea", TextInputControlMatchers.hasText(
                 org.hamcrest.Matchers.containsString("Build Successful")
         ));
         
         // Verify status label
-        FxAssert.verifyThat("#statusLabel", LabeledMatchers.hasText("Build Successful"));
+        FxAssert.verifyThat("#statusLabel", LabeledMatchers.hasText("Execution Successful"));
     }
 
     @Test
