@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.parser.nodes;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.parser.visitor.ParseNodeVisitor;
 
 /**
@@ -9,6 +10,11 @@ import ch.zhaw.it.pm4.javer.compiler.parser.visitor.ParseNodeVisitor;
 
 @JacocoGenerated("Dummy class, remove when implemented.")
 public abstract class ParseNode {
+
+    private final SourceLocation sourceLocation = null;
+
+    protected ParseNode() {
+    }
 
     /**
      * @param visitor the visitor to accept
