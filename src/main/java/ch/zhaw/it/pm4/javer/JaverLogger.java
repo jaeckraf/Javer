@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.diagnostics;
+package ch.zhaw.it.pm4.javer;
 
 import java.io.IOException;
 import java.util.logging.*;

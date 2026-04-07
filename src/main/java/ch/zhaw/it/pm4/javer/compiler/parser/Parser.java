@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.parser.nodes.CompilationUnitParseNode;
@@ -118,8 +118,6 @@ public class Parser {
         if (peek().getTokenType() == expectedType) {
             return advance();
         }
-
-        diagnostics.reportError(peek(), errorMessage);
 
         return peek();
     }

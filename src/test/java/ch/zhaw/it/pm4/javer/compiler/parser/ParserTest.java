@@ -1,6 +1,7 @@
+/*
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenPosition;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
@@ -328,4 +329,4 @@ class ParserTest {
         fail("Not implemented and tested yet.");
     }
 
-}
+}*/

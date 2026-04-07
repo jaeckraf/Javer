@@ -1,0 +1,16 @@
+Apr. 07, 2026 7:19:50 PM ch.zhaw.it.pm4.javer.JaverLogger info
+INFORMATION: One
+Apr. 07, 2026 7:19:50 PM ch.zhaw.it.pm4.javer.JaverLogger warning
+WARNUNG: Two
+Apr. 07, 2026 7:19:50 PM ch.zhaw.it.pm4.javer.JaverLogger error
+SCHWERWIEGEND: Test error
+Apr. 07, 2026 7:19:50 PM ch.zhaw.it.pm4.javer.JaverLogger info
+INFORMATION: Test info message
+Apr. 07, 2026 8:06:38 PM ch.zhaw.it.pm4.javer.JaverLogger info
+INFORMATION: One
+Apr. 07, 2026 8:06:38 PM ch.zhaw.it.pm4.javer.JaverLogger warning
+WARNUNG: Two
+Apr. 07, 2026 8:06:38 PM ch.zhaw.it.pm4.javer.JaverLogger error
+SCHWERWIEGEND: Test error
+Apr. 07, 2026 8:06:38 PM ch.zhaw.it.pm4.javer.JaverLogger info
+INFORMATION: Test info message
