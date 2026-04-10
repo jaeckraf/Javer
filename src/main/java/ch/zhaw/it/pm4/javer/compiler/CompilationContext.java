@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.zhaw.it.pm4.javer.JaverLogger;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
@@ -41,7 +40,7 @@ public class CompilationContext {
         this.options = options;
     }
 
-    public DiagnosticBag getDiagnostics() {
+    public DiagnosticBag getDiagnosticBag() {
         return diagnostics;
     }
 

@@ -78,7 +78,7 @@ public class DiagnosticBag {
      */
     public String dumpReport() {
         // TODO: Implement
-        return "";
+        return "Error Report:\n";
     }
 
     /**

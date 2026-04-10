@@ -1,8 +1,21 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
+import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
+import ch.zhaw.it.pm4.javer.compiler.visitor.Assembler;
+import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
+import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableCreation;
+import ch.zhaw.it.pm4.javer.compiler.visitor.TypeChecker;
+
+import java.util.List;
+import java.util.function.Function;
 
 public class Compiler {
 
@@ -28,46 +41,87 @@ public class Compiler {
         phase = CompilationPhase.ARGUMENT_PARSING;
     }
 
-    public void compile() {
+    public String compile() {
         phase = CompilationPhase.ARGUMENT_PARSING;
-        PhaseResult<Boolean> success = argumentParsing();
-        if (success != null && success.isSuccess())
-            success = setup(success.getPayload());
-        if (success != null && success.isSuccess())
-            success = lex(success.getPayload());
-        if (success != null && success.isSuccess())
-            success = parse(success.getPayload());
-        if (success != null && success.isSuccess())
-            success = checkAst(success.getPayload());
-        if (success != null && success.isSuccess())
-            success = generateCode(success.getPayload());
-        if (success != null && success.isSuccess())
-            assemble(success.getPayload());
-    }
-    private PhaseResult<Boolean> argumentParsing() {
-        return null;
-    }
-    private PhaseResult<Boolean>  setup(Object payload) {
-        return null;
+        PhaseResult<List<Token>> lexingResult = lex(context.getSourceCache().getSourceCode());
+        PhaseResult<CompilationUnitAstNode> parsingResult = runPhase(lexingResult, this::parse);
+        PhaseResult<CompilationUnitAstNode> symbolTableResult = runPhase(parsingResult, this::createSymbolTable);
+        PhaseResult<CompilationUnitAstNode> nameResolutionResult = runPhase(symbolTableResult, this::resolveNames);
+        PhaseResult<CompilationUnitAstNode> typeCheckingResult = runPhase(nameResolutionResult, this::typeCheck);
+        PhaseResult<CompilationUnitAstNode> semanticAnalysisResult = runPhase(typeCheckingResult, this::semanticAnalysis);
+        PhaseResult<Object> codeGenerationResult = runPhase(semanticAnalysisResult, this::generateCode);
+        PhaseResult<Boolean> assemblyResult = runPhase(codeGenerationResult, this::assemble);
+        PhaseResult<Boolean> completionResult = runPhase(assemblyResult, this::done);
+
+        if (isFailed(completionResult)) {
+            return context.getDiagnosticBag().dumpReport();
+        }
+
+        return "Compilation Successful";
     }
 
-    private PhaseResult<Boolean>  lex(Object payload) {
-        return null;
+    private <T, R> PhaseResult<R> runPhase(PhaseResult<T> previousResult,
+                                           Function<T, PhaseResult<R>> phaseRunner) {
+        if (isFailed(previousResult)) {
+            return PhaseResult.failure();
+        }
+
+        return phaseRunner.apply(previousResult.getPayload());
     }
 
-    private PhaseResult<Boolean>  parse(Object payload) {
-        return null;
+    private boolean isFailed(PhaseResult<?> result) {
+        return result == null || !result.isSuccess();
     }
 
-    private PhaseResult<Boolean>  checkAst(Object payload) {
-        return null;
+
+    private PhaseResult<List<Token>>  lex(String payload) {
+        Lexer lexer = new Lexer(payload);
+        List<Token> tokens = lexer.lexSourcecode();
+        return new PhaseResult<>(true, tokens);
     }
 
-    private PhaseResult<Boolean>  generateCode(Object payload) {
-        return null;
+    private PhaseResult<CompilationUnitAstNode>  parse(List<Token> tokens) {
+        CompilationUnitAstNode node = new Parser(tokens).parse();
+        return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<Boolean>  assemble(Object payload) {
-        return null;
+    private PhaseResult<CompilationUnitAstNode> createSymbolTable(CompilationUnitAstNode payload) {
+        new SymbolTableCreation().visit(payload);
+        return new PhaseResult<>(true, payload);
+    }
+
+    private PhaseResult<CompilationUnitAstNode> resolveNames(CompilationUnitAstNode node) {
+        phase = CompilationPhase.NAME_RESOLUTION;
+        new NameResoluter().visit(node);
+        return new PhaseResult<>(true, node);
+    }
+
+    private PhaseResult<CompilationUnitAstNode> typeCheck(CompilationUnitAstNode node) {
+        phase = CompilationPhase.TYPE_CHECKING;
+        new TypeChecker().visit(node);
+        return new PhaseResult<>(true, node);
+    }
+
+    private PhaseResult<CompilationUnitAstNode> semanticAnalysis(CompilationUnitAstNode node) {
+        phase = CompilationPhase.SEMANTIC_ANALYSIS;
+        new SemanticChecker().visit(node);
+        return new PhaseResult<>(true, node);
+    }
+
+    private PhaseResult<Object> generateCode(CompilationUnitAstNode node) {
+        phase = CompilationPhase.CODE_GENERATION;
+        Object generatedCode = new CodeGenerator().visit(node);
+        return new PhaseResult<>(true, generatedCode);
+    }
+
+    private PhaseResult<Boolean> assemble(Object payload) {
+        phase = CompilationPhase.ASSEMBLING;
+        new Assembler().assemble(payload);
+        return new PhaseResult<>(true, true);
+    }
+
+    private PhaseResult<Boolean> done(Boolean payload) {
+        phase = CompilationPhase.DONE;
+        return new PhaseResult<>(true, payload != null && payload);
     }
 }

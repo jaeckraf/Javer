@@ -41,14 +41,12 @@ public class GuiController {
                     "output.bin"
             );
             Compiler compiler = new Compiler(options);
-            compiler.compile();
+            String compileResult = compiler.compile();
+
+            compilerOutput.setText(compileResult);
         } else {
             compilerOutput.appendText("No input entered.\n");
         }
-        compilerOutput.appendText("Mock compiling...\n");
-        compilerOutput.appendText("Compiler finished successfully.\n");
-
-        consoleInput.clear();
     }
 
     //TODO write the file into temp folder
