@@ -28,7 +28,7 @@ public class GuiTest {
     @Test
     void should_click_button_and_change_text(FxRobot robot) {
         robot.clickOn("#runCompilerButton");
-        FxAssert.verifyThat("#consoleOutput", NodeMatchers.isNotNull());
-        FxAssert.verifyThat("#consoleOutput", (TextArea ta) -> ta.getText().contains("Compiler finished successfully."));
+        FxAssert.verifyThat("#compilerOutput", NodeMatchers.isNotNull());
+        FxAssert.verifyThat("#compilerOutput", (TextArea ta) -> ta.getText().contains("Compiler finished successfully."));
     }
 }

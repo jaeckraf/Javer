@@ -30,7 +30,7 @@ class HelloUITest {
     void should_click_button_and_show_compiler_texts(FxRobot robot) {
         robot.clickOn("#runCompilerButton");
 
-        TextArea consoleOutput = robot.lookup("#consoleOutput")
+        TextArea consoleOutput = robot.lookup("#compilerOutput")
                 .queryAs(TextArea.class);
 
         String text = consoleOutput.getText();
