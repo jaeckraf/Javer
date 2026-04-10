@@ -16,7 +16,7 @@ public class CompilerOptions {
     private final boolean dumpAst;
     private final int optimizationLevel;
 
-    public CompilerOptions(
+    private CompilerOptions(
             String inputFilePath,
             String outputFilePath,
             boolean loggingEnabled,
@@ -48,5 +48,18 @@ public class CompilerOptions {
 
     public int getOptimizationLevel() {
         return optimizationLevel;
+    }
+
+    public static CompilerOptions create(String...args) {
+
+        String inputFilePath = args[0];
+        String outputFilePath = args[1];
+        return new CompilerOptions(
+                inputFilePath,
+                outputFilePath,
+                true,
+                false,
+                0
+        );
     }
 }

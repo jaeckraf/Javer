@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.gui;
 
+import ch.zhaw.it.pm4.javer.compiler.Compiler;
+import ch.zhaw.it.pm4.javer.compiler.CompilerOptions;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
@@ -33,7 +35,13 @@ public class GuiController {
         compilerOutput.appendText("Starting compiler...\n");
         if (input != null && !input.isBlank()) {
             compilerOutput.appendText("Input: " + input + "\n");
-            writeInputToFile(input);
+            String path = writeInputToFile(input);
+            CompilerOptions options = CompilerOptions.create(
+                    path,
+                    "output.bin"
+            );
+            Compiler compiler = new Compiler(options);
+            compiler.compile();
         } else {
             compilerOutput.appendText("No input entered.\n");
         }
@@ -43,7 +51,8 @@ public class GuiController {
         consoleInput.clear();
     }
 
-    private void writeInputToFile(String input) {
+    //TODO write the file into temp folder
+    private String writeInputToFile(String input) {
         try {
             Files.writeString(
                     CONSOLE_INPUT_FILE,
@@ -56,5 +65,6 @@ public class GuiController {
         } catch (IOException exception) {
             compilerOutput.appendText("Failed to save input: " + exception.getMessage() + "\n");
         }
+        return CONSOLE_INPUT_FILE.toString();
     }
 }

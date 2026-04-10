@@ -1,6 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
 import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
 public class Compiler {
 
@@ -15,13 +17,14 @@ public class Compiler {
     // Pipeline:
     // args -> setup -> lexing -> parsing -> ast-checks -> code-generation -> assembling -> done
 
-    // private final CompilerOptions options;
-    // private final CompilationContext context;
+    private final CompilerOptions options;
+    private final CompilationContext context;
     private CompilationPhase phase;
 
-    public Compiler() {//CompilerOptions options) {
-        // this.options = options;
-        // this.context = new CompilationContext(options);
+    public Compiler(CompilerOptions options) {
+        this.options = options;
+
+        this.context = new CompilationContext(options, new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP), new SourceCache(options.getInputFilePath()));
         phase = CompilationPhase.ARGUMENT_PARSING;
     }
 

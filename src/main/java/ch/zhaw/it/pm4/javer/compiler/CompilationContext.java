@@ -17,13 +17,12 @@ public class CompilationContext {
      * - SourceCache
      */
 
-    private static CompilationContext instance;
 
     private CompilerOptions options;
     private DiagnosticBag diagnostics;
     private SourceCache sourceCache;
 
-    private CompilationContext(
+    public CompilationContext(
             CompilerOptions options,
             DiagnosticBag diagnostics,
             SourceCache sourceCache) {
@@ -33,15 +32,6 @@ public class CompilationContext {
         this.sourceCache = sourceCache;
     }
 
-    /**
-     * Returns the global context instance.
-     */
-    public static CompilationContext getInstance() {
-        if (instance == null) {
-            instance = new CompilationContext(null, null, null);
-        }
-        return instance;
-    }
 
     public CompilerOptions getOptions() {
         return options;
