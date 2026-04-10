@@ -75,12 +75,6 @@ public class Parser {
      */
     public CompilationUnitAstNode parse() {
         CompilationUnitAstNode rootNode = new CompilationUnitAstNode();
-
-        // Dummy loop for Sprint 1: pretend to process the tokens so we reach EOF
-        while (!isAtEnd()) {
-            advance();
-        }
-
         return rootNode;
     }
 

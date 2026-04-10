@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
@@ -44,215 +43,215 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.EnumTypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.StructTypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.VoidTypeAstNode;
 
-public class SymbolTableCreation extends AstNodeVisitorBase<SymbolTable> {
+public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
 
     @Override
-    public SymbolTable visit(BinaryExpressionAstNode node) {
+    public Void visit(BinaryExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ArrayInitAstNode node) {
+    public Void visit(ArrayInitAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(VarInitAstNode node) {
+    public Void visit(VarInitAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(CallExpressionAstNode node) {
+    public Void visit(CallExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(EnumAccessExpressionAstNode node) {
+    public Void visit(EnumAccessExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(IndexAstNode node) {
+    public Void visit(IndexAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(LiteralConstantAstNode node) {
+    public Void visit(LiteralConstantAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(NameAccessExpressionAstNode node) {
+    public Void visit(NameAccessExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(NewExpressionAstNode node) {
+    public Void visit(NewExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ParenthesizedExpressionAstNode node) {
+    public Void visit(ParenthesizedExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ConditionalAstNode node) {
+    public Void visit(ConditionalAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(UnaryExpressionAstNode node) {
+    public Void visit(UnaryExpressionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(AssignmentAstNode node) {
+    public Void visit(AssignmentAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ExpressionListAstNode node) {
+    public Void visit(ExpressionListAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(PostfixAstNode node) {
+    public Void visit(PostfixAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(BreakStmtAstNode node) {
+    public Void visit(BreakStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ContinueStmtAstNode node) {
+    public Void visit(ContinueStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ReturnStmtAstNode node) {
+    public Void visit(ReturnStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(CaseClauseAstNode node) {
+    public Void visit(CaseClauseAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(DefaultClauseAstNode node) {
+    public Void visit(DefaultClauseAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(SwitchStmtAstNode node) {
+    public Void visit(SwitchStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(IfStmtAstNode node) {
+    public Void visit(IfStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(DoWhileStmtAstNode node) {
+    public Void visit(DoWhileStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ForInitAstNode node) {
+    public Void visit(ForInitAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ForStmtAstNode node) {
+    public Void visit(ForStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ForUpdateAstNode node) {
+    public Void visit(ForUpdateAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(WhileStmtAstNode node) {
+    public Void visit(WhileStmtAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(BlockAstNode node) {
+    public Void visit(BlockAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ExpressionStatementAstNode node) {
+    public Void visit(ExpressionStatementAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(VarDeclarationAstNode node) {
+    public Void visit(VarDeclarationAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(EnumDeclarationAstNode node) {
+    public Void visit(EnumDeclarationAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(EnumItemAstNode node) {
+    public Void visit(EnumItemAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(FunctionParameterAstNode node) {
+    public Void visit(FunctionParameterAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(FunctionAstNode node) {
+    public Void visit(FunctionAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(StructDeclarationAstNode node) {
+    public Void visit(StructDeclarationAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(StructItemAstNode node) {
+    public Void visit(StructItemAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(ArrayTypeAstNode node) {
+    public Void visit(ArrayTypeAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(AtomicTypeAstNode node) {
+    public Void visit(AtomicTypeAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(EnumTypeAstNode node) {
+    public Void visit(EnumTypeAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(StructTypeAstNode node) {
+    public Void visit(StructTypeAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(VoidTypeAstNode node) {
+    public Void visit(VoidTypeAstNode node) {
         return null;
     }
 
     @Override
-    public SymbolTable visit(CompilationUnitAstNode node) {
+    public Void visit(CompilationUnitAstNode node) {
         return null;
     }
 }

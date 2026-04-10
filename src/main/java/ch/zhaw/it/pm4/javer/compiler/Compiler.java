@@ -7,12 +7,7 @@ import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
-import ch.zhaw.it.pm4.javer.compiler.visitor.Assembler;
-import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
-import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
-import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
-import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableCreation;
-import ch.zhaw.it.pm4.javer.compiler.visitor.TypeChecker;
+import ch.zhaw.it.pm4.javer.compiler.visitor.*;
 
 import java.util.List;
 import java.util.function.Function;
@@ -51,12 +46,9 @@ public class Compiler {
         PhaseResult<CompilationUnitAstNode> semanticAnalysisResult = runPhase(typeCheckingResult, this::semanticAnalysis);
         PhaseResult<Object> codeGenerationResult = runPhase(semanticAnalysisResult, this::generateCode);
         PhaseResult<Boolean> assemblyResult = runPhase(codeGenerationResult, this::assemble);
-        PhaseResult<Boolean> completionResult = runPhase(assemblyResult, this::done);
-
-        if (isFailed(completionResult)) {
+        if (isFailed(assemblyResult)) {
             return context.getDiagnosticBag().dumpReport();
         }
-
         return "Compilation Successful";
     }
 
@@ -74,20 +66,20 @@ public class Compiler {
     }
 
 
-    private PhaseResult<List<Token>>  lex(String payload) {
-        Lexer lexer = new Lexer(payload);
+    private PhaseResult<List<Token>> lex(String sourceCode) {
+        Lexer lexer = new Lexer(sourceCode);
         List<Token> tokens = lexer.lexSourcecode();
         return new PhaseResult<>(true, tokens);
     }
 
-    private PhaseResult<CompilationUnitAstNode>  parse(List<Token> tokens) {
+    private PhaseResult<CompilationUnitAstNode> parse(List<Token> tokens) {
         CompilationUnitAstNode node = new Parser(tokens).parse();
         return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<CompilationUnitAstNode> createSymbolTable(CompilationUnitAstNode payload) {
-        new SymbolTableCreation().visit(payload);
-        return new PhaseResult<>(true, payload);
+    private PhaseResult<CompilationUnitAstNode> createSymbolTable(CompilationUnitAstNode rootNode) {
+        new SymbolTableCreation().visit(rootNode);
+        return new PhaseResult<>(true, rootNode);
     }
 
     private PhaseResult<CompilationUnitAstNode> resolveNames(CompilationUnitAstNode node) {
@@ -108,6 +100,7 @@ public class Compiler {
         return new PhaseResult<>(true, node);
     }
 
+    // TODO make code generator return a more specific type than Object
     private PhaseResult<Object> generateCode(CompilationUnitAstNode node) {
         phase = CompilationPhase.CODE_GENERATION;
         Object generatedCode = new CodeGenerator().visit(node);
@@ -116,12 +109,8 @@ public class Compiler {
 
     private PhaseResult<Boolean> assemble(Object payload) {
         phase = CompilationPhase.ASSEMBLING;
-        new Assembler().assemble(payload);
+        new Assembler().assemble(payload, options.getOutputFilePath());
         return new PhaseResult<>(true, true);
     }
 
-    private PhaseResult<Boolean> done(Boolean payload) {
-        phase = CompilationPhase.DONE;
-        return new PhaseResult<>(true, payload != null && payload);
-    }
 }

@@ -2,6 +2,8 @@ package ch.zhaw.it.pm4.javer.gui;
 
 import ch.zhaw.it.pm4.javer.compiler.Compiler;
 import ch.zhaw.it.pm4.javer.compiler.CompilerOptions;
+import ch.zhaw.it.pm4.javer.vm.BytecodeLoader;
+import ch.zhaw.it.pm4.javer.vm.VM;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
@@ -15,6 +17,7 @@ import java.nio.file.StandardOpenOption;
 public class GuiController {
 
     private static final Path CONSOLE_INPUT_FILE = Path.of("console-input.txt");
+    private static final Path VM_INPUT_FILE = Path.of("vm-input.txt");
 
     @FXML
     private TextArea compilerOutput;
@@ -28,6 +31,7 @@ public class GuiController {
     @FXML
     private Button runCompilerButton;
 
+    // TODO one or two buttons? runCompiler and runVM
     @FXML
     protected void onRunCompilerClick() {
         String input = consoleInput.getText();
@@ -42,8 +46,11 @@ public class GuiController {
             );
             Compiler compiler = new Compiler(options);
             String compileResult = compiler.compile();
-
             compilerOutput.setText(compileResult);
+            BytecodeLoader bytecodeLoader = new BytecodeLoader(VM_INPUT_FILE.toAbsolutePath().toString());
+            VM vm = new VM(bytecodeLoader);
+            String vmResult = vm.run();
+            virtualMachineOutput.setText(vmResult);
         } else {
             compilerOutput.appendText("No input entered.\n");
         }

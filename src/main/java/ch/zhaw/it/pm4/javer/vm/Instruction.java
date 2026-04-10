@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.vm;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,4 +19,7 @@ public class Instruction {
     public List<Operand> getOperands() {
         return operands;
     }
+
+
+
 }

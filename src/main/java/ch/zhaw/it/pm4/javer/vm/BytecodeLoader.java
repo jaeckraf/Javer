@@ -15,7 +15,10 @@ public class BytecodeLoader {
      * @param path
      */
     public BytecodeLoader(String path) {
-        File file = new File(path); // TODO make good and more
+        instructions = List.of(
+                new Instruction(OPCode.HALT)
+        );
+        staticSegement = new MemorySegment();
     }
 
     public List<Instruction> getInstructions() {

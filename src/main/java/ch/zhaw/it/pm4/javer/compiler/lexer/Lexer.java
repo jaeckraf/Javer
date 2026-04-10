@@ -74,7 +74,9 @@ public class Lexer {
      * @param tokenType the type of token to create (e.g., keyword, identifier, literal, symbol)
      * @return returns a new Token object with the specified type and the current position in the source code.
      * */
-    private Token makeToken(TokenType tokenType) { return null; }
+    private Token makeToken(TokenType tokenType) {
+        return null;
+    }
     /**
      * @return returns a new TokenPosition object representing the current position in the source code, using the start column, end column, and line number.
      * This is used for accurate error reporting and token metadata.
