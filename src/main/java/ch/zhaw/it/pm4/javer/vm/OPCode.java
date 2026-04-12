@@ -1,0 +1,30 @@
+package ch.zhaw.it.pm4.javer.vm;
+
+public enum OPCode {
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    MOD,
+    SHIFT_RIGHT,
+    SHIFT_LEFT,
+    AND,
+    OR,
+    XOR,
+    LESS_THAN,
+    LESS_THAN_EQUALS,
+    GREATER_THAN,
+    GREATER_THAN_EQUALS,
+    EQUALS,
+    COMPARE,
+    BITWISE_INVERT,
+    NEGATE,
+    JUMP,
+    JUMP_TRUE,
+    JUMP_FALSE,
+    PUSH,
+    POP,
+    HALT,
+    PRINT,
+    NEW
+}

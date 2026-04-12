@@ -14,11 +14,13 @@ import org.testfx.matcher.base.NodeMatchers;
 
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @ExtendWith(ApplicationExtension.class)
-public class GuiTest {
+class GuiTest {
 
     @Start
-    public void start(Stage stage) throws IOException {
+    void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 600, 400);
         stage.setScene(scene);
@@ -26,9 +28,21 @@ public class GuiTest {
     }
 
     @Test
-    void should_click_button_and_change_text(FxRobot robot) {
+    void shouldRenderAllMainGuiControls() {
+        FxAssert.verifyThat("#consoleInput", NodeMatchers.isNotNull());
+        FxAssert.verifyThat("#runCompilerButton", NodeMatchers.isNotNull());
+        FxAssert.verifyThat("#compilerOutput", NodeMatchers.isNotNull());
+        FxAssert.verifyThat("#virtualMachineOutput", NodeMatchers.isNotNull());
+    }
+
+    @Test
+    void shouldShowHelpfulMessageWhenInputIsBlank(FxRobot robot) {
+        robot.clickOn("#consoleInput");
+        robot.eraseText(20);
         robot.clickOn("#runCompilerButton");
-        FxAssert.verifyThat("#consoleOutput", NodeMatchers.isNotNull());
-        FxAssert.verifyThat("#consoleOutput", (TextArea ta) -> ta.getText().contains("Compiler finished successfully."));
+
+        TextArea compilerOutput = robot.lookup("#compilerOutput").queryAs(TextArea.class);
+        assertTrue(compilerOutput.getText().contains("Starting compiler..."));
+        assertTrue(compilerOutput.getText().contains("No input entered."));
     }
 }

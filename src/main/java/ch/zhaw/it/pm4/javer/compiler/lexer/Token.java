@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.lexer;
 
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
+
 import java.util.Objects;
 
 /**
@@ -9,7 +11,7 @@ import java.util.Objects;
 public class Token {
     private final TokenType type;
     private final String value;
-    private final TokenPosition position;
+    private final SourceLocation position;
     
     /**
      * Creates a new Token with the specified type, value, and position.
@@ -19,7 +21,7 @@ public class Token {
      * @param position the position of the token in the source (must not be null)
      * @throws NullPointerException if type or position is null
      */
-    public Token(TokenType type, String value, TokenPosition position) {
+    public Token(TokenType type, String value, SourceLocation position) {
         this.type = Objects.requireNonNull(type, "Token type cannot be null");
         this.position = Objects.requireNonNull(position, "Token position cannot be null");
         this.value = value;
@@ -49,7 +51,7 @@ public class Token {
      * 
      * @return the position of the token
      */
-    public TokenPosition getPosition() {
+    public SourceLocation getPosition() {
         return position;
     }
     
