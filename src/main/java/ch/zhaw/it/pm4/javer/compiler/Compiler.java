@@ -67,7 +67,8 @@ public class Compiler {
 
 
     private PhaseResult<List<Token>> lex(String sourceCode) {
-        Lexer lexer = new Lexer(sourceCode);
+        phase = CompilationPhase.LEXING;
+        Lexer lexer = new Lexer(sourceCode, context.getDiagnosticBag());
         List<Token> tokens = lexer.lexSourcecode();
         return new PhaseResult<>(true, tokens);
     }
