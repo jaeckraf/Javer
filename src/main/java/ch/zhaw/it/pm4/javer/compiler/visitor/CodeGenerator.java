@@ -1,5 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
@@ -43,6 +44,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.EnumTypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.StructTypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.VoidTypeAstNode;
 
+@JacocoGenerated("jacoco-ignore")
 /* TODO change generic/return type */
 public class CodeGenerator extends AstNodeVisitorBase<Void> {
     @Override
