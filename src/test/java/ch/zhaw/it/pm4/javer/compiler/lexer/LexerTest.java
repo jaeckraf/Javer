@@ -17,8 +17,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class LexerTest {
 
+    private static DiagnosticBag newBag() {
+        return new DiagnosticBag("<test>", 50, CompilationPhase.LEXING);
+    }
+
     private static List<Token> lex(String source) {
-        return new Lexer(source).lexSourcecode();
+        return new Lexer(source, newBag()).lexSourcecode();
     }
 
     /** Lex a source that should yield exactly one real token plus an EOF. */
@@ -56,9 +60,15 @@ class LexerTest {
     @Test
     @DisplayName("Null source is treated as empty string")
     void nullSource() {
-        List<Token> tokens = new Lexer(null).lexSourcecode();
+        List<Token> tokens = new Lexer(null, newBag()).lexSourcecode();
         assertEquals(1, tokens.size());
         assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+    }
+
+    @Test
+    @DisplayName("Constructor rejects a null DiagnosticBag")
+    void rejectsNullDiagnosticBag() {
+        assertThrows(NullPointerException.class, () -> new Lexer("x", null));
     }
 
     @Test
@@ -160,26 +170,6 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("Decimal integer with underscore separators between digits")
-    void decimalIntegerWithUnderscores() {
-        Token t = single("100_000_000");
-        assertEquals(TokenType.LITERAL_INTEGER, t.getTokenType());
-        assertEquals("100_000_000", t.getValue());
-    }
-
-    @Test
-    @DisplayName("Trailing underscore is NOT part of the number literal")
-    void trailingUnderscoreNotConsumed() {
-        assertTypes("100_", TokenType.LITERAL_INTEGER, TokenType.ID_IDENTIFIER);
-    }
-
-    @Test
-    @DisplayName("Consecutive underscores terminate the number at the first one")
-    void consecutiveUnderscoresStopNumber() {
-        assertTypes("100__000", TokenType.LITERAL_INTEGER, TokenType.ID_IDENTIFIER);
-    }
-
-    @Test
     @DisplayName("Double literal with fractional part")
     void doubleWithFraction() {
         Token t = single("3.14");
@@ -208,7 +198,7 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("Hex literal (both 0x and 0X prefix, with separators)")
+    @DisplayName("Hex literal (both 0x and 0X prefix)")
     void hexLiteral() {
         Token lower = single("0xFF");
         assertEquals(TokenType.LITERAL_HEX, lower.getTokenType());
@@ -216,10 +206,6 @@ class LexerTest {
 
         Token upper = single("0X1a2B");
         assertEquals(TokenType.LITERAL_HEX, upper.getTokenType());
-
-        Token sep = single("0xDEAD_BEEF");
-        assertEquals(TokenType.LITERAL_HEX, sep.getTokenType());
-        assertEquals("0xDEAD_BEEF", sep.getValue());
     }
 
     @Test
@@ -237,7 +223,7 @@ class LexerTest {
         Token t = single("0b1010");
         assertEquals(TokenType.LITERAL_BINARY, t.getTokenType());
         assertEquals("0b1010", t.getValue());
-        assertEquals(TokenType.LITERAL_BINARY, single("0B1100_0011").getTokenType());
+        assertEquals(TokenType.LITERAL_BINARY, single("0B11000011").getTokenType());
     }
 
     @Test

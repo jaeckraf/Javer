@@ -8,6 +8,7 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * The Lexer class is responsible for converting the raw source code into a
@@ -77,20 +78,14 @@ public class Lexer {
             Map.entry('~', TokenType.OPERATOR_BITWISE_NOT));
 
     /**
-     * @param sourceCode the raw source code to be tokenized
-     */
-    public Lexer(String sourceCode) {
-        this(sourceCode, null);
-    }
-
-    /**
      * @param sourceCode  the raw source code to be tokenized
-     * @param diagnostics the diagnostic bag to report lexical errors to (may be
+     * @param diagnostics the diagnostic bag to report lexical errors to (must not be
      *                    null)
+     * 
      */
     public Lexer(String sourceCode, DiagnosticBag diagnostics) {
         this.sourceCode = sourceCode == null ? "" : sourceCode;
-        this.diagnostics = diagnostics;
+        this.diagnostics = Objects.requireNonNull(diagnostics, "DiagnosticBag must not be null");
     }
 
     /**
@@ -103,11 +98,13 @@ public class Lexer {
      * the parser relies on as a sentinel.
      */
     public List<Token> lexSourcecode() {
+        JaverLogger.info("Lexer: starting tokenization of " + sourceCode.length() + " characters");
         List<Token> tokens = new ArrayList<>();
         while (true) {
             Token token = nextToken();
             tokens.add(token);
             if (token.getTokenType() == TokenType.SPECIAL_END_OF_FILE) {
+                JaverLogger.info("Lexer: finished tokenization, produced " + tokens.size() + " tokens");
                 return tokens;
             }
         }
@@ -157,7 +154,10 @@ public class Lexer {
      */
     private Token makeToken(TokenType tokenType) {
         String value = sourceCode.substring(tokenStartIndex, indexInSourceCode);
-        return new Token(tokenType, value, defineSourceLocation());
+        SourceLocation location = defineSourceLocation();
+        Token token = new Token(tokenType, value, location);
+        JaverLogger.debug(String.format("Lexer: produced token %s \"%s\" at %s", tokenType, value, location));
+        return token;
     }
 
     /**
@@ -189,11 +189,7 @@ public class Lexer {
      */
     private void error(String message) {
         SourceLocation location = defineSourceLocation();
-        if (diagnostics != null) {
-            diagnostics.add(location, Severity.ERROR, message);
-        } else {
-            JaverLogger.error("Lexer error at " + location + ": " + message);
-        }
+        diagnostics.add(location, Severity.ERROR, message);
     }
 
     /**
@@ -210,12 +206,12 @@ public class Lexer {
     private void skipWhitespaceAndComments() {
         while (indexInSourceCode < sourceCode.length()) {
             char currentChar = currentChar();
-            if (currentChar == ' ' || currentChar == '\t' || currentChar == '\r' || currentChar == '\n') {
+            if (Character.isWhitespace(currentChar)) {
                 advance();
                 continue;
             }
             if (currentChar == '/' && peek(1) == '/') {
-                while (indexInSourceCode < sourceCode.length() && currentChar() != '\n') {
+                while (indexInSourceCode < sourceCode.length() && !isLineTerminator(currentChar())) {
                     advance();
                 }
                 continue;
@@ -320,7 +316,7 @@ public class Lexer {
                 advance();
                 return makeToken(TokenType.LITERAL_STRING);
             }
-            if (currentChar == '\n') {
+            if (isLineTerminator(currentChar)) {
                 error("Unterminated string literal");
                 return makeToken(TokenType.SPECIAL_UNKNOWN);
             }
@@ -350,7 +346,7 @@ public class Lexer {
      */
     private Token lexChar() {
         advance(); // opening '
-        if (indexInSourceCode >= sourceCode.length() || currentChar() == '\n') {
+        if (indexInSourceCode >= sourceCode.length() || isLineTerminator(currentChar())) {
             error("Unterminated char literal");
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
@@ -378,7 +374,7 @@ public class Lexer {
             // Attempt to resynchronise at the next single quote or newline.
             while (indexInSourceCode < sourceCode.length()
                     && currentChar() != '\''
-                    && currentChar() != '\n') {
+                    && !isLineTerminator(currentChar())) {
                 advance();
             }
             if (indexInSourceCode < sourceCode.length() && currentChar() == '\'') {
@@ -596,6 +592,14 @@ public class Lexer {
             if (currentChar == '\n') {
                 line++;
                 column = 1;
+            } else if (currentChar == '\r') {
+                // no double counting 
+                if (indexInSourceCode < sourceCode.length() && sourceCode.charAt(indexInSourceCode) == '\n') {
+                    column++;
+                } else {
+                    line++;
+                    column = 1;
+                }
             } else {
                 column++;
             }
@@ -712,25 +716,14 @@ public class Lexer {
     }
 
     /**
-     * Consumes a digit sequence for the given base. Underscores are allowed
-     * ONLY as separators between two digits — a leading, trailing, or repeated
-     * underscore is not part of the literal and terminates the digit sequence.
-     * This means {@code 100_000_000} is fully consumed, but {@code 100_} stops
-     * after {@code 100} (leaving the underscore for the next lex call), and
-     * {@code 100__000} stops after the first {@code 100}.
+     * Consumes a run of digits for the given base, advancing the cursor past
+     * each valid digit. Stops at the first non-digit character.
      *
      * @param base the numeric base (2, 8, 10, or 16)
      */
     private void consumeDigitsForBase(int base) {
-        while (true) {
-            char c = currentChar();
-            if (isDigitForBase(c, base)) {
-                advance();
-            } else if (c == '_' && isDigitForBase(peek(1), base)) {
-                advance();
-            } else {
-                break;
-            }
+        while (isDigitForBase(currentChar(), base)) {
+            advance();
         }
     }
 
@@ -742,6 +735,13 @@ public class Lexer {
     private boolean isValidEscape(char c) {
         return c == 'n' || c == 'r' || c == 't' || c == 'b' || c == 'f'
                 || c == '0' || c == '"' || c == '\'' || c == '\\';
+    }
+
+    /**
+     * @return True if the given character is a line terminator (\n or \r).
+     */
+    private boolean isLineTerminator(char c) {
+        return c == '\n' || c == '\r';
     }
 
 }
