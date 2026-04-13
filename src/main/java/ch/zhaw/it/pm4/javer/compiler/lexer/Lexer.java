@@ -180,7 +180,7 @@ public class Lexer {
     }
 
     /**
-     * @param message the error message to report
+     * @param message The error message to report
      *                This method will report a lexical error with the given
      *                message, including the current position in the source code for
      *                accurate diagnostics.
@@ -391,7 +391,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns a Token object representing the next token in the source
+     * @return A Token object representing the next token in the source
      *         code, which is a symbol literal.
      *         Handles all operators and delimiters defined in TokenType.
      *         Multi-character operators are matched greedily.
@@ -524,7 +524,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns a Token object representing the next token in the source
+     * @return A Token object representing the next token in the source
      *         code, which is a keyword or an identifier.
      *         The method will read characters until it encounters a non-identifier
      *         character, then check if the resulting string matches any known
@@ -555,7 +555,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns the current character in the source code at the current
+     * @return The current character in the source code at the current
      *         index. If the index is out of bounds (i.e., past the end of the
      *         source code), it returns a null character ('\0') to indicate the end
      *         of input.
@@ -603,7 +603,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a valid starting character for
+     * @return True if the given character is a valid starting character for
      *         an identifier (i.e., a letter or an underscore), and false otherwise.
      *         This method is used to determine if the lexer should start lexing an
      *         identifier or keyword when it encounters a character.
@@ -617,7 +617,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a valid continuation character
+     * @return True if the given character is a valid continuation character
      *         for an identifier (letter, digit, or underscore).
      *         Identifier continuation characters are broader than start characters
      *         since digits are allowed after the first character.
@@ -627,7 +627,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a valid hexadecimal digit
+     * @return True if the given character is a valid hexadecimal digit
      *         (i.e., 0-9, a-f, A-F), and false otherwise. This method is used to
      *         determine if a character can be part of a hexadecimal number literal
      *         during tokenization.
@@ -644,7 +644,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a valid decimal digit (i.e.,
+     * @return True if the given character is a valid decimal digit (i.e.,
      *         0-9), and false otherwise. This method is used to determine if a
      *         character can be part of a decimal number literal during
      *         tokenization.
@@ -659,7 +659,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a valid octal digit (i.e.,
+     * @return True if the given character is a valid octal digit (i.e.,
      *         0-7), and false otherwise. This method is used to determine if a
      *         character can be part of an octal number literal during tokenization.
      *         Octal digits include the numbers 0 through 7. This method checks for
@@ -673,7 +673,7 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a valid binary digit (i.e., 0
+     * @return True if the given character is a valid binary digit (i.e., 0
      *         or 1), and false otherwise. This method is used to determine if a
      *         character can be part of a binary number literal during tokenization.
      *         Binary digits include only the numbers 0 and 1. This method checks
@@ -689,7 +689,7 @@ public class Lexer {
     /**
      * @param c    the character to check
      * @param base the base of the number system (only 2, 8, 10, 16)
-     * @return returns true if the given character is a valid digit for the
+     * @return True if the given character is a valid digit for the
      *         specified base (2, 8, 10, or 16), and false otherwise. This method is
      *         used to determine if a character can be part of a number literal in
      *         the given base during tokenization.
