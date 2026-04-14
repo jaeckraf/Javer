@@ -286,19 +286,6 @@ public class Lexer {
             advance();
             consumeDigitsForBase(10);
         }
-        if (currentChar() == 'e' || currentChar() == 'E') {
-            isDouble = true;
-            advance();
-            if (currentChar() == '+' || currentChar() == '-') {
-                advance();
-            }
-            if (!isDecimalDigit(currentChar())) {
-                error("Exponent has no digits");
-            }
-            while (isDecimalDigit(currentChar())) {
-                advance();
-            }
-        }
 
         return makeToken(isDouble ? TokenType.LITERAL_DOUBLE : TokenType.LITERAL_INTEGER);
     }
