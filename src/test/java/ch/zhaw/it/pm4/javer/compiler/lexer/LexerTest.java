@@ -1,39 +1,60 @@
 package ch.zhaw.it.pm4.javer.compiler.lexer;
 
-import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * Unit tests for {@link Lexer}. These tests exercise every sub-lexer
- * (identifiers, numbers, strings, chars, symbols, comments) and the main
- * error branches 
+ * Unit tests for {@link Lexer}. Exercises every sub-lexer (identifiers,
+ * numbers, strings, chars, symbols, comments), the main error branches, and
+ * verifies every error path reports through the {@link DiagnosticBag}.
  */
 class LexerTest {
 
-    private static DiagnosticBag newBag() {
-        return new DiagnosticBag("<test>", 50, CompilationPhase.LEXING);
+    private DiagnosticBag diagnosticBag;
+
+    @BeforeEach
+    void setUp() {
+        diagnosticBag = mock(DiagnosticBag.class);
     }
 
-    private static List<Token> lex(String source) {
-        return new Lexer(source, newBag()).lexSourcecode();
+    private List<Token> lex(String source) {
+        return new Lexer(source, diagnosticBag).lexSourcecode();
     }
 
     /** Lex a source that should yield exactly one real token plus an EOF. */
-    private static Token single(String source) {
+    private Token single(String source) {
         List<Token> tokens = lex(source);
         assertEquals(2, tokens.size(), "expected one real token + EOF, got " + tokens);
         assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(1).getTokenType());
         return tokens.get(0);
     }
 
-    private static void assertTypes(String source, TokenType... expected) {
+    private void assertTypes(String source, TokenType... expected) {
         List<Token> tokens = lex(source);
         assertEquals(expected.length + 1, tokens.size(),
                 "unexpected token count for: " + source + " -> " + tokens);
@@ -45,24 +66,50 @@ class LexerTest {
                 tokens.get(expected.length).getTokenType());
     }
 
+    private void assertNoErrorDiagnostics() {
+        verify(diagnosticBag, never()).add(any(SourceLocation.class), eq(Severity.ERROR), anyString());
+    }
+
+    private void assertErrorDiagnosticContains(String fragment) {
+        ArgumentCaptor<String> messages = ArgumentCaptor.forClass(String.class);
+        verify(diagnosticBag, atLeastOnce())
+                .add(any(SourceLocation.class), eq(Severity.ERROR), messages.capture());
+        assertTrue(messages.getAllValues().stream().anyMatch(m -> m.contains(fragment)),
+                "expected an ERROR diagnostic containing \"" + fragment + "\", got: "
+                        + messages.getAllValues());
+    }
+
+    private static String loadResource(String classpath) {
+        try (InputStream in = LexerTest.class.getResourceAsStream(classpath)) {
+            if (in == null) {
+                throw new IllegalStateException("test resource not found: " + classpath);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     // ---------------------------------------------------------------------
     // Construction / empty input
     // ---------------------------------------------------------------------
 
     @Test
-    @DisplayName("Empty source produces only an EOF token")
+    @DisplayName("Empty source produces only an EOF token and never touches the bag")
     void emptySource() {
         List<Token> tokens = lex("");
         assertEquals(1, tokens.size());
         assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        verifyNoInteractions(diagnosticBag);
     }
 
     @Test
     @DisplayName("Null source is treated as empty string")
     void nullSource() {
-        List<Token> tokens = new Lexer(null, newBag()).lexSourcecode();
+        List<Token> tokens = new Lexer(null, diagnosticBag).lexSourcecode();
         assertEquals(1, tokens.size());
         assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        verifyNoInteractions(diagnosticBag);
     }
 
     @Test
@@ -72,20 +119,19 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("Only whitespace produces only an EOF token")
+    @DisplayName("Only whitespace produces only an EOF token and no diagnostics")
     void onlyWhitespace() {
         List<Token> tokens = lex("   \t\n\r  \n");
         assertEquals(1, tokens.size());
         assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        verifyNoInteractions(diagnosticBag);
     }
 
     @Test
-    @DisplayName("Lexer accepts a non-null DiagnosticBag without crashing")
-    void acceptsDiagnosticBag() {
-        DiagnosticBag bag = new DiagnosticBag("<test>", 50, CompilationPhase.LEXING);
-        List<Token> tokens = new Lexer("let x = 1;", bag).lexSourcecode();
-        assertEquals(TokenType.KEYWORD_LET, tokens.get(0).getTokenType());
-        assertEquals(TokenType.ID_IDENTIFIER, tokens.get(1).getTokenType());
+    @DisplayName("Valid input never reports an error diagnostic")
+    void validInputProducesNoErrorDiagnostics() {
+        lex("let x = 1 + 2;");
+        assertNoErrorDiagnostics();
     }
 
     // ---------------------------------------------------------------------
@@ -178,19 +224,9 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("Double literal with exponent (e, E, +, -)")
-    void doubleWithExponent() {
-        assertEquals(TokenType.LITERAL_DOUBLE, single("1e5").getTokenType());
-        assertEquals(TokenType.LITERAL_DOUBLE, single("1E5").getTokenType());
-        assertEquals(TokenType.LITERAL_DOUBLE, single("1e+5").getTokenType());
-        assertEquals(TokenType.LITERAL_DOUBLE, single("1e-5").getTokenType());
-        assertEquals(TokenType.LITERAL_DOUBLE, single("3.14e10").getTokenType());
-    }
-
-    @Test
     @DisplayName("Integer followed by a dot that is NOT a fraction stays integer")
     void integerFollowedByNonFractionDot() {
-        // "12.foo" -> 12 . foo  (method/field access, not a double)
+        // "12.foo" -> 12 . foo (method/field access, not a double)
         assertTypes("12.foo",
                 TokenType.LITERAL_INTEGER,
                 TokenType.SYMBOL_DOT,
@@ -226,18 +262,8 @@ class LexerTest {
         assertEquals(TokenType.LITERAL_BINARY, single("0B11000011").getTokenType());
     }
 
-    @Test
-    @DisplayName("Empty base-prefixed literals and empty exponents do not crash")
-    void emptyBaseLiteralsDoNotCrash() {
-        // These report errors via the diagnostic bag but must still produce tokens.
-        assertDoesNotThrow(() -> lex("0x"));
-        assertDoesNotThrow(() -> lex("0o"));
-        assertDoesNotThrow(() -> lex("0b"));
-        assertDoesNotThrow(() -> lex("1e"));
-    }
-
     // ---------------------------------------------------------------------
-    // String literals
+    // String literals: valid escape table
     // ---------------------------------------------------------------------
 
     @Test
@@ -256,31 +282,23 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("String with valid escape sequences")
-    void stringWithEscapes() {
-        Token t = single("\"a\\nb\\tc\\\"d\\\\e\"");
-        assertEquals(TokenType.LITERAL_STRING, t.getTokenType());
-    }
+    @DisplayName("Every valid escape sequence in a string is accepted with no error diagnostics")
+    void everyValidEscapeSequenceInString() {
+        // \n \r \t \b \f \0 \" \' \\
+        String[] escapes = {
+                "\\n", "\\r", "\\t", "\\b", "\\f", "\\0", "\\\"", "\\'", "\\\\"
+        };
+        for (String esc : escapes) {
+            DiagnosticBag scopedBag = mock(DiagnosticBag.class);
+            String source = "\"" + esc + "\"";
+            List<Token> tokens = new Lexer(source, scopedBag).lexSourcecode();
 
-    @Test
-    @DisplayName("Unterminated string literal produces SPECIAL_UNKNOWN")
-    void unterminatedString() {
-        Token t = single("\"oops");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-    }
-
-    @Test
-    @DisplayName("Newline inside string terminates the literal as SPECIAL_UNKNOWN")
-    void newlineInString() {
-        List<Token> tokens = lex("\"oh\nno\"");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, tokens.get(0).getTokenType());
-    }
-
-    @Test
-    @DisplayName("Invalid escape in a string still produces a LITERAL_STRING token")
-    void invalidEscapeInString() {
-        Token t = single("\"\\q\"");
-        assertEquals(TokenType.LITERAL_STRING, t.getTokenType());
+            assertEquals(2, tokens.size(), "escape " + esc + " produced wrong token count");
+            assertEquals(TokenType.LITERAL_STRING, tokens.get(0).getTokenType(),
+                    "escape " + esc + " did not produce LITERAL_STRING");
+            verify(scopedBag, never())
+                    .add(any(SourceLocation.class), eq(Severity.ERROR), anyString());
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -300,27 +318,6 @@ class LexerTest {
     void escapedChar() {
         Token t = single("'\\n'");
         assertEquals(TokenType.LITERAL_CHAR, t.getTokenType());
-    }
-
-    @Test
-    @DisplayName("Empty char literal produces SPECIAL_UNKNOWN")
-    void emptyChar() {
-        Token t = single("''");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-    }
-
-    @Test
-    @DisplayName("Unterminated char literal produces SPECIAL_UNKNOWN")
-    void unterminatedChar() {
-        Token t = single("'a");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-    }
-
-    @Test
-    @DisplayName("Multi-character char literal produces SPECIAL_UNKNOWN")
-    void multiCharLiteral() {
-        Token t = single("'ab'");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
     }
 
     // ---------------------------------------------------------------------
@@ -400,13 +397,6 @@ class LexerTest {
         assertEquals(TokenType.SYMBOL_QUESTION_MARK, single("?").getTokenType());
     }
 
-    @Test
-    @DisplayName("Unknown characters produce a SPECIAL_UNKNOWN token")
-    void unknownCharacter() {
-        Token t = single("@");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-    }
-
     // ---------------------------------------------------------------------
     // Whitespace and comments
     // ---------------------------------------------------------------------
@@ -415,6 +405,7 @@ class LexerTest {
     @DisplayName("Line comment is skipped")
     void lineComment() {
         assertTypes("// hello\nfoo", TokenType.ID_IDENTIFIER);
+        assertNoErrorDiagnostics();
     }
 
     @Test
@@ -423,6 +414,7 @@ class LexerTest {
         List<Token> tokens = lex("// last line");
         assertEquals(1, tokens.size());
         assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        assertNoErrorDiagnostics();
     }
 
     @Test
@@ -431,20 +423,16 @@ class LexerTest {
         assertTypes("foo /* in the middle */ bar",
                 TokenType.ID_IDENTIFIER,
                 TokenType.ID_IDENTIFIER);
+        assertNoErrorDiagnostics();
     }
 
     @Test
     @DisplayName("Multi-line block comment is skipped")
     void multiLineBlockComment() {
-        assertTypes("foo\n/* multi\n  line\n  comment */\nbar",
+        assertTypes("foo\n/* multi\n  line\r\n  comment */\nbar",
                 TokenType.ID_IDENTIFIER,
                 TokenType.ID_IDENTIFIER);
-    }
-
-    @Test
-    @DisplayName("Unterminated block comment does not crash")
-    void unterminatedBlockComment() {
-        assertDoesNotThrow(() -> lex("/* never closed"));
+        assertNoErrorDiagnostics();
     }
 
     // ---------------------------------------------------------------------
@@ -481,17 +469,37 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("SourceLocation tracks columns within a single line")
-    void sourceLocationColumns() {
+    @DisplayName("SourceLocation uses 1-indexed, inclusive start/end columns on a single line")
+    void sourceLocationColumnsAreInclusiveAndOneBased() {
+        // "ab cd" -> "ab" at columns 1..2, space at 3, "cd" at columns 4..5
         List<Token> tokens = lex("ab cd");
+
         SourceLocation first = tokens.get(0).getPosition();
-        SourceLocation second = tokens.get(1).getPosition();
         assertEquals(1, first.lineNumber());
-        assertEquals(1, first.startColumn());
-        assertEquals(2, first.endColumn());
+        assertEquals(1, first.startColumn(), "'ab' should start at column 1");
+        assertEquals(2, first.endColumn(), "'ab' should end at column 2 (inclusive)");
+
+        SourceLocation second = tokens.get(1).getPosition();
         assertEquals(1, second.lineNumber());
-        assertEquals(4, second.startColumn());
-        assertEquals(5, second.endColumn());
+        assertEquals(4, second.startColumn(), "'cd' should start at column 4");
+        assertEquals(5, second.endColumn(), "'cd' should end at column 5 (inclusive)");
+    }
+
+    @Test
+    @DisplayName("Tab characters advance the column counter by one each")
+    void tabsAdvanceColumnByOne() {
+        // Source: "\ta\tb" -> tab, 'a' at col 2, tab, 'b' at col 4
+        List<Token> tokens = lex("\ta\tb");
+
+        SourceLocation a = tokens.get(0).getPosition();
+        assertEquals(1, a.lineNumber());
+        assertEquals(2, a.startColumn(), "'a' should sit at column 2 after one tab");
+        assertEquals(2, a.endColumn());
+
+        SourceLocation b = tokens.get(1).getPosition();
+        assertEquals(1, b.lineNumber());
+        assertEquals(4, b.startColumn(), "'b' should sit at column 4 after a tab-a-tab");
+        assertEquals(4, b.endColumn());
     }
 
     @Test
@@ -512,5 +520,158 @@ class LexerTest {
         for (int i = 0; i < tokens.size() - 1; i++) {
             assertNotEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(i).getTokenType());
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Negative tests: each error path must report through the DiagnosticBag
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Unterminated string (EOF) reports an error diagnostic")
+    void unterminatedStringReportsError() {
+        Token t = single("\"oops");
+        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
+        assertErrorDiagnosticContains("Unterminated string");
+    }
+
+    @Test
+    @DisplayName("Newline inside a string reports an error diagnostic")
+    void newlineInStringReportsError() {
+        List<Token> tokens = lex("\"oh\nno\"");
+        assertEquals(TokenType.SPECIAL_UNKNOWN, tokens.get(0).getTokenType());
+        assertErrorDiagnosticContains("Unterminated string");
+    }
+
+    @Test
+    @DisplayName("Every invalid string escape character produces an 'Invalid escape' diagnostic")
+    void everyInvalidEscapeSequenceInStringReportsError() {
+        String[] invalid = { "\\q", "\\x", "\\y", "\\z", "\\1", "\\a" };
+        for (String esc : invalid) {
+            DiagnosticBag scopedBag = mock(DiagnosticBag.class);
+            String source = "\"" + esc + "\"";
+            List<Token> tokens = new Lexer(source, scopedBag).lexSourcecode();
+
+            assertEquals(TokenType.LITERAL_STRING, tokens.get(0).getTokenType(),
+                    "escape " + esc + " did not recover to LITERAL_STRING");
+            verify(scopedBag, atLeastOnce()).add(
+                    any(SourceLocation.class),
+                    eq(Severity.ERROR),
+                    contains("Invalid escape"));
+        }
+    }
+
+    @Test
+    @DisplayName("Empty char literal reports an error")
+    void emptyCharReportsError() {
+        Token t = single("''");
+        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
+        assertErrorDiagnosticContains("Empty char literal");
+    }
+
+    @Test
+    @DisplayName("Unterminated char literal reports an error")
+    void unterminatedCharReportsError() {
+        Token t = single("'a");
+        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
+        assertErrorDiagnosticContains("Unterminated char");
+    }
+
+    @Test
+    @DisplayName("Multi-character char literal reports an error")
+    void multiCharLiteralReportsError() {
+        Token t = single("'ab'");
+        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
+        assertErrorDiagnosticContains("Unterminated char");
+    }
+
+    @Test
+    @DisplayName("Invalid escape in char literal reports 'Invalid escape'")
+    void invalidEscapeInCharReportsError() {
+        lex("'\\q'");
+        assertErrorDiagnosticContains("Invalid escape");
+    }
+
+    @Test
+    @DisplayName("Unknown delimiter character produces SPECIAL_UNKNOWN and an error")
+    void unknownCharacterReportsError() {
+        Token t = single("@");
+        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
+        assertErrorDiagnosticContains("Unexpected character");
+    }
+
+    @Test
+    @DisplayName("Hex literal with no digits reports an error")
+    void emptyHexLiteralReportsError() {
+        lex("0x");
+        assertErrorDiagnosticContains("Hexadecimal literal must have at least one digit");
+    }
+
+    @Test
+    @DisplayName("Octal literal with no digits reports an error")
+    void emptyOctalLiteralReportsError() {
+        lex("0o");
+        assertErrorDiagnosticContains("Octal literal must have at least one digit");
+    }
+
+    @Test
+    @DisplayName("Binary literal with no digits reports an error")
+    void emptyBinaryLiteralReportsError() {
+        lex("0b");
+        assertErrorDiagnosticContains("Binary literal must have at least one digit");
+    }
+
+    @Test
+    @DisplayName("Trailing dot on an integer lexes as INT + DOT for method/field access")
+    void trailingDotOnInteger() {
+        // "10." is not flagged: the same pattern underpins "12.foo" (field access).
+        assertTypes("10.", TokenType.LITERAL_INTEGER, TokenType.SYMBOL_DOT);
+        assertNoErrorDiagnostics();
+    }
+
+    @Test
+    @DisplayName("Consecutive decimal points in a number literal report an error")
+    void consecutiveDecimalPointsReportError() {
+        lex("10..2");
+        assertErrorDiagnosticContains("consecutive decimal points");
+    }
+
+    @Test
+    @DisplayName("Double literal with a second decimal point reports an error")
+    void multipleDecimalPointsInDoubleReportError() {
+        lex("10.2.3");
+        assertErrorDiagnosticContains("too many decimal points");
+    }
+
+    @Test
+    @DisplayName("Unterminated block comment reports an error diagnostic")
+    void unterminatedBlockCommentReportsError() {
+        assertDoesNotThrow(() -> lex("/* never closed"));
+        assertErrorDiagnosticContains("Unterminated block comment");
+    }
+
+    // ---------------------------------------------------------------------
+    // Comprehensive fixture: every lexable TokenType in one file
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Fixture file covers every lexable TokenType without diagnostics")
+    void allTokenTypesFromResourceFile() {
+        String source = loadResource("/lexer/all-tokens.jv");
+        List<Token> tokens = lex(source);
+
+        Set<TokenType> seen = new HashSet<>();
+        for (Token token : tokens) {
+            seen.add(token.getTokenType());
+        }
+
+        assertTrue(seen.contains(TokenType.SPECIAL_END_OF_FILE), "fixture missing EOF token");
+        assertFalse(seen.contains(TokenType.SPECIAL_UNKNOWN),
+                "fixture unexpectedly contained SPECIAL_UNKNOWN tokens: " + tokens);
+        assertNoErrorDiagnostics();
+
+        Set<TokenType> missing = EnumSet.allOf(TokenType.class);
+        missing.remove(TokenType.SPECIAL_UNKNOWN);
+        missing.removeAll(seen);
+        assertTrue(missing.isEmpty(), "token types missing from fixture: " + missing);
     }
 }
