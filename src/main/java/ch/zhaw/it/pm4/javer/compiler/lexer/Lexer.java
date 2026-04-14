@@ -315,7 +315,7 @@ public class Lexer {
      *         Handles common escape sequences (\n, \t, \r, \\, \", \', \0, \b, \f).
      */
     private Token lexString() {
-        advance(); // opening "
+        advance();
         while (indexInSourceCode < sourceCode.length()) {
             char currentChar = currentChar();
             if (currentChar == '"') {
@@ -351,7 +351,7 @@ public class Lexer {
      *         quotes.
      */
     private Token lexChar() {
-        advance(); // opening '
+        advance();
         if (indexInSourceCode >= sourceCode.length() || isLineTerminator(currentChar())) {
             error("Unterminated char literal");
             return makeToken(TokenType.SPECIAL_UNKNOWN);
@@ -388,7 +388,7 @@ public class Lexer {
             }
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
-        advance(); // closing '
+        advance();
         return makeToken(TokenType.LITERAL_CHAR);
     }
 
