@@ -280,11 +280,29 @@ public class Lexer {
         // Decimal integer / double
         consumeDigitsForBase(10);
 
+        // "10..2"
+        if (currentChar() == '.' && peek(1) == '.') {
+            error("Malformed number literal: consecutive decimal points");
+            advance();
+            advance();
+            consumeDigitsForBase(10);
+            return makeToken(TokenType.LITERAL_DOUBLE);
+        }
+
         boolean isDouble = false;
         if (currentChar() == '.' && isDecimalDigit(peek(1))) {
             isDouble = true;
             advance();
             consumeDigitsForBase(10);
+        }
+
+        // "10.2.3" 
+        if (isDouble && currentChar() == '.') {
+            error("Malformed number literal: too many decimal points");
+            while (currentChar() == '.') {
+                advance();
+                consumeDigitsForBase(10);
+            }
         }
 
         return makeToken(isDouble ? TokenType.LITERAL_DOUBLE : TokenType.LITERAL_INTEGER);
