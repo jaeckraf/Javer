@@ -156,7 +156,7 @@ public class Lexer {
         String value = sourceCode.substring(tokenStartIndex, indexInSourceCode);
         SourceLocation location = defineSourceLocation();
         Token token = new Token(tokenType, value, location);
-        JaverLogger.debug(String.format("Lexer: produced token %s \"%s\" at %s", tokenType, value, location));
+        JaverLogger.debug("Lexer: produced token " + tokenType + " " + value + " at " + location);
         return token;
     }
 
@@ -190,6 +190,7 @@ public class Lexer {
     private void error(String message) {
         SourceLocation location = defineSourceLocation();
         diagnostics.add(location, Severity.ERROR, message);
+        JaverLogger.error("Lexer: error at " + location + ": " + message);
     }
 
     /**
