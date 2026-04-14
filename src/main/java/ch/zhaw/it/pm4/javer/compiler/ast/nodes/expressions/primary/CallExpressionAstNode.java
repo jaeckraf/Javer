@@ -7,6 +7,14 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class CallExpressionAstNode extends ExpressionAstNode {
 
+    private final String functionName;
+    private final ExpressionAstNode arguments;
+
+    public CallExpressionAstNode(String functionName, ExpressionAstNode arguments) {
+        this.functionName = functionName;
+        this.arguments = arguments;
+    }
+
     /**
      * {@inheritDoc}
      */

@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionAstNode;
@@ -6,21 +6,20 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.StatementAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Dummy class, remove when implemented.")
-public class IfStmtAstNode extends StatementAstNode {
+public class ForStmtAstNode extends StatementAstNode {
 
-    private final ExpressionAstNode expression;
+    private ForInitAstNode forInit;
+    private ExpressionAstNode condition;
+    private ForUpdateAstNode forUpdate;
     private final StatementAstNode statement;
-    private StatementAstNode elseStatement = null;
 
-    public IfStmtAstNode(ExpressionAstNode expression, StatementAstNode statement, StatementAstNode elseStatement) {
-        this.expression = expression;
-        this.statement = statement;
-        this.elseStatement = elseStatement;
-    }
+    // lets add a builder for that
 
-    public IfStmtAstNode(ExpressionAstNode expression, StatementAstNode statement) {
-        this.expression = expression;
+    public ForStmtAstNode(StatementAstNode statement, ForUpdateAstNode forUpdate, ExpressionAstNode condition, ForInitAstNode forInit) {
         this.statement = statement;
+        this.forUpdate = forUpdate;
+        this.condition = condition;
+        this.forInit = forInit;
     }
 
     /**

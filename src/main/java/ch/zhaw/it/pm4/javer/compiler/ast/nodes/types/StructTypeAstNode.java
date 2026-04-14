@@ -6,6 +6,12 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class StructTypeAstNode extends TypeAstNode {
 
+    private final String structName;
+
+    public StructTypeAstNode(String structName) {
+        this.structName = structName;
+    }
+
     /**
      * {@inheritDoc}
       *

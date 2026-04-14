@@ -1,0 +1,8 @@
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions;
+
+public enum AssignOperatorType {
+
+    EQUALS, PLUS_EQUALS, MINUS_EQUALS, MULTIPLY_EQUALS, DIVIDE_EQUALS, MODULO_EQUALS,
+    BITWISE_OR_EQUALS, BITWISE_AND_EQUALS, BITWISE_XOR_EQUALS, LEFT_SHIFT_EQUALS, RIGHT_SHIFT_EQUALS
+
+}

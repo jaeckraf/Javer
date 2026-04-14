@@ -1,10 +1,9 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
-import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Dummy class, remove when implemented.")
-public abstract class TopLevelAstNode extends AstNode {
+public abstract class ForInitAstNode extends AstNode {
 
 }

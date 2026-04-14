@@ -6,6 +6,14 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class ArrayTypeAstNode extends TypeAstNode {
 
+    private final TypeAstNode baseType;
+    private int dimensions = -1; // default value for now
+
+    public ArrayTypeAstNode(TypeAstNode baseType, int dimensions) {
+        this.baseType = baseType;
+        this.dimensions = dimensions;
+    }
+
     /**
      * {@inheritDoc}
       *

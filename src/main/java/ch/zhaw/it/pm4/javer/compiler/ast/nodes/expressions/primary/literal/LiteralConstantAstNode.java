@@ -1,16 +1,16 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.literal;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Dummy class, remove when implemented.")
-public class ReturnStmtAstNode extends JumpStmtAstNode {
+public class LiteralConstantAstNode<V> extends ExpressionAstNode {
 
-    private final ExpressionAstNode returnExpr; // maybe null
+    private final V value;
 
-    public ReturnStmtAstNode(ExpressionAstNode returnExpr) {
-        this.returnExpr = returnExpr;
+    public LiteralConstantAstNode(V value) {
+        this.value = value;
     }
 
     /**
@@ -19,7 +19,7 @@ public class ReturnStmtAstNode extends JumpStmtAstNode {
     @JacocoGenerated("jacoco-ignore")
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+        return null;
     }
 
 }

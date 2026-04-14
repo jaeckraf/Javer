@@ -6,6 +6,12 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class EnumTypeAstNode extends TypeAstNode {
 
+    private final String enumName;
+
+    public EnumTypeAstNode(String enumName) {
+        this.enumName = enumName;
+    }
+
     /**
      * {@inheritDoc}
       *

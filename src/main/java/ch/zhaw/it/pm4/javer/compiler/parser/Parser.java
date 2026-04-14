@@ -1,13 +1,17 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.literal.LiteralConstantAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForInitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForStmtAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForUpdateAstNode;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.PostfixAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.postfix.PostfixAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.binary.BinaryExpressionAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.ArrayInitAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.VarInitAstNode;

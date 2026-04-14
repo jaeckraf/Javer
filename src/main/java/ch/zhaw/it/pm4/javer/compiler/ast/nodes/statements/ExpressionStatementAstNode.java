@@ -1,10 +1,17 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class ExpressionStatementAstNode extends StatementAstNode {
+
+    private final ExpressionAstNode expression;
+
+    public ExpressionStatementAstNode(ExpressionAstNode expression) {
+        this.expression = expression;
+    }
 
     /**
      * {@inheritDoc}

@@ -7,6 +7,18 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class EnumItemAstNode extends AstNode {
 
+    private final String name;
+    private int value = -1; // default value if nothing is defined
+
+    public EnumItemAstNode(String name, int value) {
+        this.name = name;
+        this.value = value;
+    }
+
+    public EnumItemAstNode(String name) {
+        this.name = name;
+    }
+
     /**
      * {@inheritDoc}
      */

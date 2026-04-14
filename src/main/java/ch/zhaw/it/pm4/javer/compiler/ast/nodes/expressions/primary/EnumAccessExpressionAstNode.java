@@ -7,6 +7,14 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class EnumAccessExpressionAstNode extends ExpressionAstNode {
 
+    private final String enumName;
+    private final String enumMemberName;
+
+    public EnumAccessExpressionAstNode(String enumName, String enumMemberName) {
+        this.enumName = enumName;
+        this.enumMemberName = enumMemberName;
+    }
+
     /**
      * {@inheritDoc}
      */

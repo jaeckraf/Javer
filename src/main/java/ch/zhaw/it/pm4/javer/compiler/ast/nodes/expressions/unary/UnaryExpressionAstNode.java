@@ -7,6 +7,14 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class UnaryExpressionAstNode extends ExpressionAstNode {
 
+    private final UnaryExpressionType type;
+    private final ExpressionAstNode operand;
+
+    public UnaryExpressionAstNode(UnaryExpressionType type, ExpressionAstNode operand) {
+        this.type = type;
+        this.operand = operand;
+    }
+
     /**
      * {@inheritDoc}
      */

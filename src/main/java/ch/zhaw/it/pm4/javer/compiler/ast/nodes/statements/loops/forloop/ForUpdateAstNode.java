@@ -1,11 +1,18 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Dummy class, remove when implemented.")
-public class ForInitAstNode extends AstNode {
+public class ForUpdateAstNode extends AstNode {
+
+    private final ExpressionListAstNode expressions;
+
+    public ForUpdateAstNode(ExpressionListAstNode expressions) {
+        this.expressions = expressions;
+    }
 
     /**
      * {@inheritDoc}
