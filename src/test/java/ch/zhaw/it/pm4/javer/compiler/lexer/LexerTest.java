@@ -84,7 +84,7 @@ class LexerTest {
             if (in == null) {
                 throw new IllegalStateException("test resource not found: " + classpath);
             }
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return new String(in.readAllBytes(), StandardCharsets.US_ASCII);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

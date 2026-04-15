@@ -39,7 +39,7 @@ public class Lexer {
             Map.entry("do", TokenType.KEYWORD_DO),
             Map.entry("for", TokenType.KEYWORD_FOR),
             Map.entry("return", TokenType.KEYWORD_RETURN),
-            Map.entry("function", TokenType.KEYWORD_FUNCTION),
+            Map.entry("fn", TokenType.KEYWORD_FN),
             Map.entry("break", TokenType.KEYWORD_BREAK),
             Map.entry("continue", TokenType.KEYWORD_CONTINUE),
             Map.entry("switch", TokenType.KEYWORD_SWITCH),
