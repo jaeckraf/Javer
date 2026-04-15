@@ -9,7 +9,7 @@ class NameAccessExpressionAstNodeTest {
 
     @BeforeEach
     void setUp() {
-        node = new NameAccessExpressionAstNode();
+        node = new NameAccessExpressionAstNode(null);
     }
 
     @AfterEach

@@ -7,6 +7,12 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 @JacocoGenerated("Dummy class, remove when implemented.")
 public class ParenthesizedExpressionAstNode extends ExpressionAstNode {
 
+    private final ExpressionAstNode expression;
+
+    public ParenthesizedExpressionAstNode(ExpressionAstNode expression) {
+        this.expression = expression;
+    }
+
     /**
      * {@inheritDoc}
      */

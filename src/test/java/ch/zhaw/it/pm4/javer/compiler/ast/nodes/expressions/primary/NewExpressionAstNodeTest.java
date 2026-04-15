@@ -9,7 +9,7 @@ class NewExpressionAstNodeTest {
 
     @BeforeEach
     void setUp() {
-        node = new NewExpressionAstNode();
+        node = new NewExpressionAstNode(null, null, null);
     }
 
     @AfterEach

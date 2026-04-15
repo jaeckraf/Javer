@@ -9,7 +9,7 @@ class ParenthesizedExpressionAstNodeTest {
 
     @BeforeEach
     void setUp() {
-        node = new ParenthesizedExpressionAstNode();
+        node = new ParenthesizedExpressionAstNode(null);
     }
 
     @AfterEach
