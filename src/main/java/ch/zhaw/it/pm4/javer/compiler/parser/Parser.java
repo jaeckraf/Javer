@@ -8,7 +8,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForUpdat
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.postfix.PostfixAstNode;
@@ -74,11 +74,11 @@ public class Parser {
      * the root {@code compilationUnit} grammar rule. It iterates through the
      * token stream and constructs the highest level of the syntax tree.
      *
-     * @return The root node ({@link CompilationUnitAstNode}) of the resulting
+     * @return The root node ({@link CompilationUnit}) of the resulting
      * Concrete Syntax Tree (CST).
      */
-    public CompilationUnitAstNode parse() {
-        CompilationUnitAstNode rootNode = new CompilationUnitAstNode();
+    public CompilationUnit parse() {
+        CompilationUnit rootNode = new CompilationUnit();
         return rootNode;
     }
 
@@ -238,7 +238,7 @@ public class Parser {
     private VoidTypeAstNode parseVoidTypeParseNode() { throw new UnsupportedOperationException(); }
 
     @JacocoGenerated("jacoco-ignore")
-    private CompilationUnitAstNode parseCompilationUnitParseNode() { throw new UnsupportedOperationException(); }
+    private CompilationUnit parseCompilationUnitParseNode() { throw new UnsupportedOperationException(); }
 
 
 }

@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.postfix.PostfixAstNode;
@@ -252,7 +252,7 @@ public class SemanticChecker extends AstNodeVisitorBase<Void> {
     }
 
     @Override
-    public Void visit(CompilationUnitAstNode node) {
+    public Void visit(CompilationUnit node) {
         return null;
     }
 }

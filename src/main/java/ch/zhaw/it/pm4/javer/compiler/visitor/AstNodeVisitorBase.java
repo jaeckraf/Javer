@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
@@ -126,6 +126,6 @@ public abstract class AstNodeVisitorBase<T> implements AstNodeVisitor<T> {
 
     public abstract T visit(VoidTypeAstNode node);
 
-    public abstract T visit(CompilationUnitAstNode node);
+    public abstract T visit(CompilationUnit node);
 
 }
