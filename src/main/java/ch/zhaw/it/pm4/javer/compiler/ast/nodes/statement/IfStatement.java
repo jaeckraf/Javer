@@ -7,16 +7,41 @@ public final class IfStatement implements StatementAstNode {
 
     private final ExpressionAstNode condition;
     private final StatementAstNode thenBranch;
-    private StatementAstNode elseBranch;
+    private final StatementAstNode elseBranch;
 
-    public IfStatement(ExpressionAstNode condition, StatementAstNode thenBranch, StatementAstNode elseBranch) {
-        this.condition = condition;
-        this.thenBranch = thenBranch;
-        this.elseBranch = elseBranch;
+    private IfStatement(Builder builder) {
+        this.condition = builder.condition;
+        this.thenBranch = builder.thenBranch;
+        this.elseBranch = builder.elseBranch;
+    }
+
+    public static Builder builder(ExpressionAstNode condition, StatementAstNode thenBranch) {
+        return new Builder(condition, thenBranch);
+    }
+
+    public static final class Builder {
+        private final ExpressionAstNode condition;
+        private final StatementAstNode thenBranch;
+        private StatementAstNode elseBranch;
+
+        private Builder(ExpressionAstNode condition, StatementAstNode thenBranch) {
+            this.condition = condition;
+            this.thenBranch = thenBranch;
+        }
+
+        public Builder elseBranch(StatementAstNode elseBranch) {
+            this.elseBranch = elseBranch;
+            return this;
+        }
+
+        public IfStatement build() {
+            return new IfStatement(this);
+        }
     }
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
+
 }

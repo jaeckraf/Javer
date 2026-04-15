@@ -8,16 +8,40 @@ public final class VarDeclarationStatement implements StatementAstNode {
 
     private final TypeAstNode type;
     private final String name;
-    private ExpressionAstNode initializer;
+    private final ExpressionAstNode initializer;
 
-    public VarDeclarationStatement(TypeAstNode type, String name, ExpressionAstNode initializer) {
-        this.type = type;
-        this.name = name;
-        this.initializer = initializer;
+    private VarDeclarationStatement(Builder builder) {
+        this.type = builder.type;
+        this.name = builder.name;
+        this.initializer = builder.initializer;
+    }
+
+    public static Builder builder(TypeAstNode type, String name) {
+        return new Builder(type, name);
+    }
+
+    public static final class Builder {
+        private final TypeAstNode type;
+        private final String name;
+        private ExpressionAstNode initializer;
+
+        private Builder(TypeAstNode type, String name) {
+            this.type = type;
+            this.name = name;
+        }
+
+        public Builder initializer(ExpressionAstNode initializer) {
+            this.initializer = initializer;
+            return this;
+        }
+
+        public VarDeclarationStatement build() {
+            return new VarDeclarationStatement(this);
+        }
     }
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

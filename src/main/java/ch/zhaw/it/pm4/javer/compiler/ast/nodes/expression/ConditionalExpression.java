@@ -5,18 +5,45 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 public final class ConditionalExpression implements ExpressionAstNode {
 
     private final ExpressionAstNode condition;
-    private ExpressionAstNode trueExpression;
+    private final ExpressionAstNode trueExpression;
+    private final ExpressionAstNode falseExpression;
 
-    public ConditionalExpression(ExpressionAstNode condition, ExpressionAstNode trueExpression, ExpressionAstNode falseExpression) {
-        this.condition = condition;
-        this.trueExpression = trueExpression;
-        this.falseExpression = falseExpression;
+    private ConditionalExpression(Builder builder) {
+        this.condition = builder.condition;
+        this.trueExpression = builder.trueExpression;
+        this.falseExpression = builder.falseExpression;
     }
 
-    private ExpressionAstNode falseExpression;
+    public static Builder builder(ExpressionAstNode condition) {
+        return new Builder(condition);
+    }
+
+    public static final class Builder {
+        private final ExpressionAstNode condition;
+        private ExpressionAstNode trueExpression;
+        private ExpressionAstNode falseExpression;
+
+        private Builder(ExpressionAstNode condition) {
+            this.condition = condition;
+        }
+
+        public Builder whenTrue(ExpressionAstNode trueExpression) {
+            this.trueExpression = trueExpression;
+            return this;
+        }
+
+        public Builder whenFalse(ExpressionAstNode falseExpression) {
+            this.falseExpression = falseExpression;
+            return this;
+        }
+
+        public ConditionalExpression build() {
+            return new ConditionalExpression(this);
+        }
+    }
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }
