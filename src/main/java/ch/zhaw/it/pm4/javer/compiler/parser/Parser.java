@@ -1,42 +1,19 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.literal.LiteralConstantAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.forloop.ForUpdateAstNode;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.postfix.PostfixAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.binary.BinaryExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.ArrayInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.VarInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ternary.ConditionalAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.unary.UnaryExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.BlockAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.ExpressionStatementAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.VarDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.IfStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.BreakStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.ContinueStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.ReturnStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.CaseClauseAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.DefaultClauseAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.SwitchStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.enums.EnumDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.enums.EnumItemAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.function.FunctionParameterAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.function.FunctionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.struct.StructDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.struct.StructItemAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.*;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -78,7 +55,7 @@ public class Parser {
      * Concrete Syntax Tree (CST).
      */
     public CompilationUnit parse() {
-        CompilationUnit rootNode = new CompilationUnit();
+        CompilationUnit rootNode = new CompilationUnit(new ArrayList<>());
         return rootNode;
     }
 
@@ -117,128 +94,7 @@ public class Parser {
         return peek();
     }
 
-    @JacocoGenerated("jacoco-ignore")
-    private BinaryExpressionAstNode parseBinaryExpressionParseNode() { throw new UnsupportedOperationException(); }
 
-    @JacocoGenerated("jacoco-ignore")
-    private ArrayInitAstNode parseArrayInitParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private VarInitAstNode parseVarInitParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private CallExpressionAstNode parseCallExpressionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private EnumAccessExpressionAstNode parseEnumAccessExpressionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private IndexAstNode parseIndexParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private LiteralConstantAstNode parseLiteralConstantParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private NameAccessExpressionAstNode parseNameAccessExpressionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ParenthesizedExpressionAstNode parseParenthesizedExpressionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ConditionalAstNode parseConditionalParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private UnaryExpressionAstNode parseUnaryExpressionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private AssignmentAstNode parseAssignmentParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ExpressionAstNode parseExpressionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private PostfixAstNode parsePostfixParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private BreakStmtAstNode parseBreakStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ContinueStmtAstNode parseContinueStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ReturnStmtAstNode parseReturnStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private CaseClauseAstNode parseCaseClauseParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private DefaultClauseAstNode parseDefaultClauseParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private SwitchStmtAstNode parseSwitchStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private IfStmtAstNode parseIfStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private DoWhileStmtAstNode parseDoWhileStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ForInitAstNode parseForInitParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ForStmtAstNode parseForStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ForUpdateAstNode parseForUpdateParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private WhileStmtAstNode parseWhileStmtParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private BlockAstNode parseBlockParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ExpressionStatementAstNode parseExpressionStatementParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private VarDeclarationAstNode parseVarDeclarationParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private EnumDeclarationAstNode parseEnumDeclarationParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private EnumItemAstNode parseEnumItemParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private FunctionParameterAstNode parseFunctionParameterParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private FunctionAstNode parseFunctionParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private StructDeclarationAstNode parseStructDeclarationParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private StructItemAstNode parseStructItemParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private ArrayTypeAstNode parseArrayTypeParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private AtomicTypeAstNode parseAtomicTypeParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private EnumTypeAstNode parseEnumTypeParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private StructTypeAstNode parseStructTypeParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private VoidTypeAstNode parseVoidTypeParseNode() { throw new UnsupportedOperationException(); }
-
-    @JacocoGenerated("jacoco-ignore")
-    private CompilationUnit parseCompilationUnitParseNode() { throw new UnsupportedOperationException(); }
 
 
 }
