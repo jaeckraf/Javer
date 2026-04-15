@@ -486,20 +486,19 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("Tab characters advance the column counter by one each")
-    void tabsAdvanceColumnByOne() {
-        // Source: "\ta\tb" -> tab, 'a' at col 2, tab, 'b' at col 4
-        List<Token> tokens = lex("\ta\tb");
-
-        SourceLocation a = tokens.get(0).getPosition();
-        assertEquals(1, a.lineNumber());
-        assertEquals(2, a.startColumn(), "'a' should sit at column 2 after one tab");
-        assertEquals(2, a.endColumn());
-
-        SourceLocation b = tokens.get(1).getPosition();
-        assertEquals(1, b.lineNumber());
-        assertEquals(4, b.startColumn(), "'b' should sit at column 4 after a tab-a-tab");
-        assertEquals(4, b.endColumn());
+    @DisplayName("Tab always snaps the next token to the next tab stop (width 4)")
+    void tabAlwaysSnapsToNextTabStop() {
+        // regardless of starting character tab mus be same
+        assertEquals(5, lex("\ta").get(0).getPosition().startColumn(),
+                "tab at col 1 should land 'a' at col 5");
+        assertEquals(5, lex(" \ta").get(0).getPosition().startColumn(),
+                "tab at col 2 should land 'a' at col 5");
+        assertEquals(5, lex("  \ta").get(0).getPosition().startColumn(),
+                "tab at col 3 should land 'a' at col 5");
+        assertEquals(5, lex("   \ta").get(0).getPosition().startColumn(),
+                "tab at col 4 should land 'a' at col 5");
+        assertEquals(9, lex("    \ta").get(0).getPosition().startColumn(),
+                "tab at col 5 should land 'a' at col 9");
     }
 
     @Test

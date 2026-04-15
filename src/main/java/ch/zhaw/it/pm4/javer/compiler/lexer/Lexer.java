@@ -606,6 +606,8 @@ public class Lexer {
                     line++;
                     column = 1;
                 }
+            } else if (currentChar == '\t') {
+                column = column + (4 - ((column - 1) % 4));
             } else {
                 column++;
             }
