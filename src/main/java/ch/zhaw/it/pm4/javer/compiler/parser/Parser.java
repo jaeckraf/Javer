@@ -98,7 +98,7 @@ public class Parser {
     // ============================================================
 
     private CompilationUnit parseCompilationUnit() {
-        return null;
+        return new CompilationUnit(parseDeclarations());
     }
 
     private DeclarationAstNode parseDeclaration() {
@@ -412,27 +412,83 @@ public class Parser {
 // ============================================================
 
     private BinaryExpressionKind toBinaryExpressionKind(Token token) {
-        return null;
+        return switch (token.getTokenType()) {
+            case TokenType.OPERATOR_PLUS -> BinaryExpressionKind.ADD;
+            case TokenType.OPERATOR_MINUS -> BinaryExpressionKind.SUBTRACT;
+            case TokenType.OPERATOR_MULTIPLY -> BinaryExpressionKind.MULTIPLY;
+            case TokenType.OPERATOR_DIVIDE -> BinaryExpressionKind.DIVIDE;
+            case TokenType.OPERATOR_MODULO -> BinaryExpressionKind.MODULO;
+            case TokenType.OPERATOR_AND -> BinaryExpressionKind.AND;
+            case TokenType.OPERATOR_OR -> BinaryExpressionKind.OR;
+            case TokenType.OPERATOR_BITWISE_OR -> BinaryExpressionKind.BITWISE_OR;
+            case TokenType.OPERATOR_BITWISE_AND -> BinaryExpressionKind.BITWISE_AND;
+            case TokenType.OPERATOR_BITWISE_XOR -> BinaryExpressionKind.BITWISE_XOR;
+            case TokenType.OPERATOR_EQUALS -> BinaryExpressionKind.EQUALS;
+            case TokenType.OPERATOR_NOT_EQUALS -> BinaryExpressionKind.NOT_EQUALS;
+            case TokenType.OPERATOR_LESS_THAN -> BinaryExpressionKind.LESS;
+            case TokenType.OPERATOR_LESS_EQUAL -> BinaryExpressionKind.LESS_EQUALS;
+            case TokenType.OPERATOR_GREATER_THAN -> BinaryExpressionKind.GREATER;
+            case TokenType.OPERATOR_GREATER_EQUAL -> BinaryExpressionKind.GREATER_EQUALS;
+            case TokenType.OPERATOR_BITSHIFT_LEFT -> BinaryExpressionKind.SHIFT_LEFT;
+            case TokenType.OPERATOR_BITSHIFT_RIGHT -> BinaryExpressionKind.SHIFT_RIGHT;
+            default -> BinaryExpressionKind.INVALID;
+        };
     }
 
     private UnaryExpressionKind toUnaryExpressionKind(Token token) {
-        return null;
+        return switch (token.getTokenType()) {
+            case TokenType.OPERATOR_PLUS -> UnaryExpressionKind.PLUS;
+            case TokenType.OPERATOR_MINUS -> UnaryExpressionKind.MINUS;
+            case TokenType.OPERATOR_LOGICAL_NOT -> UnaryExpressionKind.LOGICAL_NOT;
+            case TokenType.OPERATOR_BITWISE_NOT -> UnaryExpressionKind.BITWISE_NOT;
+            case TokenType.OPERATOR_INCREMENT -> UnaryExpressionKind.PRE_INCREMENT;
+            case TokenType.OPERATOR_DECREMENT -> UnaryExpressionKind.PRE_DECREMENT;
+            default -> UnaryExpressionKind.INVALID;
+        };
     }
 
     private PostfixOperationKind toPostfixOperationKind(Token token) {
-        return null;
+        return switch (token.getTokenType()) {
+            case TokenType.OPERATOR_INCREMENT -> PostfixOperationKind.INCREMENT;
+            case TokenType.OPERATOR_DECREMENT -> PostfixOperationKind.DECREMENT;
+            default -> PostfixOperationKind.INVALID;
+        };
     }
 
     private AssignOperator toAssignOperator(Token token) {
-        return null;
+        return switch (token.getTokenType()) {
+            case TokenType.OPERATOR_ASSIGN -> AssignOperator.ASSIGN;
+            case TokenType.OPERATOR_PLUS_ASSIGN -> AssignOperator.ADD_ASSIGN;
+            case TokenType.OPERATOR_MINUS_ASSIGN -> AssignOperator.SUB_ASSIGN;
+            case TokenType.OPERATOR_MULTIPLY_ASSIGN -> AssignOperator.MUL_ASSIGN;
+            case TokenType.OPERATOR_DIVIDE_ASSIGN -> AssignOperator.DIV_ASSIGN;
+            case TokenType.OPERATOR_MODULO_ASSIGN -> AssignOperator.MOD_ASSIGN;
+            case TokenType.OPERATOR_BITWISE_OR_ASSIGN -> AssignOperator.BITWISE_OR_ASSIGN;
+            case TokenType.OPERATOR_BITWISE_AND_ASSIGN -> AssignOperator.BITWISE_AND_ASSIGN;
+            case TokenType.OPERATOR_BITWISE_XOR_ASSIGN -> AssignOperator.BITWISE_XOR_ASSIGN;
+            case TokenType.OPERATOR_BITSHIFT_LEFT_ASSIGN -> AssignOperator.LEFT_SHIFT_ASSIGN;
+            case TokenType.OPERATOR_BITSHIFT_RIGHT_ASSIGN -> AssignOperator.RIGHT_SHIFT_ASSIGN;
+            default -> AssignOperator.INVALID;
+        };
     }
 
     private PrimitiveTypeKind toPrimitiveTypeKind(Token token) {
-        return null;
+        return switch (token.getTokenType()) {
+            case TokenType.TYPE_INTEGER -> PrimitiveTypeKind.INT;
+            case TokenType.TYPE_DOUBLE -> PrimitiveTypeKind.DOUBLE;
+            case TokenType.TYPE_BOOLEAN -> PrimitiveTypeKind.BOOL;
+            case TokenType.TYPE_STRING -> PrimitiveTypeKind.STRING;
+            case TokenType.TYPE_CHARACTER -> PrimitiveTypeKind.CHAR;
+            default -> PrimitiveTypeKind.INVALID;
+        };
     }
 
     private NameTypeKind toNameTypeKind(Token token) {
-        return null;
+        return switch (token.getTokenType()) {
+            case TokenType.TYPE_STRUCT -> NameTypeKind.STRUCT;
+            case TokenType.TYPE_ENUM -> NameTypeKind.ENUM;
+            default -> NameTypeKind.INVALID;
+        };
     }
 
 
@@ -441,27 +497,27 @@ public class Parser {
 // ============================================================
 
     private List<DeclarationAstNode> parseDeclarations() {
-        return null;
+        return new ArrayList<>();
     }
 
     private List<EnumItem> parseEnumItems() {
-        return null;
+        return new ArrayList<>();
     }
 
     private List<StructField> parseStructFields() {
-        return null;
+        return new ArrayList<>();
     }
 
     private List<FunctionParameter> parseFunctionParameters() {
-        return null;
+        return new ArrayList<>();
     }
 
     private List<SwitchCase> parseSwitchCases() {
-        return null;
+        return new ArrayList<>();
     }
 
     private List<CaseLabelAstNode> parseCaseLabels() {
-        return null;
+        return new ArrayList<>();
     }
 
 
