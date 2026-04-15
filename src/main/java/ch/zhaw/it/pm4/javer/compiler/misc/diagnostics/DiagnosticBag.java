@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.misc.diagnostics;
 
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ public class DiagnosticBag {
 
     private final int errorLimit;
     private final String filePath;
-    // private final SourceCache sourceCache; // Uncomment when SourceCache is implemented
+    private final SourceCache sourceCache;
 
     private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
@@ -22,10 +23,10 @@ public class DiagnosticBag {
      * @param errorLimit The maximum number of errors before compilation aborts.
      *                   // @param sourceCache The cache holding the raw source code text.
      */
-    public DiagnosticBag(String filePath, int errorLimit, CompilationPhase compilationPhase /*, SourceCache sourceCache*/) {
+    public DiagnosticBag(String filePath, int errorLimit, CompilationPhase compilationPhase, SourceCache sourceCache) {
         this.filePath = filePath;
         this.errorLimit = errorLimit;
-        // this.sourceCache = sourceCache;
+        this.sourceCache = sourceCache;
         this.diagnostics = new ArrayList<>();
         this.phase = compilationPhase;
     }
@@ -47,17 +48,6 @@ public class DiagnosticBag {
     public void add(Diagnostic diagnostic) {
         // TODO: Implement adding to list
         // TODO: Implement error limit check (throw exception if exceeded)
-    }
-
-    /**
-     * Convenience method to construct and add a diagnostic in one step.
-     *
-     * @param location The location of the issue.
-     * @param severity The severity level.
-     * @param message  The error message.
-     */
-    public void add(SourceLocation location, Severity severity, String message) {
-        // TODO: Implement (create Diagnostic and call add(diagnostic))
     }
 
     /**

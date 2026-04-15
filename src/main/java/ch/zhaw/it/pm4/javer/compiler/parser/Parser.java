@@ -10,6 +10,8 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Diagnostic;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
 import java.util.ArrayList;
@@ -30,6 +32,7 @@ import java.util.List;
 public class Parser {
 
     private final List<Token> tokens;
+    private final DiagnosticBag diagnosticBag;
     private int currentPosition = 0;
 
     /**
@@ -39,8 +42,9 @@ public class Parser {
      *               Must end with an EOF (End of File) token.
      *               errors gracefully without halting the compiler pipeline.
      */
-    public Parser(List<Token> tokens) {
+    public Parser(List<Token> tokens, DiagnosticBag diagnosticBag) {
         this.tokens = tokens;
+        this.diagnosticBag = diagnosticBag;
     }
 
     /**
@@ -54,43 +58,65 @@ public class Parser {
      * Concrete Syntax Tree (CST).
      */
     public CompilationUnit parse() {
-        CompilationUnit rootNode = new CompilationUnit(new ArrayList<>());
-        return rootNode;
+        return parseCompilationUnit();
     }
 
-    private Token peek() {
-        if (isAtEnd()) return tokens.getLast();
-        return tokens.get(currentPosition);
+    private Token currentToken() {
+        return peek(0);
     }
 
-    private Token peekNext() {
-        if (currentPosition + 1 >= tokens.size()) return tokens.getLast();
-        return tokens.get(currentPosition + 1);
+    private Token lookahead() {
+        return peek(1);
     }
 
-    private boolean isAtEnd() {
-        return currentPosition >= tokens.size() || tokens.get(currentPosition).getTokenType() == TokenType.SPECIAL_END_OF_FILE;
+    private Token peek(int offset) {
+        int i = currentPosition + offset;
+        if (i < 0) i = 0;
+        if (i >= tokens.size()) {
+            // this could be much better done
+            if (tokens.isEmpty()) return new Token(TokenType.SPECIAL_END_OF_FILE, "", new SourceLocation(0, 0, 0));
+            else return tokens.getLast();
+        }
+        return tokens.get(i);
     }
 
-    private Token advance() {
-        if (!isAtEnd()) currentPosition++;
-        return tokens.get(currentPosition - 1);
+    private boolean matchCurrentToken(TokenType tokenType) {
+        return currentToken().getTokenType() == tokenType;
     }
 
-    private boolean match(TokenType expectedType) {
-        if (peek().getTokenType() == expectedType) {
-            advance();
-            return true;
+    private boolean matchNextToken(TokenType tokenType) {
+        return lookahead().getTokenType() == tokenType;
+    }
+
+    private boolean matchAnyCurrentToken(TokenType... tokenTypes) {
+        for (TokenType tokenType : tokenTypes) {
+            if (matchCurrentToken(tokenType)) return true;
         }
         return false;
     }
 
-    private Token consume(TokenType expectedType, String errorMessage) {
-        if (peek().getTokenType() == expectedType) {
-            return advance();
+    private boolean matchAnyNextToken(TokenType... tokenTypes) {
+        TokenType lookAheadTokenType = lookahead().getTokenType();
+        for (TokenType tokenType : tokenTypes) {
+            if (lookAheadTokenType == tokenType) return true;
         }
+        return false;
+    }
 
-        return peek();
+    private Token consumeToken() {
+        Token t = currentToken();
+        if(currentPosition < tokens.size()) currentPosition++;
+        return t;
+    }
+
+    private boolean expectTokenType(TokenType tokenType) {
+        if(currentToken().getTokenType() == tokenType) return true;
+        reportExpectedToken(tokenType);
+        return false;
+    }
+
+    // TODO
+    private void reportExpectedToken(TokenType tokenType) {
     }
 
     // ============================================================
@@ -102,77 +128,92 @@ public class Parser {
     }
 
     private DeclarationAstNode parseDeclaration() {
+        if(matchCurrentToken(TokenType.TYPE_ENUM)) return parseEnumDeclaration();
+        if(matchCurrentToken(TokenType.TYPE_STRUCT)) return parseStructDeclaration();
+        if(matchCurrentToken(TokenType.KEYWORD_FUNCTION)) return parseFunctionDeclaration();
         return null;
     }
 
     private EnumDeclaration parseEnumDeclaration() {
-        return null;
+        return new EnumDeclaration("", new ArrayList<>());
     }
 
     private EnumItem parseEnumItem() {
-        return null;
+        return EnumItem
+                .builder("")
+                .build();
     }
 
     private StructDeclaration parseStructDeclaration() {
-        return null;
+        return new StructDeclaration("", new ArrayList<>());
     }
 
     private StructField parseStructField() {
-        return null;
+        return new StructField(null, "");
     }
 
     private FunctionDeclaration parseFunctionDeclaration() {
-        return null;
+        return new FunctionDeclaration(null, "", new ArrayList<>(), null);
     }
 
     private FunctionParameter parseFunctionParameter() {
-        return null;
+        return new FunctionParameter("", null);
     }
 
 
-// ============================================================
-// Types
-// ============================================================
+    // ============================================================
+    // Types
+    // ============================================================
 
     private TypeAstNode parseType() {
-        return null;
+        return new VoidType();
     }
 
     private TypeAstNode parseReturnType() {
-        return null;
+        return new VoidType();
     }
 
     private TypeAstNode parseTypeHead() {
-        return null;
+        return new PrimitiveType(PrimitiveTypeKind.INT);
     }
 
     private PrimitiveType parsePrimitiveType() {
-        return null;
+        return new PrimitiveType(PrimitiveTypeKind.INT);
     }
 
     private NamedType parseNamedType() {
-        return null;
+        return new NamedType(NameTypeKind.ENUM, "");
     }
 
     private VoidType parseVoidType() {
-        return null;
+        return new VoidType();
     }
 
+    // TODO is this signature okay?
     private ArrayType wrapArrayDimensions(TypeAstNode baseType, int arrayDepth) {
-        return null;
+        return new ArrayType(baseType);
     }
 
 
-// ============================================================
-// Statements / Blocks
-// ============================================================
+    // ============================================================
+    // Statements / Blocks
+    // ============================================================
 
     private BlockStatement parseBlock() {
-        return null;
+        return new BlockStatement(new ArrayList<>());
     }
 
     private StatementAstNode parseStatement() {
-        return null;
+        return switch (currentToken().getTokenType()) {
+            case TokenType.KEYWORD_IF -> parseIfStatement();
+            case TokenType.KEYWORD_WHILE -> parseWhileStatement();
+            case TokenType.KEYWORD_DO -> parseDoWhileStatement();
+            case TokenType.KEYWORD_FOR -> parseForStatement();
+            case TokenType.KEYWORD_SWITCH -> parseSwitchStatement();
+            case TokenType.KEYWORD_RETURN, TokenType.KEYWORD_BREAK, TokenType.KEYWORD_CONTINUE -> parseJumpStatement();
+            case TokenType.KEYWORD_LET -> parseVarDeclarationStatement();
+            default -> parseExpressionStatement();
+        };
     }
 
     private IfStatement parseIfStatement() {
@@ -399,11 +440,11 @@ public class Parser {
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
-        return null;
+        return new LiteralExpression<>(LiteralKind.CHAR, null);
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
-        return null;
+        return new LiteralExpression<>(LiteralKind.NULL, null);
     }
 
 
