@@ -11,7 +11,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Diagnostic;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
 import java.util.ArrayList;
@@ -111,8 +110,10 @@ public class Parser {
 
     private boolean expectTokenType(TokenType tokenType) {
         if(currentToken().getTokenType() == tokenType) return true;
-        reportExpectedToken(tokenType);
-        return false;
+        else {
+            reportExpectedToken(tokenType);
+            return false;
+        }
     }
 
     // TODO
@@ -135,6 +136,10 @@ public class Parser {
     }
 
     private EnumDeclaration parseEnumDeclaration() {
+        expectTokenType(TokenType.TYPE_ENUM);
+
+
+
         return new EnumDeclaration("", new ArrayList<>());
     }
 
@@ -217,59 +222,64 @@ public class Parser {
     }
 
     private IfStatement parseIfStatement() {
-        return null;
+        return IfStatement.builder(null, null).build();
     }
 
     private WhileStatement parseWhileStatement() {
-        return null;
+        return new WhileStatement(null, null);
     }
 
     private DoWhileStatement parseDoWhileStatement() {
-        return null;
+        return new DoWhileStatement(null, null);
     }
 
     private ForStatement parseForStatement() {
-        return null;
+        return ForStatement.builder(null).build();
     }
 
     private ForInit parseForInit() {
-        return null;
+        return parseForInitVarDeclaration();
     }
 
     private ForInitVarDeclaration parseForInitVarDeclaration() {
-        return null;
+        return new ForInitVarDeclaration(null);
     }
 
     private ForInitExpressionList parseForInitExpressionList() {
-        return null;
+        return new ForInitExpressionList(null);
     }
 
     private SwitchStatement parseSwitchStatement() {
-        return null;
+        return new SwitchStatement(null, new ArrayList<>());
     }
 
     private SwitchCase parseSwitchCase() {
-        return null;
+        return new SwitchCase(false, new ArrayList<>(), null);
     }
 
     private StatementAstNode parseJumpStatement() {
-        return null;
+        return switch (currentToken().getTokenType()) {
+            case TokenType.KEYWORD_RETURN -> parseReturnStatement();
+            case TokenType.KEYWORD_BREAK -> parseBreakStatement();
+            case TokenType.KEYWORD_CONTINUE -> parseContinueStatement();
+            default -> null;
+        };
     }
 
     private BreakStatement parseBreakStatement() {
-        return null;
+        return new BreakStatement();
     }
 
     private ContinueStatement parseContinueStatement() {
-        return null;
+        return new ContinueStatement();
     }
 
     private ReturnStatement parseReturnStatement() {
-        return null;
+        return ReturnStatement.builder(null).build();
     }
 
     private VarDeclarationStatement parseVarDeclarationStatement() {
-        return null;
+        return VarDeclarationStatement.builder(null, "").build();
     }
 
     // nur falls du expression ';' als eigenen AST-Knoten ergänzst:
@@ -278,29 +288,29 @@ public class Parser {
     }
 
 
-// ============================================================
-// Switch / Case Labels
-// ============================================================
+    // ============================================================
+    // Switch / Case Labels
+    // ============================================================
 
     private LiteralCaseLabel parseLiteralCaseLabel() {
-        return null;
+        return new LiteralCaseLabel(null);
     }
 
     private EnumCaseLabel parseEnumCaseLabel() {
-        return null;
+        return new EnumCaseLabel("", "");
     }
 
 
-// ============================================================
-// Variable / Array Initializers
-// ============================================================
+    // ============================================================
+    // Variable / Array Initializers
+    // ============================================================
 
     private ArrayInitExpression parseArrayInitExpression() {
-        return null;
+        return new ArrayInitExpression(new ArrayList<>());
     }
 
     private ExpressionAstNode parseVarInitializer() {
-        return null;
+        return parseArrayInitExpression();
     }
 
 
@@ -538,7 +548,16 @@ public class Parser {
 // ============================================================
 
     private List<DeclarationAstNode> parseDeclarations() {
-        return new ArrayList<>();
+        ArrayList<DeclarationAstNode> declarations = new ArrayList<>();
+        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            if (isDeclarationStart(currentToken())) {
+                declarations.add(parseDeclaration());
+            } else {
+                // error
+                break;
+            }
+        }
+        return declarations;
     }
 
     private List<EnumItem> parseEnumItems() {
@@ -566,36 +585,12 @@ public class Parser {
 // Token / Recovery Helpers
 // ============================================================
 
-    private boolean check(TokenType type) {
-        return false;
-    }
-
-    private boolean checkNext(TokenType type) {
-        return false;
-    }
-
-    private boolean matchAny(TokenType... types) {
-        return false;
-    }
-
-    private Token consumeAny(String errorMessage, TokenType... expectedTypes) {
-        return null;
-    }
-
-    private void synchronize() {
-    }
-
-    private void synchronizeAfterStatement() {
-    }
-
-    private void synchronizeAfterDeclaration() {
-    }
-
-    private void reportError(String message) {
-    }
-
     private boolean isDeclarationStart(Token token) {
-        return false;
+        TokenType type = token.getTokenType();
+        return switch (type) {
+            case TokenType.TYPE_ENUM, TokenType.TYPE_STRUCT, TokenType.KEYWORD_FUNCTION -> true;
+            default -> false;
+        };
     }
 
     private boolean isStatementStart(Token token) {
