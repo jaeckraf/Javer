@@ -26,5 +26,9 @@ public enum OPCode {
     POP,
     HALT,
     PRINT,
-    NEW
+    NEW,
+    WHILE_START,
+    WHILE_END,
+    FOR_START,
+    FOR_END
 }
