@@ -163,7 +163,7 @@ class LexerTest {
         assertEquals(TokenType.KEYWORD_DO, single("do").getTokenType());
         assertEquals(TokenType.KEYWORD_FOR, single("for").getTokenType());
         assertEquals(TokenType.KEYWORD_RETURN, single("return").getTokenType());
-        assertEquals(TokenType.KEYWORD_FUNCTION, single("function").getTokenType());
+        assertEquals(TokenType.KEYWORD_FUNCTION, single("fn").getTokenType());
         assertEquals(TokenType.KEYWORD_BREAK, single("break").getTokenType());
         assertEquals(TokenType.KEYWORD_CONTINUE, single("continue").getTokenType());
         assertEquals(TokenType.KEYWORD_SWITCH, single("switch").getTokenType());

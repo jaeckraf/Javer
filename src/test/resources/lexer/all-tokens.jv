@@ -1,4 +1,4 @@
-function void main(int a, double b, boolean c, string s, char d, struct e, enum f) {
+fn void main(int a, double b, boolean c, string s, char d, struct e, enum f) {
     let x = 42; let y = 3.14; let h = 0xFF; let o = 0o77; let bn = 0b1010;
     let str = "hi\n"; let ch = 'a'; let t = true; let n = null;
     x = a + b - c * d / e % f;
