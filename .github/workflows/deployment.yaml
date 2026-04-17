@@ -31,10 +31,10 @@ jobs:
       - name: 'Build with Maven - Profile windows'
         run: mvn clean package -Pwindows
 
-      - name: 'Copy shaded JAR'
+      - name: 'Copy zipped installer'
         run: |
-          ZIPPED_JAR=$(find ./target/zipped -name "*.zip" | head -n 1)
-          cp "$ZIPPED_JAR" ./installer-windows.zip
+          ZIPPED_INSTALLER=$(find ./target/zipped -name "*.zip" | head -n 1)
+          cp "$ZIPPED_INSTALLER" ./installer-windows.zip
 
       - name: 'Configure Git'
         run: |
@@ -43,6 +43,6 @@ jobs:
 
       - name: 'Commit and Push Changes'
         run: |
-          git add application-shaded.jar README.md
-          git commit -m "Add shaded JAR and update README [skip ci]" || exit 0
+          git add installer-windows.zip README.md
+          git commit -m "Add zipped installer and update README [skip ci]" || exit 0
           git push origin HEAD:${{ github.event.inputs.branch || 'main' }}
