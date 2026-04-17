@@ -31,7 +31,7 @@ public class Compiler {
 
     public Compiler(CompilerOptions options) {
         this.options = options;
-        SourceCache sourceCache = new SourceCache(options.getInputFilePath();
+        SourceCache sourceCache = new SourceCache(options.getInputFilePath());
         this.context = new CompilationContext(options,
                 new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
                 sourceCache);

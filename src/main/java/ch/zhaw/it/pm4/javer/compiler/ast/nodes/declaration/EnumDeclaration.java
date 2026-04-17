@@ -1,9 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
+@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class EnumDeclaration implements DeclarationAstNode {
 
     private final String name;

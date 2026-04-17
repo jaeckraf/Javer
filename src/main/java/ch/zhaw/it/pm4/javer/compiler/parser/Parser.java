@@ -1,5 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
@@ -28,6 +29,7 @@ import java.util.List;
  * syntax errors, it records them in the {@link DiagnosticBag} and attempts
  * to continue parsing to find subsequent errors.
  */
+@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class Parser {
 
     private final List<Token> tokens;

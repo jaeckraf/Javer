@@ -1,11 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.misc.diagnostics;
 
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class DiagnosticBag {
 
     private final int errorLimit;
@@ -47,6 +50,10 @@ public class DiagnosticBag {
     public void add(Diagnostic diagnostic) {
         // TODO: Implement adding to list
         // TODO: Implement error limit check (throw exception if exceeded)
+    }
+
+    public void add(SourceLocation location, Severity severity, String message) {
+
     }
 
     /**

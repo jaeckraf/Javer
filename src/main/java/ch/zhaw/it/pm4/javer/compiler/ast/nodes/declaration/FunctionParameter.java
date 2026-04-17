@@ -1,9 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class FunctionParameter implements AstNode {
 
     private final String name;

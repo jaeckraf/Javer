@@ -18,8 +18,9 @@ class CompilationContextTest {
         Files.writeString(input, "");
 
         CompilerOptions options = CompilerOptions.create(input.toString(), "out.bin");
-        DiagnosticBag diagnostics = new DiagnosticBag(input.toString(), 5, CompilationPhase.COMPILER_SETUP);
         SourceCache sourceCache = new SourceCache(input.toString());
+        DiagnosticBag diagnostics = new DiagnosticBag(input.toString(), 5, CompilationPhase.COMPILER_SETUP, sourceCache);
+
 
         CompilationContext context = new CompilationContext(options, diagnostics, sourceCache);
         assertEquals(options, context.getOptions());
@@ -27,8 +28,8 @@ class CompilationContextTest {
         assertEquals(sourceCache, context.getSourceCache());
 
         CompilerOptions otherOptions = CompilerOptions.create(input.toString(), "next.bin");
-        DiagnosticBag otherDiagnostics = new DiagnosticBag(input.toString(), 1, CompilationPhase.LEXING);
         SourceCache otherSourceCache = new SourceCache(input.toString());
+        DiagnosticBag otherDiagnostics = new DiagnosticBag(input.toString(), 1, CompilationPhase.LEXING, otherSourceCache);
 
         context.setOptions(otherOptions);
         context.setDiagnostics(otherDiagnostics);
@@ -40,5 +41,6 @@ class CompilationContextTest {
 
         Files.deleteIfExists(input);
     }
+
 }
 

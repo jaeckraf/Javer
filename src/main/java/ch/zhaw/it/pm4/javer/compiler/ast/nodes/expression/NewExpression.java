@@ -1,10 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression;
 
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
+@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class NewExpression implements ExpressionAstNode {
 
     private final TypeAstNode type;
