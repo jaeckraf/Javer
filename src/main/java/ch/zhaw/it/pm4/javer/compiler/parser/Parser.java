@@ -71,12 +71,7 @@ public class Parser {
     private Token peek(int offset) {
         int i = currentPosition + offset;
         if (i < 0) i = 0;
-        if (i >= tokens.size()) {
-            // this could be much better done
-            if (tokens.isEmpty()) return new Token(TokenType.SPECIAL_END_OF_FILE, "", new SourceLocation(0, 0, 0));
-            else return tokens.getLast();
-        }
-        return tokens.get(i);
+        return i >= tokens.size() ? tokens.getLast() : tokens.get(i);
     }
 
     private boolean matchCurrentToken(TokenType tokenType) {
@@ -102,10 +97,8 @@ public class Parser {
         return false;
     }
 
-    private Token consumeToken() {
-        Token t = currentToken();
+    private void consumeToken() {
         if(currentPosition < tokens.size()) currentPosition++;
-        return t;
     }
 
     private boolean expectTokenType(TokenType tokenType) {
@@ -192,10 +185,9 @@ public class Parser {
     }
 
     // TODO is this signature okay?
-    private ArrayType wrapArrayDimensions(TypeAstNode baseType, int arrayDepth) {
+    private ArrayType wrapArrayDimensions(TypeAstNode baseType) {
         return new ArrayType(baseType);
     }
-
 
     // ============================================================
     // Statements / Blocks
@@ -265,12 +257,9 @@ public class Parser {
     }
 
     private StatementAstNode parseJumpStatement() {
-        return switch (currentToken().getTokenType()) {
-            case TokenType.KEYWORD_RETURN -> parseReturnStatement();
-            case TokenType.KEYWORD_BREAK -> parseBreakStatement();
-            case TokenType.KEYWORD_CONTINUE -> parseContinueStatement();
-            default -> null; // TODO this is not okay
-        };
+        if(matchAnyCurrentToken(TokenType.KEYWORD_RETURN)) return parseReturnStatement();
+        if(matchAnyCurrentToken(TokenType.KEYWORD_BREAK)) return parseBreakStatement();
+        return parseContinueStatement();
     }
 
     private BreakStatement parseBreakStatement() {
@@ -282,19 +271,18 @@ public class Parser {
     }
 
     private ReturnStatement parseReturnStatement() {
-        return ReturnStatement.builder(new LiteralExpression<>(LiteralKind.INT, 1)).build();
+        return ReturnStatement
+                .builder(new LiteralExpression<>(LiteralKind.INT, 1))
+                .build();
     }
 
     private VarDeclarationStatement parseVarDeclarationStatement() {
         return VarDeclarationStatement.builder(new PrimitiveType(PrimitiveTypeKind.INT), "dummy").build();
     }
 
-    // TODO
-    // nur falls du expression ';' als eigenen AST-Knoten ergänzst:
     private StatementAstNode parseExpressionStatement() {
-        return null;
+        return parseExpression();
     }
-
 
     // ============================================================
     // Switch / Case Labels
@@ -307,7 +295,6 @@ public class Parser {
     private EnumCaseLabel parseEnumCaseLabel() {
         return new EnumCaseLabel("dummy", "dummy");
     }
-
 
     // ============================================================
     // Variable / Array Initializers
@@ -334,7 +321,7 @@ public class Parser {
     }
 
     // ============================================================
-    // Expressions (gemäss Präzedenz deiner Grammatik)
+    // Expressions
     // ============================================================
 
     private ExpressionAstNode parseExpression() {
@@ -544,7 +531,6 @@ public class Parser {
             default -> NameTypeKind.INVALID;
         };
     }
-
 
     // ============================================================
     // Optional / Repetition Helpers
