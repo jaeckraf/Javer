@@ -12,6 +12,7 @@ target/
 
 ### Log File and temporary ###
 *.log
+*.txt
 
 ### Eclipse ###
 .apt_generated
