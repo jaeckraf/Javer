@@ -10,8 +10,9 @@ target/
 *.iml
 *.ipr
 
-### Log File ###
+### Log File and temporary ###
 *.log
+*.txt
 
 ### Eclipse ###
 .apt_generated

@@ -1,258 +1,202 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.PostfixAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.binary.BinaryExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.ArrayInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.VarInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.CallExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.EnumAccessExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.IndexAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.LiteralConstantAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.NameAccessExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.NewExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.ParenthesizedExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ternary.ConditionalAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.unary.UnaryExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.BlockAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.ExpressionStatementAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.VarDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.IfStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.BreakStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.ContinueStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.ReturnStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.CaseClauseAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.DefaultClauseAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.SwitchStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.DoWhileStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.ForInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.ForStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.ForUpdateAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.WhileStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.enums.EnumDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.enums.EnumItemAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.function.FunctionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.function.FunctionParameterAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.struct.StructDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.struct.StructItemAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.ArrayTypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.AtomicTypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.EnumTypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.StructTypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.VoidTypeAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 
 @JacocoGenerated("jacoco-ignore")
 public class TypeChecker extends AstNodeVisitorBase<Void> {
     @Override
-    public Void visit(BinaryExpressionAstNode node) {
+    public Void visit(CompilationUnit node) {
         return null;
     }
 
     @Override
-    public Void visit(ArrayInitAstNode node) {
+    public Void visit(EnumDeclaration node) {
         return null;
     }
 
     @Override
-    public Void visit(VarInitAstNode node) {
+    public Void visit(EnumItem node) {
         return null;
     }
 
     @Override
-    public Void visit(CallExpressionAstNode node) {
+    public Void visit(FunctionDeclaration node) {
         return null;
     }
 
     @Override
-    public Void visit(EnumAccessExpressionAstNode node) {
+    public Void visit(FunctionParameter node) {
         return null;
     }
 
     @Override
-    public Void visit(IndexAstNode node) {
+    public Void visit(StructDeclaration node) {
         return null;
     }
 
     @Override
-    public Void visit(LiteralConstantAstNode node) {
+    public Void visit(StructField node) {
         return null;
     }
 
     @Override
-    public Void visit(NameAccessExpressionAstNode node) {
+    public Void visit(BlockStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(NewExpressionAstNode node) {
+    public Void visit(IfStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(ParenthesizedExpressionAstNode node) {
+    public Void visit(WhileStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(ConditionalAstNode node) {
+    public Void visit(DoWhileStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(UnaryExpressionAstNode node) {
+    public Void visit(ForStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(AssignmentAstNode node) {
+    public Void visit(SwitchStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(ExpressionListAstNode node) {
+    public Void visit(SwitchCase node) {
         return null;
     }
 
     @Override
-    public Void visit(PostfixAstNode node) {
+    public Void visit(BreakStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(BreakStmtAstNode node) {
+    public Void visit(ContinueStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(ContinueStmtAstNode node) {
+    public Void visit(ReturnStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(ReturnStmtAstNode node) {
+    public Void visit(VarDeclarationStatement node) {
         return null;
     }
 
     @Override
-    public Void visit(CaseClauseAstNode node) {
+    public Void visit(AssignExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(DefaultClauseAstNode node) {
+    public Void visit(ConditionalExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(SwitchStmtAstNode node) {
+    public Void visit(BinaryExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(IfStmtAstNode node) {
+    public Void visit(UnaryExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(DoWhileStmtAstNode node) {
+    public Void visit(PostfixExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(ForInitAstNode node) {
+    public Void visit(CallExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(ForStmtAstNode node) {
+    public Void visit(IndexExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(ForUpdateAstNode node) {
+    public Void visit(MemberAccessExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(WhileStmtAstNode node) {
+    public Void visit(NewExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(BlockAstNode node) {
+    public Void visit(ArrayInitExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(ExpressionStatementAstNode node) {
+    public Void visit(NameExpression node) {
         return null;
     }
 
     @Override
-    public Void visit(VarDeclarationAstNode node) {
+    public Void visit(LiteralExpression<?> node) {
         return null;
     }
 
     @Override
-    public Void visit(EnumDeclarationAstNode node) {
+    public Void visit(LiteralCaseLabel node) {
         return null;
     }
 
     @Override
-    public Void visit(EnumItemAstNode node) {
+    public Void visit(EnumCaseLabel node) {
         return null;
     }
 
     @Override
-    public Void visit(FunctionParameterAstNode node) {
+    public Void visit(ArrayType node) {
         return null;
     }
 
     @Override
-    public Void visit(FunctionAstNode node) {
+    public Void visit(NamedType node) {
         return null;
     }
 
     @Override
-    public Void visit(StructDeclarationAstNode node) {
+    public Void visit(PrimitiveType node) {
         return null;
     }
 
     @Override
-    public Void visit(StructItemAstNode node) {
+    public Void visit(VoidType node) {
         return null;
     }
 
     @Override
-    public Void visit(ArrayTypeAstNode node) {
+    public Void visit(ForInitVarDeclaration node) {
         return null;
     }
 
     @Override
-    public Void visit(AtomicTypeAstNode node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(EnumTypeAstNode node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(StructTypeAstNode node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(VoidTypeAstNode node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(CompilationUnitAstNode node) {
+    public Void visit(ForInitExpressionList node) {
         return null;
     }
 }

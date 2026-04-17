@@ -67,7 +67,9 @@ class LexerTest {
     }
 
     private void assertNoErrorDiagnostics() {
-        verify(diagnosticBag, never()).add(any(SourceLocation.class), eq(Severity.ERROR), anyString());
+        verify(diagnosticBag, never()).add(any(SourceLocation.class),
+                eq(Severity.ERROR),
+                anyString());
     }
 
     private void assertErrorDiagnosticContains(String fragment) {

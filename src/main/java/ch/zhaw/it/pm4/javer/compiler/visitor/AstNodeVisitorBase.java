@@ -1,35 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.AssignmentAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ExpressionListAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.PostfixAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.binary.BinaryExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.ArrayInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.init.VarInitAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.primary.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.ternary.ConditionalAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expressions.unary.UnaryExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.BlockAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.ExpressionStatementAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.VarDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.IfStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.BreakStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.ContinueStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.jumps.ReturnStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.CaseClauseAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.DefaultClauseAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.branching.switchcase.SwitchStmtAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statements.loops.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.enums.EnumDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.enums.EnumItemAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.function.FunctionParameterAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.function.FunctionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.struct.StructDeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.toplevel.struct.StructItemAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.types.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 
 import java.util.Optional;
 
@@ -40,88 +19,117 @@ public abstract class AstNodeVisitorBase<T> implements AstNodeVisitor<T> {
         return Optional.empty();
     }
 
-    public abstract T visit(BinaryExpressionAstNode node);
+    @Override
+    abstract public T visit(CompilationUnit node);
 
-    public abstract T visit(ArrayInitAstNode node);
+    @Override
+    abstract public T visit(EnumDeclaration node);
 
-    public abstract T visit(VarInitAstNode node);
+    @Override
+    abstract public T visit(EnumItem node);
 
-    public abstract T visit(CallExpressionAstNode node);
+    @Override
+    abstract public T visit(FunctionDeclaration node);
 
-    public abstract T visit(EnumAccessExpressionAstNode node);
+    @Override
+    abstract public T visit(FunctionParameter node);
 
-    public abstract T visit(IndexAstNode node);
+    @Override
+    abstract public T visit(StructDeclaration node);
 
-    public abstract T visit(LiteralConstantAstNode node);
+    @Override
+    abstract public T visit(StructField node);
 
-    public abstract T visit(NameAccessExpressionAstNode node);
+    @Override
+    abstract public T visit(BlockStatement node);
 
-    public abstract T visit(NewExpressionAstNode node);
+    @Override
+    abstract public T visit(IfStatement node);
 
-    public abstract T visit(ParenthesizedExpressionAstNode node);
+    @Override
+    abstract public T visit(WhileStatement node);
 
-    public abstract T visit(ConditionalAstNode node);
+    @Override
+    abstract public T visit(DoWhileStatement node);
 
-    public abstract T visit(UnaryExpressionAstNode node);
+    @Override
+    abstract public T visit(ForStatement node);
 
-    public abstract T visit(AssignmentAstNode node);
+    @Override
+    abstract public T visit(SwitchStatement node);
 
-    public abstract T visit(ExpressionListAstNode node);
+    @Override
+    abstract public T visit(SwitchCase node);
 
-    public abstract T visit(PostfixAstNode node);
+    @Override
+    abstract public T visit(BreakStatement node);
 
-    public abstract T visit(BreakStmtAstNode node);
+    @Override
+    abstract public T visit(ContinueStatement node);
 
-    public abstract T visit(ContinueStmtAstNode node);
+    @Override
+    abstract public T visit(ReturnStatement node);
 
-    public abstract T visit(ReturnStmtAstNode node);
+    @Override
+    abstract public T visit(VarDeclarationStatement node);
 
-    public abstract T visit(CaseClauseAstNode node);
+    @Override
+    abstract public T visit(AssignExpression node);
 
-    public abstract T visit(DefaultClauseAstNode node);
+    @Override
+    abstract public T visit(ConditionalExpression node);
 
-    public abstract T visit(SwitchStmtAstNode node);
+    @Override
+    abstract public T visit(BinaryExpression node);
 
-    public abstract T visit(IfStmtAstNode node);
+    @Override
+    abstract public T visit(UnaryExpression node);
 
-    public abstract T visit(DoWhileStmtAstNode node);
+    @Override
+    abstract public T visit(PostfixExpression node);
 
-    public abstract T visit(ForInitAstNode node);
+    @Override
+    abstract public T visit(CallExpression node);
 
-    public abstract T visit(ForStmtAstNode node);
+    @Override
+    abstract public T visit(IndexExpression node);
 
-    public abstract T visit(ForUpdateAstNode node);
+    @Override
+    abstract public T visit(MemberAccessExpression node);
 
-    public abstract T visit(WhileStmtAstNode node);
+    @Override
+    abstract public T visit(NewExpression node);
 
-    public abstract T visit(BlockAstNode node);
+    @Override
+    abstract public T visit(ArrayInitExpression node);
 
-    public abstract T visit(ExpressionStatementAstNode node);
+    @Override
+    abstract public T visit(NameExpression node);
 
-    public abstract T visit(VarDeclarationAstNode node);
+    @Override
+    abstract public T visit(LiteralExpression<?> node);
 
-    public abstract T visit(EnumDeclarationAstNode node);
+    @Override
+    abstract public T visit(LiteralCaseLabel node);
 
-    public abstract T visit(EnumItemAstNode node);
+    @Override
+    abstract public T visit(EnumCaseLabel node);
 
-    public abstract T visit(FunctionParameterAstNode node);
+    @Override
+    abstract public T visit(ArrayType node);
 
-    public abstract T visit(FunctionAstNode node);
+    @Override
+    abstract public T visit(NamedType node);
 
-    public abstract T visit(StructDeclarationAstNode node);
+    @Override
+    abstract public T visit(PrimitiveType node);
 
-    public abstract T visit(StructItemAstNode node);
+    @Override
+    abstract public T visit(VoidType node);
 
-    public abstract T visit(ArrayTypeAstNode node);
+    @Override
+    abstract public T visit(ForInitVarDeclaration node);
 
-    public abstract T visit(AtomicTypeAstNode node);
-
-    public abstract T visit(EnumTypeAstNode node);
-
-    public abstract T visit(StructTypeAstNode node);
-
-    public abstract T visit(VoidTypeAstNode node);
-
-    public abstract T visit(CompilationUnitAstNode node);
-
+    @Override
+    abstract public T visit(ForInitExpressionList node);
 }

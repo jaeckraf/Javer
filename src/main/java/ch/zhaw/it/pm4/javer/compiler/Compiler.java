@@ -1,6 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnitAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
@@ -31,19 +31,21 @@ public class Compiler {
 
     public Compiler(CompilerOptions options) {
         this.options = options;
-
-        this.context = new CompilationContext(options, new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP), new SourceCache(options.getInputFilePath()));
+        SourceCache sourceCache = new SourceCache(options.getInputFilePath());
+        this.context = new CompilationContext(options,
+                new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
+                sourceCache);
         phase = CompilationPhase.ARGUMENT_PARSING;
     }
 
     public String compile() {
         phase = CompilationPhase.ARGUMENT_PARSING;
         PhaseResult<List<Token>> lexingResult = lex(context.getSourceCache().getSourceCode());
-        PhaseResult<CompilationUnitAstNode> parsingResult = runPhase(lexingResult, this::parse);
-        PhaseResult<CompilationUnitAstNode> symbolTableResult = runPhase(parsingResult, this::createSymbolTable);
-        PhaseResult<CompilationUnitAstNode> nameResolutionResult = runPhase(symbolTableResult, this::resolveNames);
-        PhaseResult<CompilationUnitAstNode> typeCheckingResult = runPhase(nameResolutionResult, this::typeCheck);
-        PhaseResult<CompilationUnitAstNode> semanticAnalysisResult = runPhase(typeCheckingResult, this::semanticAnalysis);
+        PhaseResult<CompilationUnit> parsingResult = runPhase(lexingResult, this::parse);
+        PhaseResult<CompilationUnit> symbolTableResult = runPhase(parsingResult, this::createSymbolTable);
+        PhaseResult<CompilationUnit> nameResolutionResult = runPhase(symbolTableResult, this::resolveNames);
+        PhaseResult<CompilationUnit> typeCheckingResult = runPhase(nameResolutionResult, this::typeCheck);
+        PhaseResult<CompilationUnit> semanticAnalysisResult = runPhase(typeCheckingResult, this::semanticAnalysis);
         PhaseResult<Object> codeGenerationResult = runPhase(semanticAnalysisResult, this::generateCode);
         PhaseResult<Boolean> assemblyResult = runPhase(codeGenerationResult, this::assemble);
         if (isFailed(assemblyResult)) {
@@ -73,36 +75,36 @@ public class Compiler {
         return new PhaseResult<>(true, tokens);
     }
 
-    private PhaseResult<CompilationUnitAstNode> parse(List<Token> tokens) {
-        CompilationUnitAstNode node = new Parser(tokens).parse();
+    private PhaseResult<CompilationUnit> parse(List<Token> tokens) {
+        CompilationUnit node = new Parser(tokens, context.getDiagnosticBag()).parse();
         return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<CompilationUnitAstNode> createSymbolTable(CompilationUnitAstNode rootNode) {
+    private PhaseResult<CompilationUnit> createSymbolTable(CompilationUnit rootNode) {
         new SymbolTableCreation().visit(rootNode);
         return new PhaseResult<>(true, rootNode);
     }
 
-    private PhaseResult<CompilationUnitAstNode> resolveNames(CompilationUnitAstNode node) {
+    private PhaseResult<CompilationUnit> resolveNames(CompilationUnit node) {
         phase = CompilationPhase.NAME_RESOLUTION;
         new NameResoluter().visit(node);
         return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<CompilationUnitAstNode> typeCheck(CompilationUnitAstNode node) {
+    private PhaseResult<CompilationUnit> typeCheck(CompilationUnit node) {
         phase = CompilationPhase.TYPE_CHECKING;
         new TypeChecker().visit(node);
         return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<CompilationUnitAstNode> semanticAnalysis(CompilationUnitAstNode node) {
+    private PhaseResult<CompilationUnit> semanticAnalysis(CompilationUnit node) {
         phase = CompilationPhase.SEMANTIC_ANALYSIS;
         new SemanticChecker().visit(node);
         return new PhaseResult<>(true, node);
     }
 
     // TODO make code generator return a more specific type than Object
-    private PhaseResult<Object> generateCode(CompilationUnitAstNode node) {
+    private PhaseResult<Object> generateCode(CompilationUnit node) {
         phase = CompilationPhase.CODE_GENERATION;
         Object generatedCode = new CodeGenerator().visit(node);
         return new PhaseResult<>(true, generatedCode);

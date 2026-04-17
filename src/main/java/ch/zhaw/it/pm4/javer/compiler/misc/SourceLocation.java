@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
 import ch.zhaw.it.pm4.javer.JaverLogger;
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 
 /**
  * Immutable record representing a location inside the source file.
@@ -10,6 +11,7 @@ import ch.zhaw.it.pm4.javer.JaverLogger;
  * - AST nodes
  * - Diagnostics
  */
+@JacocoGenerated("Skeleton only, remove when fully implemented")
 public record SourceLocation(int startColumn, int endColumn, int lineNumber) {
 
     /**
