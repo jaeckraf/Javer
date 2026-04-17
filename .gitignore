@@ -10,7 +10,7 @@ target/
 *.iml
 *.ipr
 
-### Log File ###
+### Log File and temporary ###
 *.log
 
 ### Eclipse ###
