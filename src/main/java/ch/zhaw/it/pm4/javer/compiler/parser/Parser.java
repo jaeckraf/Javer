@@ -136,33 +136,30 @@ public class Parser {
     }
 
     private EnumDeclaration parseEnumDeclaration() {
-        expectTokenType(TokenType.TYPE_ENUM);
-
-
-
-        return new EnumDeclaration("", new ArrayList<>());
+        return new EnumDeclaration("dummy", new ArrayList<>());
     }
 
     private EnumItem parseEnumItem() {
         return EnumItem
-                .builder("")
+                .builder("dummy")
+                .value(1)
                 .build();
     }
 
     private StructDeclaration parseStructDeclaration() {
-        return new StructDeclaration("", new ArrayList<>());
+        return new StructDeclaration("dummy", new ArrayList<>());
     }
 
     private StructField parseStructField() {
-        return new StructField(null, "");
+        return new StructField(new PrimitiveType(PrimitiveTypeKind.BOOL), "dummy");
     }
 
     private FunctionDeclaration parseFunctionDeclaration() {
-        return new FunctionDeclaration(null, "", new ArrayList<>(), null);
+        return new FunctionDeclaration(new VoidType(), "dummy", new ArrayList<>(), new BlockStatement(new ArrayList<>()));
     }
 
     private FunctionParameter parseFunctionParameter() {
-        return new FunctionParameter("", null);
+        return new FunctionParameter("dummy", new PrimitiveType(PrimitiveTypeKind.INT));
     }
 
 
@@ -187,7 +184,7 @@ public class Parser {
     }
 
     private NamedType parseNamedType() {
-        return new NamedType(NameTypeKind.ENUM, "");
+        return new NamedType(NameTypeKind.ENUM, "dummy");
     }
 
     private VoidType parseVoidType() {
@@ -222,19 +219,27 @@ public class Parser {
     }
 
     private IfStatement parseIfStatement() {
-        return IfStatement.builder(null, null).build();
+        return IfStatement
+                .builder(new LiteralExpression<>(LiteralKind.INT, 1), parseStatement())
+                .elseBranch(parseStatement())
+                .build();
     }
 
     private WhileStatement parseWhileStatement() {
-        return new WhileStatement(null, null);
+        return new WhileStatement(new LiteralExpression<>(LiteralKind.INT, 1), parseStatement());
     }
 
     private DoWhileStatement parseDoWhileStatement() {
-        return new DoWhileStatement(null, null);
+        return new DoWhileStatement(new LiteralExpression<>(LiteralKind.INT, 1), parseBlock());
     }
 
     private ForStatement parseForStatement() {
-        return ForStatement.builder(null).build();
+        return ForStatement
+                .builder(parseStatement())
+                .forInit(parseForInit())
+                .condition(new LiteralExpression<>(LiteralKind.INT, 1))
+                .update(new ArrayList<>())
+                .build();
     }
 
     private ForInit parseForInit() {
@@ -242,19 +247,21 @@ public class Parser {
     }
 
     private ForInitVarDeclaration parseForInitVarDeclaration() {
-        return new ForInitVarDeclaration(null);
+        return new ForInitVarDeclaration(VarDeclarationStatement
+                .builder(new PrimitiveType(PrimitiveTypeKind.INT), "dummy")
+                .build());
     }
 
     private ForInitExpressionList parseForInitExpressionList() {
-        return new ForInitExpressionList(null);
+        return new ForInitExpressionList(new ArrayList<>());
     }
 
     private SwitchStatement parseSwitchStatement() {
-        return new SwitchStatement(null, new ArrayList<>());
+        return new SwitchStatement(new LiteralExpression<>(LiteralKind.INT, 1), new ArrayList<>());
     }
 
     private SwitchCase parseSwitchCase() {
-        return new SwitchCase(false, new ArrayList<>(), null);
+        return new SwitchCase(false, new ArrayList<>(), parseStatement());
     }
 
     private StatementAstNode parseJumpStatement() {
@@ -262,7 +269,7 @@ public class Parser {
             case TokenType.KEYWORD_RETURN -> parseReturnStatement();
             case TokenType.KEYWORD_BREAK -> parseBreakStatement();
             case TokenType.KEYWORD_CONTINUE -> parseContinueStatement();
-            default -> null;
+            default -> null; // TODO this is not okay
         };
     }
 
@@ -275,13 +282,14 @@ public class Parser {
     }
 
     private ReturnStatement parseReturnStatement() {
-        return ReturnStatement.builder(null).build();
+        return ReturnStatement.builder(new LiteralExpression<>(LiteralKind.INT, 1)).build();
     }
 
     private VarDeclarationStatement parseVarDeclarationStatement() {
-        return VarDeclarationStatement.builder(null, "").build();
+        return VarDeclarationStatement.builder(new PrimitiveType(PrimitiveTypeKind.INT), "dummy").build();
     }
 
+    // TODO
     // nur falls du expression ';' als eigenen AST-Knoten ergänzst:
     private StatementAstNode parseExpressionStatement() {
         return null;
@@ -293,11 +301,11 @@ public class Parser {
     // ============================================================
 
     private LiteralCaseLabel parseLiteralCaseLabel() {
-        return new LiteralCaseLabel(null);
+        return new LiteralCaseLabel(new LiteralExpression<>(LiteralKind.INT, 1));
     }
 
     private EnumCaseLabel parseEnumCaseLabel() {
-        return new EnumCaseLabel("", "");
+        return new EnumCaseLabel("dummy", "dummy");
     }
 
 
@@ -310,157 +318,152 @@ public class Parser {
     }
 
     private ExpressionAstNode parseVarInitializer() {
-        return parseArrayInitExpression();
+        return new LiteralExpression<>(LiteralKind.INT, 1);
     }
 
-
-// ============================================================
-// Expression Lists
-// ============================================================
+    // ============================================================
+    // Expression Lists
+    // ============================================================
 
     private List<ExpressionAstNode> parseExpressionList() {
-        return null;
+        return new ArrayList<>();
     }
 
     private List<ExpressionAstNode> parseOptionalExpressionList() {
-        return null;
+        return new ArrayList<>();
     }
 
-
-// ============================================================
-// Expressions (gemäss Präzedenz deiner Grammatik)
-// ============================================================
+    // ============================================================
+    // Expressions (gemäss Präzedenz deiner Grammatik)
+    // ============================================================
 
     private ExpressionAstNode parseExpression() {
-        return null;
+        return parseAssignment();
     }
 
     private ExpressionAstNode parseAssignment() {
-        return null;
+        return parseConditional();
     }
 
     private AssignOperator parseAssignOperator() {
-        return null;
+        return toAssignOperator(currentToken());
     }
 
     private ExpressionAstNode parseConditional() {
-        return null;
+        return parseLogicalOr();
     }
 
     private ExpressionAstNode parseLogicalOr() {
-        return null;
+        return parseLogicalAnd();
     }
 
     private ExpressionAstNode parseLogicalAnd() {
-        return null;
+        return parseInclusiveOr();
     }
 
     private ExpressionAstNode parseInclusiveOr() {
-        return null;
+        return parseExclusiveOr();
     }
 
     private ExpressionAstNode parseExclusiveOr() {
-        return null;
+        return parseAndExpression();
     }
 
     private ExpressionAstNode parseAndExpression() {
-        return null;
+        return parseEqualityExpression();
     }
 
     private ExpressionAstNode parseEqualityExpression() {
-        return null;
+        return parseRelationalExpression();
     }
 
     private ExpressionAstNode parseRelationalExpression() {
-        return null;
+        return parseShiftExpression();
     }
 
     private ExpressionAstNode parseShiftExpression() {
-        return null;
+        return parseAdditiveExpression();
     }
 
     private ExpressionAstNode parseAdditiveExpression() {
-        return null;
+        return parseMultiplicativeExpression();
     }
 
     private ExpressionAstNode parseMultiplicativeExpression() {
-        return null;
+        return parseUnaryExpression();
     }
 
     private ExpressionAstNode parseUnaryExpression() {
-        return null;
+        return parsePostfixExpression();
     }
 
     private ExpressionAstNode parsePostfixExpression() {
-        return null;
+        return parsePrimaryExpression();
     }
 
     private ExpressionAstNode parsePrimaryExpression() {
-        return null;
+        return new LiteralExpression<>(LiteralKind.INT, 1);
     }
 
-
-// ============================================================
-// Postfix / Access / Call / New
-// ============================================================
+    // ============================================================
+    // Postfix / Access / Call / New
+    // ============================================================
 
     private ExpressionAstNode parseCallExpression() {
-        return null;
+        return new CallExpression("dummy", new ArrayList<>());
     }
 
     private ExpressionAstNode parseNameExpression() {
-        return null;
+        return new NameExpression("dummy");
     }
 
     private IndexExpression parseIndexExpression(ExpressionAstNode target) {
-        return null;
+        return new IndexExpression(target, new LiteralExpression<>(LiteralKind.INT, 1));
     }
 
     private MemberAccessExpression parseMemberAccessExpression(ExpressionAstNode target) {
-        return null;
+        return new MemberAccessExpression(target, "dummy");
     }
 
     private NewExpression parseNewExpression() {
-        return null;
+        return NewExpression.builder(new PrimitiveType(PrimitiveTypeKind.INT)).build();
     }
 
     private List<ExpressionAstNode> parseNewArrayDimensions() {
-        return null;
+        return new ArrayList<>();
     }
 
-
-// ============================================================
-// Literals
-// ============================================================
+    // ============================================================
+    // Literals
+    // ============================================================
 
     private LiteralExpression<?> parseLiteralExpression() {
-        return null;
+        return new LiteralExpression<>(LiteralKind.INT, 1);
     }
 
     private LiteralExpression<?> parseNumberLiteral() {
-        return null;
+        return parseLiteralExpression();
     }
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
-        return null;
+        return new LiteralExpression<>(LiteralKind.BOOLEAN, true);
     }
 
     private LiteralExpression<String> parseStringLiteral() {
-        return null;
+        return new LiteralExpression<>(LiteralKind.STRING, "dummy");
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
-        return new LiteralExpression<>(LiteralKind.CHAR, null);
+        return new LiteralExpression<>(LiteralKind.CHAR, 'a');
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
         return new LiteralExpression<>(LiteralKind.NULL, null);
     }
 
-
-// ============================================================
-// Operator Mapping Helpers
-// ============================================================
+    // ============================================================
+    // Operator Mapping Helpers
+    // ============================================================
 
     private BinaryExpressionKind toBinaryExpressionKind(Token token) {
         return switch (token.getTokenType()) {
@@ -543,21 +546,12 @@ public class Parser {
     }
 
 
-// ============================================================
-// Optional / Repetition Helpers
-// ============================================================
+    // ============================================================
+    // Optional / Repetition Helpers
+    // ============================================================
 
     private List<DeclarationAstNode> parseDeclarations() {
-        ArrayList<DeclarationAstNode> declarations = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
-            if (isDeclarationStart(currentToken())) {
-                declarations.add(parseDeclaration());
-            } else {
-                // error
-                break;
-            }
-        }
-        return declarations;
+        return new ArrayList<>();
     }
 
     private List<EnumItem> parseEnumItems() {
@@ -579,43 +573,5 @@ public class Parser {
     private List<CaseLabelAstNode> parseCaseLabels() {
         return new ArrayList<>();
     }
-
-
-// ============================================================
-// Token / Recovery Helpers
-// ============================================================
-
-    private boolean isDeclarationStart(Token token) {
-        TokenType type = token.getTokenType();
-        return switch (type) {
-            case TokenType.TYPE_ENUM, TokenType.TYPE_STRUCT, TokenType.KEYWORD_FUNCTION -> true;
-            default -> false;
-        };
-    }
-
-    private boolean isStatementStart(Token token) {
-        return false;
-    }
-
-    private boolean isTypeStart(Token token) {
-        return false;
-    }
-
-    private boolean isLiteralStart(Token token) {
-        return false;
-    }
-
-    private boolean isAssignmentOperator(Token token) {
-        return false;
-    }
-
-    private boolean isUnaryOperator(Token token) {
-        return false;
-    }
-
-    private boolean isPostfixOperator(Token token) {
-        return false;
-    }
-
 
 }
