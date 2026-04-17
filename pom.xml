@@ -12,6 +12,10 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.1</junit.version>
+
+        <!-- App entry point used for the shaded jar and jpackage -->
+        <main.class>ch.zhaw.it.pm4.javer.Launcher</main.class>
+        <app.name>javer</app.name>
     </properties>
 
     <dependencies>
@@ -69,13 +73,13 @@
                     <target>25</target>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <executions>
                     <execution>
-                        <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>ch.zhaw.it.pm4.javer/ch.zhaw.it.pm4.javer.HelloApplication</mainClass>
@@ -89,6 +93,7 @@
                     </execution>
                 </executions>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -104,6 +109,7 @@
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -131,7 +137,6 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
@@ -148,20 +153,26 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Build a runnable shaded jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.1</version>
                 <executions>
                     <execution>
+                        <id>shade-jar</id>
+                        <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>all</shadedClassifierName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
-                                <transformer implementation=
-                                                     "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>ch.zhaw.it.pm4.javer.Launcher</mainClass>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>${main.class}</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
@@ -170,4 +181,64 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>windows</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <version>1.7.4</version>
+                        <executions>
+                            <execution>
+                                <id>package-app-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jpackage</goal>
+                                </goals>
+                                <configuration>
+                                    <name>${app.name}</name>
+                                    <appVersion>1.0</appVersion>
+                                    <vendor>ZHAW</vendor>
+                                    <description>javer JavaFX application</description>
+
+                                    <input>${project.build.directory}</input>
+                                    <destination>${project.build.directory}/installer</destination>
+
+                                    <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
+                                    <mainClass>${main.class}</mainClass>
+
+                                    <type>APP_IMAGE</type>
+
+                                    <winConsole>false</winConsole>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>zip-installer</id>
+                                <phase>package</phase>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.directory}/zipped" />
+                                        <zip destfile="${project.build.directory}/zipped/installer.zip" basedir="${project.build.directory}/installer" />
+                                    </target>
+                                </configuration>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

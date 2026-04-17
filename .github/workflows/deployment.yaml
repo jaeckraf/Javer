@@ -28,13 +28,13 @@ jobs:
           distribution: 'temurin'
           java-version: '25'
 
-      - name: 'Build with Maven'
-        run: mvn clean package
+      - name: 'Build with Maven - Profile windows'
+        run: mvn clean package -Pwindows
 
       - name: 'Copy shaded JAR'
         run: |
-          SHADED_JAR=$(find ./target -name "*-shaded.jar" | head -n 1)
-          cp "$SHADED_JAR" ./application-shaded.jar
+          ZIPPED_JAR=$(find ./target/zipped -name "*.zip" | head -n 1)
+          cp "$ZIPPED_JAR" ./installer-windows.zip
 
       - name: 'Configure Git'
         run: |
