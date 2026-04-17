@@ -16,6 +16,6 @@ public final class IndexExpression implements ExpressionAstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

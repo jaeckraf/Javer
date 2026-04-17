@@ -16,6 +16,6 @@ public final class EnumCaseLabel implements CaseLabelAstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

@@ -7,6 +7,6 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 public final class ContinueStatement implements StatementAstNode {
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

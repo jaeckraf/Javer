@@ -18,6 +18,6 @@ public final class StructField implements AstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

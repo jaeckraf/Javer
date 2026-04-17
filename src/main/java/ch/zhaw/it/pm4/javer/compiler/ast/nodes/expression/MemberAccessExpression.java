@@ -16,6 +16,6 @@ public final class MemberAccessExpression implements ExpressionAstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

@@ -17,6 +17,6 @@ public final class ForInitExpressionList implements ForInit {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

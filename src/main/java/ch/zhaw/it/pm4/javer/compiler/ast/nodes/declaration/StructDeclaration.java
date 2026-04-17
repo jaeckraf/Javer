@@ -17,6 +17,6 @@ public final class StructDeclaration implements DeclarationAstNode {
 
     @Override
      public <T> T accept(ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor<T> visitor) {
-          return null;
+        return visitor.visit(this);
      }
 }

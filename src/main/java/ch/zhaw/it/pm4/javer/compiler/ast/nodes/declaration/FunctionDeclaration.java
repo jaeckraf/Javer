@@ -24,6 +24,6 @@ public final class FunctionDeclaration implements DeclarationAstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

@@ -9,6 +9,6 @@ public final class BreakStatement implements StatementAstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }

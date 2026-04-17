@@ -17,7 +17,7 @@ public final class CompilationUnit implements AstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 
 }

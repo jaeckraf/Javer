@@ -18,7 +18,7 @@ public final class EnumDeclaration implements DeclarationAstNode {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 
 }

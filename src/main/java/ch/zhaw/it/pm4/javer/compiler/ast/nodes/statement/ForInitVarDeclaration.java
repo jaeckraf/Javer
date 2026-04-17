@@ -14,6 +14,6 @@ public final class ForInitVarDeclaration implements ForInit {
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
-        return null;
+        return visitor.visit(this);
     }
 }
