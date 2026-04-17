@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.misc.diagnostics;
 
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;

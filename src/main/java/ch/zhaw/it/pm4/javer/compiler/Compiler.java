@@ -31,8 +31,10 @@ public class Compiler {
 
     public Compiler(CompilerOptions options) {
         this.options = options;
-
-        this.context = new CompilationContext(options, new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP), new SourceCache(options.getInputFilePath()));
+        SourceCache sourceCache = new SourceCache(options.getInputFilePath();
+        this.context = new CompilationContext(options,
+                new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
+                sourceCache);
         phase = CompilationPhase.ARGUMENT_PARSING;
     }
 
@@ -74,7 +76,7 @@ public class Compiler {
     }
 
     private PhaseResult<CompilationUnit> parse(List<Token> tokens) {
-        CompilationUnit node = new Parser(tokens).parse();
+        CompilationUnit node = new Parser(tokens, context.getDiagnosticBag()).parse();
         return new PhaseResult<>(true, node);
     }
 
