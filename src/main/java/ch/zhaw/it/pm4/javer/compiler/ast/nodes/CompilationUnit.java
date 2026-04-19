@@ -15,6 +15,10 @@ public final class CompilationUnit implements AstNode {
         this.declarations = declarations;
     }
 
+    public List<DeclarationAstNode> getDeclarations() {
+        return declarations;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

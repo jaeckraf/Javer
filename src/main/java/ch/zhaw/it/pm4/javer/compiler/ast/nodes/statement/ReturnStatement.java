@@ -13,6 +13,10 @@ public final class ReturnStatement implements StatementAstNode {
         this.expression = builder.expression;
     }
 
+    public ExpressionAstNode getExpression() {
+        return expression;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
