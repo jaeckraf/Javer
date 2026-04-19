@@ -22,4 +22,10 @@ public class VMError {
     public Instruction getInstruction() {
         return instruction;
     }
+
+    @Override
+    public String toString() {
+        return "VMError{message='" + message + "', programCounter=" + programCounter
+                + ", instruction=" + instruction.getOperationCode() + "}";
+    }
 }
