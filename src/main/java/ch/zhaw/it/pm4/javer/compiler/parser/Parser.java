@@ -190,11 +190,40 @@ public class Parser {
     }
 
     private FunctionDeclaration parseFunctionDeclaration() {
-        return new FunctionDeclaration(new VoidType(), "dummy", new ArrayList<>(), new BlockStatement(new ArrayList<>()));
+        if (matchCurrentToken(TokenType.KEYWORD_FUNCTION)) {
+            consumeToken();
+        } else {
+            expectTokenType(TokenType.KEYWORD_FUNCTION);
+        }
+
+        TypeAstNode returnType = parseReturnType();
+
+        String functionName = "dummy";
+        if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
+            functionName = currentToken().getValue();
+            consumeToken();
+        } else {
+            expectTokenType(TokenType.ID_IDENTIFIER);
+        }
+
+        List<FunctionParameter> parameters = parseFunctionParameters();
+        BlockStatement body = parseBlock();
+
+        return new FunctionDeclaration(returnType, functionName, parameters, body);
     }
 
     private FunctionParameter parseFunctionParameter() {
-        return new FunctionParameter("dummy", new PrimitiveType(PrimitiveTypeKind.INT));
+        TypeAstNode parameterType = parseType();
+
+        String parameterName = "dummy";
+        if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
+            parameterName = currentToken().getValue();
+            consumeToken();
+        } else {
+            expectTokenType(TokenType.ID_IDENTIFIER);
+        }
+
+        return new FunctionParameter(parameterName, parameterType);
     }
 
 
@@ -203,31 +232,67 @@ public class Parser {
     // ============================================================
 
     private TypeAstNode parseType() {
-        return new VoidType();
+        TypeAstNode baseType = parseTypeHead();
+        return wrapArrayDimensions(baseType);
     }
 
     private TypeAstNode parseReturnType() {
-        return new VoidType();
+        if (matchCurrentToken(TokenType.TYPE_VOID)) return parseVoidType();
+        return parseType();
     }
 
     private TypeAstNode parseTypeHead() {
-        return new PrimitiveType(PrimitiveTypeKind.INT);
+        if (matchAnyCurrentToken(
+                TokenType.TYPE_INTEGER,
+                TokenType.TYPE_DOUBLE,
+                TokenType.TYPE_BOOLEAN,
+                TokenType.TYPE_STRING,
+                TokenType.TYPE_CHARACTER
+        )) {
+            return parsePrimitiveType();
+        }
+        return parseNamedType();
     }
 
     private PrimitiveType parsePrimitiveType() {
-        return new PrimitiveType(PrimitiveTypeKind.INT);
+        PrimitiveType primitiveType = new PrimitiveType(toPrimitiveTypeKind(currentToken()));
+        consumeToken();
+        return primitiveType;
     }
 
     private NamedType parseNamedType() {
-        return new NamedType(NameTypeKind.ENUM, "dummy");
+        NameTypeKind kind = NameTypeKind.INVALID;
+        if (matchAnyCurrentToken(TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM)) {
+            kind = toNameTypeKind(currentToken());
+            consumeToken();
+        }
+
+        String name = "dummy";
+        if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
+            name = currentToken().getValue();
+            consumeToken();
+        } else {
+            expectTokenType(TokenType.ID_IDENTIFIER);
+        }
+
+        return new NamedType(kind, name);
     }
 
     private VoidType parseVoidType() {
+        if (matchCurrentToken(TokenType.TYPE_VOID)) consumeToken();
+        else expectTokenType(TokenType.TYPE_VOID);
         return new VoidType();
     }
 
-    private ArrayType wrapArrayDimensions(TypeAstNode baseType) {
-        return new ArrayType(baseType);
+    private TypeAstNode wrapArrayDimensions(TypeAstNode baseType) {
+        TypeAstNode wrappedType = baseType;
+        while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
+            consumeToken();
+            expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
+            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACKET)) consumeToken();
+            wrappedType = new ArrayType(wrappedType);
+        }
+        return wrappedType;
     }
 
     // ============================================================
@@ -235,7 +300,23 @@ public class Parser {
     // ============================================================
 
     private BlockStatement parseBlock() {
-        return new BlockStatement(new ArrayList<>());
+        List<StatementAstNode> statements = new ArrayList<>();
+        if (!matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) {
+            expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+            return new BlockStatement(statements);
+        }
+
+        int braceDepth = 0;
+        do {
+            if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) {
+                braceDepth++;
+            } else if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE)) {
+                braceDepth--;
+            }
+            consumeToken();
+        } while (braceDepth > 0 && !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE));
+
+        return new BlockStatement(statements);
     }
 
     private StatementAstNode parseStatement() {
@@ -578,7 +659,24 @@ public class Parser {
     // ============================================================
 
     private List<DeclarationAstNode> parseDeclarations() {
-        return new ArrayList<>();
+        List<DeclarationAstNode> declarations = new ArrayList<>();
+
+        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            int startPosition = currentPosition;
+            DeclarationAstNode declaration = parseDeclaration();
+
+            if (declaration != null) {
+                declarations.add(declaration);
+            }
+
+            // Recovery: bei unbekanntem Top-Level-Token oder fehlendem Fortschritt
+            // ein Token konsumieren, um Endlosschleifen zu vermeiden.
+            if (currentPosition == startPosition) {
+                consumeToken();
+            }
+        }
+
+        return declarations;
     }
 
     private List<EnumItem> parseEnumItems() {
@@ -590,7 +688,33 @@ public class Parser {
     }
 
     private List<FunctionParameter> parseFunctionParameters() {
-        return new ArrayList<>();
+        List<FunctionParameter> parameters = new ArrayList<>();
+
+        if (matchCurrentToken(TokenType.SYMBOL_LEFT_PARENTHESIS)) {
+            consumeToken();
+        } else {
+            expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+            return parameters;
+        }
+
+        if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) {
+            consumeToken();
+            return parameters;
+        }
+
+        parameters.add(parseFunctionParameter());
+        while (matchCurrentToken(TokenType.SYMBOL_COMMA)) {
+            consumeToken();
+            parameters.add(parseFunctionParameter());
+        }
+
+        if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) {
+            consumeToken();
+        } else {
+            expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        }
+
+        return parameters;
     }
 
     private List<SwitchCase> parseSwitchCases() {

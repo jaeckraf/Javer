@@ -50,6 +50,12 @@ class ParserReflectionTest {
         return invokePrivate(parser, methodName, new Class<?>[]{paramType}, arg);
     }
 
+    private Object readPrivateField(Object target, String fieldName) throws Exception {
+        var field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.get(target);
+    }
+
     // ----------------------------------------------------
     // Tests für peek(int)
     // ----------------------------------------------------
@@ -378,6 +384,70 @@ class ParserReflectionTest {
 
             // An deine echte DiagnosticBag-API anpassen:
             verify(diagnostics).add(any());
+        }
+    }
+
+    // ----------------------------------------------------
+    // Tests für parseFunctionDeclaration()
+    // ----------------------------------------------------
+    @Nested
+    class ParseFunctionDeclarationTests {
+
+        @Test
+        void parseFunctionDeclaration_mapsAllCoreParts() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.KEYWORD_FUNCTION),
+                    token(TokenType.TYPE_VOID),
+                    new Token(TokenType.ID_IDENTIFIER, "main", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_LEFT_PARENTHESIS),
+                    token(TokenType.TYPE_INTEGER),
+                    new Token(TokenType.ID_IDENTIFIER, "count", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_COMMA),
+                    token(TokenType.TYPE_STRING),
+                    new Token(TokenType.ID_IDENTIFIER, "name", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_RIGHT_PARENTHESIS),
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            Object function = invokePrivate(parser, "parseFunctionDeclaration");
+
+            assertNotNull(function);
+            assertEquals("FunctionDeclaration", function.getClass().getSimpleName());
+            assertEquals("main", readPrivateField(function, "name"));
+            assertEquals("VoidType", readPrivateField(function, "returnType").getClass().getSimpleName());
+
+            @SuppressWarnings("unchecked")
+            List<Object> parameters = (List<Object>) readPrivateField(function, "parameters");
+            assertEquals(2, parameters.size());
+            assertEquals("count", readPrivateField(parameters.get(0), "name"));
+            assertEquals("name", readPrivateField(parameters.get(1), "name"));
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SPECIAL_END_OF_FILE, current.getTokenType());
+        }
+
+        @Test
+        void parseFunctionDeclaration_identifierAfterFn_isTreatedAsNamedReturnType() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.KEYWORD_FUNCTION),
+                    new Token(TokenType.ID_IDENTIFIER, "main", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_LEFT_PARENTHESIS),
+                    token(TokenType.SYMBOL_RIGHT_PARENTHESIS),
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            Object function = invokePrivate(parser, "parseFunctionDeclaration");
+
+            assertNotNull(function);
+            assertEquals("dummy", readPrivateField(function, "name"));
+            assertEquals("NamedType", readPrivateField(function, "returnType").getClass().getSimpleName());
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SPECIAL_END_OF_FILE, current.getTokenType());
         }
     }
 
