@@ -1,6 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.diagnostics;
 
-import ch.zhaw.it.pm4.javer.JaverLogger;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
