@@ -657,7 +657,7 @@ class LexerTest {
     @Test
     @DisplayName("Fixture file covers every lexable TokenType without diagnostics")
     void allTokenTypesFromResourceFile() {
-        String source = loadResource("/lexer/all-tokens.jv");
+        String source = loadResource("all-tokens.jv");
         List<Token> tokens = lex(source);
 
         Set<TokenType> seen = new HashSet<>();
