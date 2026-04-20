@@ -1,17 +1,67 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.ArrayInitExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.AssignExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.BinaryExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.CallExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.ConditionalExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.IndexExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.LiteralExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.MemberAccessExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.NameExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.NewExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.PostfixExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.UnaryExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BreakStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ContinueStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitExpressionList;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitVarDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ReturnStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.StatementAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 
 @JacocoGenerated("jacoco-ignore")
 public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
+
+    private SymbolTable symbolTable;
+
+    /**
+     * Constructs a new SymbolTableCreation instance.
+     * @param symbolTable The symbol table to build.
+     */
+    public SymbolTableCreation(SymbolTable symbolTable) {
+        this.symbolTable = symbolTable;
+    }
+
     @Override
     public Void visit(CompilationUnit node) {
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            declaration.accept(this);
+        }
         return null;
     }
 
@@ -27,12 +77,27 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
 
     @Override
     public Void visit(FunctionDeclaration node) {
+        for (FunctionParameter param : node.getParameters()) {
+            param.accept(this);
+        }
+        if (node.getBody() != null) {
+            node.getBody().accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(FunctionParameter node) {
-        return null;
+        VariableSymbolTableEntry entry =
+        new VariableSymbolTableEntry(
+            node.getName(),
+            node.getType(),
+            null
+        );
+
+        symbolTable.addEntry(entry);
+
+    return null;
     }
 
     @Override
@@ -47,36 +112,52 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
 
     @Override
     public Void visit(BlockStatement node) {
+        for (StatementAstNode statement : node.getStatements()) {
+            statement.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(IfStatement node) {
+        node.getThenBranch().accept(this);
+        if (node.getElseBranch() != null) {
+            node.getElseBranch().accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(WhileStatement node) {
+        node.getBody().accept(this);
         return null;
     }
 
     @Override
     public Void visit(DoWhileStatement node) {
+        node.getBody().accept(this);
         return null;
     }
 
     @Override
     public Void visit(ForStatement node) {
+        node.getBody().accept(this);
         return null;
     }
 
     @Override
     public Void visit(SwitchStatement node) {
+        for (SwitchCase switchCase : node.getCases()) {
+            switchCase.accept(this);
+        }
         return null;
     }
 
     @Override
     public Void visit(SwitchCase node) {
+        if (node.getStatement() != null) {
+            node.getStatement().accept(this);
+        }
         return null;
     }
 
@@ -97,6 +178,12 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
 
     @Override
     public Void visit(VarDeclarationStatement node) {
+        VariableSymbolTableEntry entry = new VariableSymbolTableEntry(
+            node.getName(),
+            node.getType(),
+            node.getInitializer()
+        );
+        symbolTable.addEntry(entry);
         return null;
     }
 

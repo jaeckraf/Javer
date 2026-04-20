@@ -15,6 +15,10 @@ public final class WhileStatement implements StatementAstNode {
         this.statement = statement;
     }
 
+    public StatementAstNode getBody() {
+        return statement;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

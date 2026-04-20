@@ -41,6 +41,14 @@ public final class IfStatement implements StatementAstNode {
         }
     }
 
+    public StatementAstNode getThenBranch() {
+        return thenBranch;
+    }
+
+    public StatementAstNode getElseBranch() {
+        return elseBranch;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

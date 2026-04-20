@@ -17,6 +17,10 @@ public final class SwitchStatement implements StatementAstNode {
         this.cases = cases;
     }
 
+    public List<SwitchCase> getCases() {
+        return cases;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);
