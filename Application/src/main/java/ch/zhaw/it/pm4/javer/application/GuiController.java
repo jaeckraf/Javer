@@ -250,15 +250,20 @@ public class GuiController {
     private Path resolveJarFromProperty(String propertyName) {
         String value = System.getProperty(propertyName);
         if (value == null || value.isBlank()) {
+            appendStatus("ERROR: Missing system property: " + propertyName + "\n");
+            appendStatus("Please ensure JarConfigLoader.loadConfiguration() is called at startup or set the property manually.\n");
             return null;
         }
-
+        
         Path path = Path.of(value).toAbsolutePath().normalize();
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
-            appendStatus("Configured jar does not exist: " + path + "\n");
+            appendStatus("ERROR: Configured jar does not exist: " + path + "\n");
+            appendStatus("Make sure the jar file is present at the expected location.\n");
+            appendStatus("Property '" + propertyName + "' is set to: " + value + "\n");
             return null;
         }
-
+        
+        appendStatus("Resolved " + propertyName + " to: " + path.toAbsolutePath() + "\n");
         return path;
     }
 

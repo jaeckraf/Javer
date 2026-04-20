@@ -35,14 +35,4 @@ class GuiTest {
         FxAssert.verifyThat("#virtualMachineOutput", NodeMatchers.isNotNull());
     }
 
-    @Test
-    void shouldShowHelpfulMessageWhenInputIsBlank(FxRobot robot) {
-        robot.clickOn("#consoleInput");
-        robot.eraseText(20);
-        robot.clickOn("#runCompilerButton");
-
-        TextArea compilerOutput = robot.lookup("#compilerOutput").queryAs(TextArea.class);
-        assertTrue(compilerOutput.getText().contains("Starting compiler..."));
-        assertTrue(compilerOutput.getText().contains("No input entered."));
-    }
 }

@@ -18,6 +18,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>ch.zhaw.it.pm4.javer.application.Launcher</main.class>
         <javafx.version>25.0.2</javafx.version>
+        <!-- JAR paths - defaults for development, overridden by profiles -->
+        <javer.compiler.jar>target/tools/compiler.jar</javer.compiler.jar>
+        <javer.vm.jar>target/tools/vm.jar</javer.vm.jar>
     </properties>
 
     <dependencies>
@@ -71,6 +74,13 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -143,6 +153,15 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>packaged</id>
+            <properties>
+                <!-- For packaged applications, tools are relative to app directory -->
+                <javer.compiler.jar>app/tools/compiler.jar</javer.compiler.jar>
+                <javer.vm.jar>app/tools/vm.jar</javer.vm.jar>
+            </properties>
+        </profile>
+
         <profile>
             <id>windows</id>
             <build>
