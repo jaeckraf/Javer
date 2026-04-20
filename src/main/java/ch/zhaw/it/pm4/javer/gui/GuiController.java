@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.gui;
 
 import ch.zhaw.it.pm4.javer.compiler.Compiler;
 import ch.zhaw.it.pm4.javer.compiler.CompilerOptions;
-import ch.zhaw.it.pm4.javer.vm.BytecodeLoader;
 import ch.zhaw.it.pm4.javer.vm.VM;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -47,8 +46,7 @@ public class GuiController {
             Compiler compiler = new Compiler(options);
             String compileResult = compiler.compile();
             compilerOutput.setText(compileResult);
-            BytecodeLoader bytecodeLoader = new BytecodeLoader(VM_INPUT_FILE.toAbsolutePath().toString());
-            VM vm = new VM(bytecodeLoader);
+            VM vm = new VM(VM_INPUT_FILE.toAbsolutePath().toString());
             String vmResult = vm.run();
             virtualMachineOutput.setText(vmResult);
         } else {
