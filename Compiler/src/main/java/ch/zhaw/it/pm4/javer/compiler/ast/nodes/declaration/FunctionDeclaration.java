@@ -22,6 +22,14 @@ public final class FunctionDeclaration implements DeclarationAstNode {
         this.body = body;
     }
 
+    public BlockStatement getBody() {
+        return body;
+    }
+
+    public List<FunctionParameter> getParameters() {
+        return parameters;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

@@ -14,6 +14,10 @@ public final class DoWhileStatement implements StatementAstNode {
         this.block = block;
     }
 
+    public BlockStatement getBody() {
+        return block;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

@@ -20,6 +20,10 @@ public final class SwitchCase implements AstNode {
         this.statement = statement;
     }
 
+    public StatementAstNode getStatement() {
+        return statement;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);
