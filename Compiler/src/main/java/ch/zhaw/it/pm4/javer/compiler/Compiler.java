@@ -38,6 +38,12 @@ public class Compiler {
         phase = CompilationPhase.ARGUMENT_PARSING;
     }
 
+    static void main(String[] args) {
+        CompilerOptions options = CompilerOptions.create(args);
+        Compiler compiler = new Compiler(options);
+        System.out.println(compiler.compile()); // TOOO remove when DiagnosticBag returns string in error-stream
+    }
+
     public String compile() {
         phase = CompilationPhase.ARGUMENT_PARSING;
         PhaseResult<List<Token>> lexingResult = lex(context.getSourceCache().getSourceCode());

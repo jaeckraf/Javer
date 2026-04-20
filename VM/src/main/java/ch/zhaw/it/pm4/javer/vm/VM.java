@@ -13,6 +13,18 @@ public class VM {
         this.bytecodeLoader = bytecodeLoader;
     }
 
+    static void main(String[] args) {
+        if (args.length < 1) {
+            System.err.println("Usage: java VM <bytecode-file>");
+            System.exit(1);
+        }
+        String bytecodeFile = args[0];
+        BytecodeLoader bytecodeLoader = new BytecodeLoader(bytecodeFile);
+        VM vm = new VM(bytecodeLoader);
+        String result = vm.run();
+        System.out.println(result);
+    }
+
     public String run() {
        int programCounter = 0;
        boolean isRunning = true;
