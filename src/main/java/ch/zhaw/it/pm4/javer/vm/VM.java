@@ -1,30 +1,21 @@
 package ch.zhaw.it.pm4.javer.vm;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class VM {
-
-    // Single segment for code and data, indexed by PC
     private String[] segment;
     private int pc = 0;
-
-    // A single stack for all data (use Object, since we push numbers and strings)
-    private Deque<Object> stack = new ArrayDeque<>();
-
-    // Heap as int array
-    private int[] heap = new int[1024];
-
-    // Map for resolving jump labels (e.g. "#200" -> Index 8)
-    private Map<String, Integer> labels = new HashMap<>();
+    private final Deque<Object> stack = new ArrayDeque<>();
+    private final int[] heap = new int[1024];
+    private int heapPointer = 0;
 
     public VM(String filePath) {
         try {
@@ -37,28 +28,17 @@ public class VM {
 
     private void loadSegment(List<String> rawLines) {
         List<String> processedLines = new ArrayList<>();
-
         for (String line : rawLines) {
             String trimmed = line.trim();
-            // Ignore certain keywords or empty lines
             if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("code:") || trimmed.equalsIgnoreCase("data:")) {
                 continue;
             }
 
-            // Remove comments (everything after //)
             if (trimmed.contains("//")) {
                 trimmed = trimmed.substring(0, trimmed.indexOf("//")).trim();
             }
-
             if (trimmed.isEmpty()) {
                 continue;
-            }
-
-            // Register labels (starting with #)
-            if (trimmed.startsWith("#")) {
-                String[] parts = trimmed.split("\\s+");
-                String labelName = parts[0];
-                labels.put(labelName, processedLines.size());
             }
 
             processedLines.add(trimmed);
@@ -72,24 +52,16 @@ public class VM {
 
         while (!halted && pc < segment.length) {
             String currentInstruction = segment[pc];
-
-            // On-the-fly decoding of the instruction
             String[] parts = currentInstruction.split("\\s+");
             String opcode = parts[0].toUpperCase();
 
             switch (opcode) {
+                case "PUSHCONST":
+                    stack.push(parseValue(parts[1]));
+                    pc++;
+                    break;
                 case "PUSH":
-                    if (parts.length > 2 && parts[1].equalsIgnoreCase("CONST")) {
-                        // e.g. PUSH CONST 100
-                        stack.push(parseValue(parts[2]));
-                    } else if (parts.length > 2 && parts[1].equalsIgnoreCase("ARGS")) {
-                        stack.push(parseValue(parts[2]));
-                    } else if (parts.length > 1) {
-                        stack.push(parseValue(parts[1]));
-                    } else {
-                        System.err.println("Invalid PUSH on PC " + pc);
-                        halted = true;
-                    }
+                    stack.push(parseValue(parts[1]));
                     pc++;
                     break;
                 case "POP":
@@ -98,50 +70,232 @@ public class VM {
                     }
                     pc++;
                     break;
-                case "ADD":
-                    if (stack.size() >= 2) {
-                        Number b = (Number) stack.pop();
-                        Number a = (Number) stack.pop();
-                        stack.push(a.intValue() + b.intValue());
+                case "PRINT":
+                    if (!stack.isEmpty()) {
+                        System.out.println(stack.pop());
                     }
+                    pc++;
+                    break;
+                case "ADD":
+                    binaryOp(Integer::sum);
+                    pc++;
+                    break;
+                case "SUB":
+                    binaryOp((a, b) -> a - b);
+                    pc++;
+                    break;
+                case "MUL":
+                    binaryOp((a, b) -> a * b);
+                    pc++;
+                    break;
+                case "DIV":
+                    binaryOp((a, b) -> a / b);
+                    pc++;
+                    break;
+                case "MOD":
+                    binaryOp((a, b) -> a % b);
+                    pc++;
+                    break;
+                case "SHIFTR":
+                    binaryOp((a, b) -> a >> b);
+                    pc++;
+                    break;
+                case "SHIFTL":
+                    binaryOp((a, b) -> a << b);
+                    pc++;
+                    break;
+                case "AND":
+                    binaryOp((a, b) -> a & b);
+                    pc++;
+                    break;
+                case "OR":
+                    binaryOp((a, b) -> a | b);
+                    pc++;
+                    break;
+                case "XOR":
+                    binaryOp((a, b) -> a ^ b);
+                    pc++;
+                    break;
+                case "LT":
+                    binaryOp((a, b) -> a < b ? 1 : 0);
+                    pc++;
+                    break;
+                case "LE":
+                    binaryOp((a, b) -> a <= b ? 1 : 0);
+                    pc++;
+                    break;
+                case "GT":
+                    binaryOp((a, b) -> a > b ? 1 : 0);
+                    pc++;
+                    break;
+                case "GE":
+                    binaryOp((a, b) -> a >= b ? 1 : 0);
+                    pc++;
+                    break;
+                case "COMPARE":
+                    binaryOp((a, b) -> a.equals(b) ? 1 : 0);
                     pc++;
                     break;
                 case "ADDF":
-                    if (stack.size() >= 2) {
-                        Number bF = (Number) stack.pop();
-                        Number aF = (Number) stack.pop();
-                        stack.push(aF.floatValue() + bF.floatValue());
-                    }
+                    binaryOpF(Float::sum);
+                    pc++;
+                    break;
+                case "SUBF":
+                    binaryOpF((a, b) -> a - b);
+                    pc++;
+                    break;
+                case "MULF":
+                    binaryOpF((a, b) -> a * b);
+                    pc++;
+                    break;
+                case "DIVF":
+                    binaryOpF((a, b) -> a / b);
+                    pc++;
+                    break;
+                case "BITWISEINVERT":
+                    unaryOp(a -> ~a);
+                    pc++;
+                    break;
+                case "NEGATE":
+                    unaryOp(a -> -a);
+                    pc++;
+                    break;
+                case "NEGATEF":
+                    unaryOpF(a -> -a);
                     pc++;
                     break;
                 case "JMP":
-                    // Formatting of JMP 200 or JMP #200
-                    String target = parts[1].startsWith("#") ? parts[1] : "#" + parts[1];
-                    if (labels.containsKey(target)) {
-                        pc = labels.get(target);
+                    pc = getJumpTarget(parts[1]);
+                    if (pc == -1) halted = true;
+                    break;
+                case "JT":
+                    if (isTopTrue()) {
+                        pc = getJumpTarget(parts[1]);
+                        if (pc == -1) halted = true;
                     } else {
-                        System.err.println("Unknown label: " + target);
+                        pc++;
+                    }
+                    break;
+                case "JF":
+                    if (!isTopTrue()) {
+                        pc = getJumpTarget(parts[1]);
+                        if (pc == -1) halted = true;
+                    } else {
+                        pc++;
+                    }
+                    break;
+                case "CALL":
+                    int targetPc = getJumpTarget(parts[1]);
+                    if (targetPc != -1) {
+                        stack.push(pc + 1);
+                        pc = targetPc;
+                    } else {
+                        halted = true;
+                    }
+                    break;
+                case "RET":
+                    if (!stack.isEmpty()) {
+                        Object returnAddress = stack.pop();
+                        if (returnAddress instanceof Integer) {
+                            pc = (Integer) returnAddress;
+                        } else {
+                            System.out.println("outor: Return address on stack is not an Integer.");
+                            halted = true;
+                        }
+                    } else {
                         halted = true;
                     }
                     break;
                 case "HALT":
                     halted = true;
                     break;
+                case "NEW":
+                    int size = ((Number) stack.pop()).intValue();
+                    stack.push(heapPointer);
+                    heapPointer += size;
+                    pc++;
+                    break;
+                case "HLOAD":
+                    int offset = Integer.parseInt(parts[2]);
+                    int pointerIndex = ((Number) stack.pop()).intValue();
+                    int address = heap[pointerIndex] + offset;
+                    stack.push(heap[address]);
+                    pc++;
+                    break;
+                case "HSTORE":
+                    Object value = stack.pop();
+                    int hstoreOffset = Integer.parseInt(parts[2]);
+                    int hstorePointerIndex = ((Number) stack.pop()).intValue();
+                    int hstoreAddress = heap[hstorePointerIndex] + hstoreOffset;
+                    heap[hstoreAddress] = ((Number) value).intValue();
+                    pc++;
+                    break;
                 default:
-                    if (opcode.startsWith("#")) {
-                        // It is a label / data entry, just ignore and continue
-                        pc++;
-                    } else {
-                        System.out.println("Unknown instruction on PC " + pc + ": " + opcode);
-                        pc++;
-                    }
+                    System.out.println("Unknown instruction at line " + (pc + 1) + ": " + currentInstruction);
+                    pc++;
                     break;
             }
         }
         return "Execution finished.";
     }
 
+    private void binaryOp(BiFunction<Integer, Integer, Integer> op) {
+        if (stack.size() >= 2) {
+            Number b = (Number) stack.pop();
+            Number a = (Number) stack.pop();
+            stack.push(op.apply(a.intValue(), b.intValue()));
+        }
+    }
+
+    private void unaryOp(Function<Integer, Integer> op) {
+        if (!stack.isEmpty()) {
+            Number a = (Number) stack.pop();
+            stack.push(op.apply(a.intValue()));
+        }
+    }
+
+    private void binaryOpF(BiFunction<Float, Float, Float> op) {
+        if (stack.size() >= 2) {
+            Number b = (Number) stack.pop();
+            Number a = (Number) stack.pop();
+            stack.push(op.apply(a.floatValue(), b.floatValue()));
+        }
+    }
+
+    private void unaryOpF(Function<Float, Float> op) {
+        if (!stack.isEmpty()) {
+            Number a = (Number) stack.pop();
+            stack.push(op.apply(a.floatValue()));
+        }
+    }
+
+    private boolean isTopTrue() {
+        if (stack.isEmpty()) return false;
+        Object top = stack.pop();
+        if (top instanceof Number) {
+            return ((Number) top).intValue() != 0;
+        }
+        return false; // Non-numeric values are considered false
+    }
+
+    private int getJumpTarget(String target) {
+        try {
+            int line = Integer.parseInt(target);
+            int targetPc = line - 1;
+            if (targetPc >= 0 && targetPc < segment.length) {
+                return targetPc;
+            }
+        } catch (NumberFormatException e) {
+            // Handled below
+        }
+        System.out.println("Invalid jump target: '" + target + "' is not a valid line number.");
+        return -1;
+    }
+
     private Object parseValue(String val) {
+        if (val.startsWith("\"") && val.endsWith("\"")) {
+            return val.substring(1, val.length() - 1);
+        }
         try {
             if (val.contains(".")) {
                 return Float.parseFloat(val);
@@ -149,8 +303,7 @@ public class VM {
                 return Integer.parseInt(val);
             }
         } catch (NumberFormatException e) {
-            return val; // Fallback as String
+            return val;
         }
     }
-
 }
