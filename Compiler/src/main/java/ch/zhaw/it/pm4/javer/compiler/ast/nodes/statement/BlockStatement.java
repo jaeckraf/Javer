@@ -14,6 +14,10 @@ public final class BlockStatement implements StatementAstNode {
         this.statements = statements;
     }
 
+    public List<StatementAstNode> getStatements() {
+        return statements;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);
