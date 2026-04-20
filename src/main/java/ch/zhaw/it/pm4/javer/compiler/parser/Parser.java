@@ -466,26 +466,107 @@ public class Parser {
     // ============================================================
 
     private LiteralExpression<?> parseLiteralExpression() {
-        return new LiteralExpression<>(LiteralKind.INT, 1);
+        Token token = currentToken();
+        switch (token.getTokenType()) {
+            case LITERAL_INTEGER:
+            case LITERAL_DOUBLE:
+            case LITERAL_HEX:
+            case LITERAL_BINARY:
+            case LITERAL_OCTAL:
+                return parseNumberLiteral();
+            case LITERAL_BOOLEAN:
+                return parseBooleanLiteral();
+            case LITERAL_STRING:
+                return parseStringLiteral();
+            case LITERAL_CHAR:
+                return parseCharLiteral();
+            case LITERAL_NULL:
+                return parseNullLiteral();
+            default:
+                diagnosticBag.add(token.getPosition(), ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity.ERROR, "Expected literal expression");
+                return new LiteralExpression<>(LiteralKind.NULL, null);
+        }
     }
 
     private LiteralExpression<?> parseNumberLiteral() {
-        return parseLiteralExpression();
+        Token token = currentToken();
+        consumeToken();
+        String text = token.getValue();
+        if (token.getTokenType() == TokenType.LITERAL_DOUBLE) {
+            try {
+                return new LiteralExpression<>(LiteralKind.DOUBLE, Double.parseDouble(text));
+            } catch (NumberFormatException e) {
+                diagnosticBag.add(token.getPosition(), ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity.ERROR, "Invalid double literal");
+                return new LiteralExpression<>(LiteralKind.DOUBLE, 0.0);
+            }
+        }
+        
+        int radix = 10;
+        String numberPart = text;
+        if (token.getTokenType() == TokenType.LITERAL_HEX) {
+            radix = 16;
+            numberPart = text.substring(2);
+        } else if (token.getTokenType() == TokenType.LITERAL_BINARY) {
+            radix = 2;
+            numberPart = text.substring(2);
+        } else if (token.getTokenType() == TokenType.LITERAL_OCTAL) {
+            radix = 8;
+            numberPart = text.substring(2);
+        }
+
+        try {
+            return new LiteralExpression<>(LiteralKind.INT, Integer.parseInt(numberPart, radix));
+        } catch (NumberFormatException e) {
+            diagnosticBag.add(token.getPosition(), ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity.ERROR, "Invalid integer literal");
+            return new LiteralExpression<>(LiteralKind.INT, 0);
+        }
     }
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
-        return new LiteralExpression<>(LiteralKind.BOOLEAN, true);
+        Token token = currentToken();
+        consumeToken();
+        return new LiteralExpression<>(LiteralKind.BOOLEAN, Boolean.parseBoolean(token.getValue()));
     }
 
     private LiteralExpression<String> parseStringLiteral() {
-        return new LiteralExpression<>(LiteralKind.STRING, "dummy");
+        Token token = currentToken();
+        consumeToken();
+        String text = token.getValue();
+        // Remove surrounding quotes if they exist
+        if (text.startsWith("\"") && text.endsWith("\"") && text.length() >= 2) {
+            text = text.substring(1, text.length() - 1);
+        }
+        return new LiteralExpression<>(LiteralKind.STRING, text);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
-        return new LiteralExpression<>(LiteralKind.CHAR, 'a');
+        Token token = currentToken();
+        consumeToken();
+        String text = token.getValue();
+        char value = '\0';
+        if (text.startsWith("'") && text.endsWith("'") && text.length() >= 2) {
+            String inner = text.substring(1, text.length() - 1);
+            if (inner.length() == 1) {
+                value = inner.charAt(0);
+            } else if (inner.length() == 2 && inner.charAt(0) == '\\') {
+                switch (inner.charAt(1)) {
+                    case 'n': value = '\n'; break;
+                    case 'r': value = '\r'; break;
+                    case 't': value = '\t'; break;
+                    case 'b': value = '\b'; break;
+                    case 'f': value = '\f'; break;
+                    case '0': value = '\0'; break;
+                    case '"': value = '\"'; break;
+                    case '\'': value = '\''; break;
+                    case '\\': value = '\\'; break;
+                }
+            }
+        }
+        return new LiteralExpression<>(LiteralKind.CHAR, value);
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
+        consumeToken();
         return new LiteralExpression<>(LiteralKind.NULL, null);
     }
 
