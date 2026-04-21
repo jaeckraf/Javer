@@ -56,7 +56,7 @@ class SymbolTableCreationTest {
             assertTrue(symbolTable.contains("x"));
             assertEquals(
                 PrimitiveTypeKind.INT,
-                ((PrimitiveType) symbolTable.getEntry("x").getType()).getKind()
+                ((PrimitiveType) ((VariableSymbolTableEntry) symbolTable.getEntry("x")).getType()).getKind()
             );
         }
 

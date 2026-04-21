@@ -72,8 +72,23 @@ public class DiagnosticBag {
      * @return The formatted report string.
      */
     public String dumpReport() {
-        // TODO: Implement
-        return "Error Report:\n";
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("=== Error Report ===\n");
+        sb.append("File: ").append(filePath).append("\n");
+        sb.append("Phase: ").append(phase).append("\n\n");
+
+        if (diagnostics.isEmpty()) {
+            sb.append("No diagnostics.\n");
+            return sb.toString();
+        }
+
+        for (Diagnostic d : diagnostics) {
+            sb.append(d.toString());
+            sb.append("\n");
+        }
+
+        return sb.toString();
     }
 
     /**

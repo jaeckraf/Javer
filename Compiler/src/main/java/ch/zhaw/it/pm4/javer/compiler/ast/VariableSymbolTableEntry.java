@@ -5,14 +5,20 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 
 public class VariableSymbolTableEntry extends SymbolTableEntry {
     private final ExpressionAstNode initializer;
+    private final TypeAstNode type;
 
     private VariableSymbolTableEntry(Builder builder) {
-        super(builder.name, builder.type);
+        super(builder.name);
+        this.type = builder.type;
         this.initializer = builder.initializer;
     }
 
     public ExpressionAstNode getInitializer() {
         return initializer;
+    }
+
+    public TypeAstNode getType() {
+        return type;
     }
 
     public static class Builder {
