@@ -7,9 +7,6 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,8 +18,6 @@ public class GuiController {
 
     private static final Path CONSOLE_INPUT_FILE = Path.of("console-input.txt");
     private static final Path VM_INPUT_FILE = Path.of("vm-input.txt");
-
-    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private ManagedProcessRunner compilerRunner;
     private ManagedProcessRunner vmRunner;
@@ -294,11 +289,8 @@ public class GuiController {
     }
 
     private void appendStatus(String text) {
-        String timestamp = LocalTime.now().format(TIME_FORMAT);
-        String formatted = "[" + timestamp + "]: " + text;
-
         Platform.runLater(() -> {
-            statusOutput.appendText(formatted);
+            statusOutput.appendText(text);
             statusOutput.setScrollTop(Double.MAX_VALUE);
         });
     }
