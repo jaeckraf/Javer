@@ -31,7 +31,14 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarqube.pm4.init-lab.ch
+          MAVEN_OPTS: >-
+            -Dtestfx.robot=glass
+            -Dtestfx.headless=true
+            -Dprism.order=sw
+            -Dprism.text=t2k
+            -Djava.awt.headless=true
         run: |
-          mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          xvfb-run -a mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.host.url="$SONAR_HOST_URL" \
-            -Dsonar.token="$SONAR_TOKEN"
+            -Dsonar.token="$SONAR_TOKEN" \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco-aggregate/jacoco.xml
