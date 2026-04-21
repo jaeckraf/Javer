@@ -13,19 +13,14 @@ public class JaverLogger {
             LOGGER.setUseParentHandlers(false);
 
             // ---- File Handler ----
-            FileHandler fileHandler = new FileHandler("javer.log", true); // true = append
+            FileHandler fileHandler = new FileHandler("javer.log", false);
             fileHandler.setLevel(Level.ALL);
 
             // Custom format
             fileHandler.setFormatter(new SimpleFormatter());
 
-            // ---- Console Handler ----
-            ConsoleHandler consoleHandler = new ConsoleHandler();
-            consoleHandler.setLevel(Level.INFO);
-
             // Add handlers
             LOGGER.addHandler(fileHandler);
-            LOGGER.addHandler(consoleHandler);
 
             // Global log level
             LOGGER.setLevel(Level.ALL);
@@ -37,6 +32,10 @@ public class JaverLogger {
 
     // ---- Public static methods ----
 
+    public static void debug(String message) {
+        LOGGER.finest(message);
+    }
+
     public static void info(String message) {
         LOGGER.info(message);
     }
@@ -47,10 +46,6 @@ public class JaverLogger {
 
     public static void error(String message) {
         LOGGER.severe(message);
-    }
-
-    public static void debug(String message) {
-        LOGGER.fine(message);
     }
 
 }
