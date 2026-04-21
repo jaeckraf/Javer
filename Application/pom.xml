@@ -254,12 +254,20 @@
 
                             <execution>
                                 <id>zip-app-image</id>
-                                <phase>package</phase>
+                                <phase>verify</phase>
                                 <goals>
                                     <goal>run</goal>
                                 </goals>
                                 <configuration>
                                     <target>
+                                        <fail message="Installer directory was not created: ${project.build.directory}/installer">
+                                            <condition>
+                                                <not>
+                                                    <available file="${project.build.directory}/installer" type="dir"/>
+                                                </not>
+                                            </condition>
+                                        </fail>
+
                                         <mkdir dir="${project.build.directory}/zipped"/>
                                         <zip destfile="${project.build.directory}/zipped/Application-app-image.zip"
                                              basedir="${project.build.directory}/installer"/>
