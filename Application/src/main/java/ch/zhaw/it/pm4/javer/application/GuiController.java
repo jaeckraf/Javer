@@ -19,6 +19,10 @@ public class GuiController {
     private static final Path CONSOLE_INPUT_FILE = Path.of("console-input.txt");
     private static final Path VM_INPUT_FILE = Path.of("vm-input.txt");
 
+    // Packaged release layout inside Application app image
+    private static final Path RELEASE_COMPILER_EXE = Path.of("app", "tools", "Compiler", "javer-compiler.exe");
+    private static final Path RELEASE_VM_EXE = Path.of("app", "tools", "VM", "javer-vm.exe");
+
     private ManagedProcessRunner compilerRunner;
     private ManagedProcessRunner vmRunner;
 
@@ -54,6 +58,7 @@ public class GuiController {
         GuiLogAppender.setConsumer(this::appendStatus);
 
         JaverLogger.info("GUI initialized");
+        JaverLogger.info("Working directory: " + Path.of("").toAbsolutePath().normalize());
 
         compilerRunner = new ManagedProcessRunner(
                 "Compiler",
@@ -84,19 +89,14 @@ public class GuiController {
         String inputPath = writeInputToFile(consoleInput.getText());
         createOrClearFile(VM_INPUT_FILE, "VM input file");
 
-        Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
-        if (compilerJar == null) {
-            JaverLogger.error("Compiler jar not configured. Set system property 'javer.compiler.jar'.\n");
+        List<String> command = buildCompilerCommand(inputPath);
+        if (command == null) {
             return;
         }
 
-        boolean started = compilerRunner.start(List.of(
-                "java",
-                "-jar",
-                compilerJar.toString(),
-                inputPath,
-                VM_INPUT_FILE.toAbsolutePath().toString()
-        ));
+        logCommand("Compiler", command);
+
+        boolean started = compilerRunner.start(command);
 
         if (!started) {
             JaverLogger.error("Compiler is already running.\n");
@@ -112,18 +112,14 @@ public class GuiController {
         virtualMachineOutput.clear();
         createOrClearFile(VM_INPUT_FILE, "VM input file");
 
-        Path vmJar = resolveJarFromProperty("javer.vm.jar");
-        if (vmJar == null) {
-            JaverLogger.error("VM jar not configured. Set system property 'javer.vm.jar'.\n");
+        List<String> command = buildVmCommand();
+        if (command == null) {
             return;
         }
 
-        boolean started = vmRunner.start(List.of(
-                "java",
-                "-jar",
-                vmJar.toString(),
-                VM_INPUT_FILE.toAbsolutePath().toString()
-        ));
+        logCommand("VM", command);
+
+        boolean started = vmRunner.start(command);
 
         if (!started) {
             JaverLogger.error("VM is already running.\n");
@@ -153,27 +149,17 @@ public class GuiController {
         String inputPath = writeInputToFile(consoleInput.getText());
         createOrClearFile(VM_INPUT_FILE, "VM input file");
 
-        Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
-        Path vmJar = resolveJarFromProperty("javer.vm.jar");
+        List<String> compilerCommand = buildCompilerCommand(inputPath);
+        List<String> vmCommand = buildVmCommand();
 
-        if (compilerJar == null) {
-            JaverLogger.error("Compiler jar not configured. Set system property 'javer.compiler.jar'.\n");
-            return;
-        }
-
-        if (vmJar == null) {
-            JaverLogger.error("VM jar not configured. Set system property 'javer.vm.jar'.\n");
+        if (compilerCommand == null || vmCommand == null) {
             return;
         }
 
         Thread chainThread = new Thread(() -> {
-            boolean compilerStarted = compilerRunner.start(List.of(
-                    "java",
-                    "-jar",
-                    compilerJar.toString(),
-                    inputPath,
-                    VM_INPUT_FILE.toAbsolutePath().toString()
-            ));
+            logCommand("Compiler", compilerCommand);
+
+            boolean compilerStarted = compilerRunner.start(compilerCommand);
 
             if (!compilerStarted) {
                 JaverLogger.error("Compiler is already running.\n");
@@ -187,16 +173,60 @@ public class GuiController {
                 return;
             }
 
-            vmRunner.start(List.of(
-                    "java",
-                    "-jar",
-                    vmJar.toString(),
-                    VM_INPUT_FILE.toAbsolutePath().toString()
-            ));
+            logCommand("VM", vmCommand);
+            vmRunner.start(vmCommand);
         }, "compiler-vm-chain");
 
         chainThread.setDaemon(true);
         chainThread.start();
+    }
+
+    private List<String> buildCompilerCommand(String inputPath) {
+        Path compilerExe = resolveReleaseExecutable(RELEASE_COMPILER_EXE, "Compiler");
+        if (compilerExe != null) {
+            return List.of(
+                    compilerExe.toString(),
+                    inputPath,
+                    VM_INPUT_FILE.toAbsolutePath().toString()
+            );
+        }
+
+        Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
+        if (compilerJar == null) {
+            JaverLogger.error("Compiler executable and IDE jar are both unavailable.\n");
+            return null;
+        }
+
+        return List.of(
+                "java",
+                "-jar",
+                compilerJar.toString(),
+                inputPath,
+                VM_INPUT_FILE.toAbsolutePath().toString()
+        );
+    }
+
+    private List<String> buildVmCommand() {
+        Path vmExe = resolveReleaseExecutable(RELEASE_VM_EXE, "VM");
+        if (vmExe != null) {
+            return List.of(
+                    vmExe.toString(),
+                    VM_INPUT_FILE.toAbsolutePath().toString()
+            );
+        }
+
+        Path vmJar = resolveJarFromProperty("javer.vm.jar");
+        if (vmJar == null) {
+            JaverLogger.error("VM executable and IDE jar are both unavailable.\n");
+            return null;
+        }
+
+        return List.of(
+                "java",
+                "-jar",
+                vmJar.toString(),
+                VM_INPUT_FILE.toAbsolutePath().toString()
+        );
     }
 
     private void waitUntilFinished(ManagedProcessRunner runner) {
@@ -245,6 +275,18 @@ public class GuiController {
         }
     }
 
+    private Path resolveReleaseExecutable(Path relativePath, String label) {
+        Path path = relativePath.toAbsolutePath().normalize();
+
+        if (!Files.exists(path) || !Files.isRegularFile(path)) {
+            JaverLogger.info(label + " packaged executable not found at: " + path);
+            return null;
+        }
+
+        JaverLogger.error("Resolved " + label + " executable to: " + path + "\n");
+        return path;
+    }
+
     private Path resolveJarFromProperty(String propertyName) {
         String value = System.getProperty(propertyName);
         if (value == null || value.isBlank()) {
@@ -252,7 +294,7 @@ public class GuiController {
             JaverLogger.error("Please ensure JarConfigLoader.loadConfiguration() is called at startup or set the property manually.\n");
             return null;
         }
-        
+
         Path path = Path.of(value).toAbsolutePath().normalize();
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
             JaverLogger.error("ERROR: Configured jar does not exist: " + path + "\n");
@@ -263,6 +305,13 @@ public class GuiController {
 
         JaverLogger.error("Resolved " + propertyName + " to: " + path.toAbsolutePath() + "\n");
         return path;
+    }
+
+    private void logCommand(String processName, List<String> command) {
+        JaverLogger.info("Starting " + processName + " with command:");
+        for (String part : command) {
+            JaverLogger.info("  " + part);
+        }
     }
 
     private void updateCompilerButtons(boolean running) {

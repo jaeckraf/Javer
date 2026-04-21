@@ -1,47 +1,55 @@
-name: 'Deployment'
+name: Deployment
+
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to deploy'
+        description: Branch to deploy
         required: true
-        default: 'main'
+        default: main
   push:
     branches:
       - main
 
 jobs:
-  dependency-review:
+  deployment:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+
     steps:
-      - name: 'Checkout repository'
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch || 'main' }}
           ssh-key: ${{ secrets.DEPLOY_KEY }}
+          fetch-depth: 0
 
-      - name: 'Set up JDK'
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '25'
+          distribution: temurin
+          java-version: '21'
+          cache: maven
 
-      - name: 'Build with Maven - Profile windows'
-        run: mvn clean package -Pwindows
+      - name: Build Windows release
+        run: mvn -B clean verify -Pwindows-release
 
-      - name: 'Copy zipped installer'
+      - name: Copy zipped installer
         run: |
-          ZIPPED_INSTALLER=$(find ./target/zipped -name "*.zip" | head -n 1)
+          ZIPPED_INSTALLER="Application/target/zipped/Application-app-image.zip"
+          if [ ! -f "$ZIPPED_INSTALLER" ]; then
+            echo "Installer not found at $ZIPPED_INSTALLER"
+            exit 1
+          fi
           cp "$ZIPPED_INSTALLER" ./installer-windows.zip
 
-      - name: 'Configure Git'
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: 'Commit and Push Changes'
+      - name: Commit and push installer
         run: |
           git add installer-windows.zip README.md
           git commit -m "Add zipped installer and update README [skip ci]" || exit 0
