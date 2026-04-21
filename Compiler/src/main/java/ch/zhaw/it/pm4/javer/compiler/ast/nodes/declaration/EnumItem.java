@@ -37,6 +37,14 @@ public final class EnumItem implements AstNode {
         }
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public Integer getValue() {
+        return value;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

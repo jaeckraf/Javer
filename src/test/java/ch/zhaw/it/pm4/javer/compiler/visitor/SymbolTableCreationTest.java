@@ -19,13 +19,16 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
 class SymbolTableCreationTest {
     private SymbolTableCreation visitor;
+    private DiagnosticBag diagnosticBag;
 
     @BeforeEach
     void setUp() {
-        visitor = new SymbolTableCreation();
+        diagnosticBag = new DiagnosticBag("", 100, null, null);
+        visitor = new SymbolTableCreation(diagnosticBag);
     }
 
     @Nested
@@ -40,6 +43,7 @@ class SymbolTableCreationTest {
             CompilationUnit compilationUnit = new CompilationUnit(declarations);
             SymbolTable symbolTable = compilationUnit.getSymbolTable();
 
+            // sets symboltable reference in visitor
             visitor.visit(compilationUnit);
             visitor.visit(param);
 
@@ -84,6 +88,7 @@ class SymbolTableCreationTest {
             CompilationUnit compilationUnit = new CompilationUnit(declarations);
             SymbolTable symbolTable = compilationUnit.getSymbolTable();
 
+            // sets symboltable reference in visitor
             visitor.visit(compilationUnit);
             visitor.visit(varDecl);
 

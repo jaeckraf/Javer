@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import java.lang.foreign.SymbolLookup;
+import java.util.List;
+import java.util.function.Function;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
@@ -9,12 +10,12 @@ import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
-import ch.zhaw.it.pm4.javer.compiler.visitor.*;
-
-import java.util.List;
-import java.util.function.Function;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.visitor.Assembler;
+import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
+import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableCreation;
+import ch.zhaw.it.pm4.javer.compiler.visitor.TypeChecker;
 
 public class Compiler {
 
@@ -94,7 +95,8 @@ public class Compiler {
     }
 
     private PhaseResult<CompilationUnit> createSymbolTable(CompilationUnit rootNode) {
-        new SymbolTableCreation().visit(rootNode);
+        phase = CompilationPhase.SYMBOL_TABLE_CREATION;
+        new SymbolTableCreation(context.getDiagnosticBag()).visit(rootNode);
         return new PhaseResult<>(true, rootNode);
     }
 
