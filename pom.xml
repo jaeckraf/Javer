@@ -18,10 +18,22 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- one single Java version for all modules -->
         <maven.compiler.release>21</maven.compiler.release>
+
         <javafx.version>21.0.2</javafx.version>
         <jacoco.version>0.8.14</jacoco.version>
         <junit.version>5.12.1</junit.version>
+
+        <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
+        <maven.shade.plugin.version>3.6.1</maven.shade.plugin.version>
+        <maven.dependency.plugin.version>3.8.1</maven.dependency.plugin.version>
+        <maven.clean.plugin.version>3.3.2</maven.clean.plugin.version>
+        <maven.antrun.plugin.version>3.1.0</maven.antrun.plugin.version>
+        <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
+        <maven.enforcer.plugin.version>3.5.0</maven.enforcer.plugin.version>
+        <jpackage.plugin.version>1.7.4</jpackage.plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -29,13 +41,13 @@
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-api</artifactId>
-                <version>5.12.1</version>
+                <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-engine</artifactId>
-                <version>5.12.1</version>
+                <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
@@ -47,7 +59,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.13.0</version>
+                    <version>${maven.compiler.plugin.version}</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
                     </configuration>
@@ -56,25 +68,43 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.6.1</version>
+                    <version>${maven.shade.plugin.version}</version>
                 </plugin>
 
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
-                    <version>3.8.1</version>
+                    <version>${maven.dependency.plugin.version}</version>
                 </plugin>
 
                 <plugin>
-                    <groupId>org.panteleyev</groupId>
-                    <artifactId>jpackage-maven-plugin</artifactId>
-                    <version>1.7.4</version>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${maven.clean.plugin.version}</version>
                 </plugin>
 
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-antrun-plugin</artifactId>
-                    <version>3.1.0</version>
+                    <version>${maven.antrun.plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>${maven.resources.plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven.enforcer.plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.panteleyev</groupId>
+                    <artifactId>jpackage-maven-plugin</artifactId>
+                    <version>${jpackage.plugin.version}</version>
                 </plugin>
 
                 <plugin>
@@ -84,5 +114,28 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <!-- Fail early if Java version is wrong -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-java</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,22)</version>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>

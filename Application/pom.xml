@@ -14,13 +14,16 @@
     <packaging>jar</packaging>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>ch.zhaw.it.pm4.javer.application.Launcher</main.class>
-        <javafx.version>21.0.2</javafx.version>
-        <!-- JAR paths - defaults for development, overridden by profiles -->
-        <javer.compiler.jar>Application/target/tools/compiler.jar</javer.compiler.jar>
-        <javer.vm.jar>Application/target/tools/vm.jar</javer.vm.jar>
+
+        <!-- IDE / development mode -->
+        <javer.compiler.jar>${project.build.directory}/tools/compiler.jar</javer.compiler.jar>
+        <javer.vm.jar>${project.build.directory}/tools/vm.jar</javer.vm.jar>
+
+        <!-- release layout -->
+        <release.app.dir>${project.build.directory}/app</release.app.dir>
+        <release.tools.dir>${project.build.directory}/app/tools</release.tools.dir>
     </properties>
 
     <dependencies>
@@ -44,13 +47,11 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -62,7 +63,7 @@
         <dependency>
             <groupId>org.testfx</groupId>
             <artifactId>openjfx-monocle</artifactId>
-            <version>21.0.2</version>
+            <version>${javafx.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -75,6 +76,7 @@
 
     <build>
         <resources>
+            <!-- filters application.properties -->
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
@@ -85,11 +87,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <release>${maven.compiler.release}</release>
-                </configuration>
             </plugin>
 
+            <!-- Build runnable GUI fat jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -114,13 +114,14 @@
                 </executions>
             </plugin>
 
+            <!-- IDE mode: copy Compiler and VM jars to target/tools -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>copy-tools</id>
-                        <phase>package</phase>
+                        <id>copy-tools-for-ide</id>
+                        <phase>prepare-package</phase>
                         <goals>
                             <goal>copy</goal>
                         </goals>
@@ -145,6 +146,7 @@
                                     <destFileName>vm.jar</destFileName>
                                 </artifactItem>
                             </artifactItems>
+                            <overWriteIfNewer>true</overWriteIfNewer>
                         </configuration>
                     </execution>
                 </executions>
@@ -154,25 +156,22 @@
 
     <profiles>
         <profile>
-            <id>packaged</id>
+            <id>windows-release</id>
             <properties>
-                <!-- For packaged applications, tools are relative to app directory -->
+                <!-- inside packaged app the properties file must point here -->
                 <javer.compiler.jar>app/tools/compiler.jar</javer.compiler.jar>
                 <javer.vm.jar>app/tools/vm.jar</javer.vm.jar>
             </properties>
-        </profile>
 
-        <profile>
-            <id>windows</id>
             <build>
                 <plugins>
+                    <!-- cleanup release directories before packaging -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-clean-plugin</artifactId>
-                        <version>3.3.2</version>
                         <executions>
                             <execution>
-                                <id>clean-jpackage-dest</id>
+                                <id>clean-release-dirs</id>
                                 <phase>prepare-package</phase>
                                 <goals>
                                     <goal>clean</goal>
@@ -184,6 +183,9 @@
                                             <directory>${project.build.directory}/installer</directory>
                                         </fileset>
                                         <fileset>
+                                            <directory>${project.build.directory}/app</directory>
+                                        </fileset>
+                                        <fileset>
                                             <directory>${project.build.directory}/zipped</directory>
                                         </fileset>
                                     </filesets>
@@ -192,6 +194,82 @@
                         </executions>
                     </plugin>
 
+                    <!-- copy Compiler and VM jars to packaged app/tools -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copy-tools-for-release</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>ch.zhaw.it.pm4</groupId>
+                                            <artifactId>Compiler</artifactId>
+                                            <version>${project.version}</version>
+                                            <classifier>all</classifier>
+                                            <type>jar</type>
+                                            <outputDirectory>${release.tools.dir}</outputDirectory>
+                                            <destFileName>compiler.jar</destFileName>
+                                        </artifactItem>
+                                        <artifactItem>
+                                            <groupId>ch.zhaw.it.pm4</groupId>
+                                            <artifactId>VM</artifactId>
+                                            <version>${project.version}</version>
+                                            <classifier>all</classifier>
+                                            <type>jar</type>
+                                            <outputDirectory>${release.tools.dir}</outputDirectory>
+                                            <destFileName>vm.jar</destFileName>
+                                        </artifactItem>
+                                    </artifactItems>
+                                    <overWriteIfNewer>true</overWriteIfNewer>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- copy the shaded Application jar into target/app -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>prepare-release-app-layout</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${release.app.dir}"/>
+                                        <copy file="${project.build.directory}/${project.build.finalName}-all.jar"
+                                              tofile="${release.app.dir}/${project.build.finalName}-all.jar"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+
+                            <execution>
+                                <id>zip-app-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <target>
+                                        <mkdir dir="${project.build.directory}/zipped"/>
+                                        <zip destfile="${project.build.directory}/zipped/Application-app-image.zip"
+                                             basedir="${project.build.directory}/installer"/>
+                                    </target>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- build Windows APP_IMAGE -->
                     <plugin>
                         <groupId>org.panteleyev</groupId>
                         <artifactId>jpackage-maven-plugin</artifactId>
@@ -207,33 +285,15 @@
                                     <appVersion>1.0</appVersion>
                                     <vendor>ZHAW</vendor>
                                     <description>Javer GUI Application</description>
-                                    <input>${project.build.directory}</input>
+
+                                    <input>${release.app.dir}</input>
                                     <destination>${project.build.directory}/installer</destination>
+
                                     <mainJar>${project.build.finalName}-all.jar</mainJar>
                                     <mainClass>${main.class}</mainClass>
+
                                     <type>APP_IMAGE</type>
                                     <winConsole>false</winConsole>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>zip-installer</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>run</goal>
-                                </goals>
-                                <configuration>
-                                    <target>
-                                        <mkdir dir="${project.build.directory}/zipped"/>
-                                        <zip destfile="${project.build.directory}/zipped/installer.zip"
-                                             basedir="${project.build.directory}/installer"/>
-                                    </target>
                                 </configuration>
                             </execution>
                         </executions>

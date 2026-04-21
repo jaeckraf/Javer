@@ -3,6 +3,7 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>ch.zhaw.it.pm4</groupId>
         <artifactId>javer</artifactId>
@@ -10,26 +11,22 @@
     </parent>
 
     <artifactId>VM</artifactId>
+    <packaging>jar</packaging>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>ch.zhaw.it.pm4.javer.vm.VM</main.class>
-        <app.name>javer-vm</app.name>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -41,7 +38,7 @@
         <dependency>
             <groupId>org.testfx</groupId>
             <artifactId>openjfx-monocle</artifactId>
-            <version>21.0.2</version>
+            <version>${javafx.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -54,35 +51,15 @@
 
     <build>
         <plugins>
-            <!-- Clean jpackage destination before building -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-clean-plugin</artifactId>
-                <version>3.3.2</version>
-                <executions>
-                    <execution>
-                        <id>clean-jpackage-dest</id>
-                        <phase>prepare-package</phase>
-                        <goals>
-                            <goal>clean</goal>
-                        </goals>
-                        <configuration>
-                            <excludeDefaultDirectories>true</excludeDefaultDirectories>
-                            <filesets>
-                                <fileset>
-                                    <directory>${project.build.directory}/installer</directory>
-                                </fileset>
-                            </filesets>
-                        </configuration>
-                    </execution>
-                </executions>
+                <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
 
-            <!-- Build a runnable shaded jar -->
+            <!-- Build runnable fat jar for Application to call -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <id>shade-jar</id>
@@ -103,38 +80,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.panteleyev</groupId>
-                <artifactId>jpackage-maven-plugin</artifactId>
-                <version>1.7.4</version>
-                <executions>
-                    <execution>
-                        <id>package-app-image</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jpackage</goal>
-                        </goals>
-                        <configuration>
-                            <name>${app.name}</name>
-                            <appVersion>1.0</appVersion>
-                            <vendor>ZHAW</vendor>
-                            <description>Javer VM</description>
-
-                            <input>${project.build.directory}</input>
-                            <destination>${project.build.directory}/installer</destination>
-
-                            <mainJar>${project.artifactId}-${project.version}-all.jar</mainJar>
-                            <mainClass>${main.class}</mainClass>
-
-                            <type>APP_IMAGE</type>
-
-                            <winConsole>true</winConsole>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
-
 </project>
