@@ -8,14 +8,20 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 public class FunctionSymbolTableEntry extends SymbolTableEntry {
 
     private final List<FunctionParameter> parameters;
+    protected final TypeAstNode returnType;
 
     private FunctionSymbolTableEntry(Builder builder) {
-        super(builder.name, builder.returnType);
+        super(builder.name);
+        this.returnType = builder.returnType;
         this.parameters = builder.parameters;
     }
 
     public List<FunctionParameter> getParameters() {
         return parameters;
+    }
+
+    public TypeAstNode getReturnType() {
+        return returnType;
     }
 
     public static Builder builder() {

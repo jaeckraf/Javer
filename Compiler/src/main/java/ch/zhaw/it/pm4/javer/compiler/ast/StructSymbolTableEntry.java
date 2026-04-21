@@ -3,15 +3,13 @@ package ch.zhaw.it.pm4.javer.compiler.ast;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NameTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 
 public class StructSymbolTableEntry extends SymbolTableEntry {
 
     private final List<StructField> fields;
 
     private StructSymbolTableEntry(Builder builder) {
-        super(builder.name, new NamedType(NameTypeKind.STRUCT, builder.name));
+        super(builder.name);        
         this.fields = builder.fields;
     }
 

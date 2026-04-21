@@ -96,7 +96,7 @@ public class Compiler {
     private PhaseResult<CompilationUnit> createSymbolTable(CompilationUnit rootNode) {
         phase = CompilationPhase.SYMBOL_TABLE_CREATION;
         new SymbolTableCreation(context.getDiagnosticBag()).visit(rootNode);
-        return new PhaseResult<>(context.getDiagnosticBag().hasErrors(), rootNode);
+        return new PhaseResult<>(!context.getDiagnosticBag().hasErrors(), rootNode);
     }
 
     private PhaseResult<CompilationUnit> resolveNames(CompilationUnit node) {
