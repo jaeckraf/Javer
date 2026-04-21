@@ -16,6 +16,13 @@ public class VM {
     private final Deque<Object> stack = new ArrayDeque<>();
     private final List<int[]> heap = new java.util.LinkedList<>();
 
+    /**
+     * Constructs a new VM by loading the compiled program from the given file.
+     * The file is expected to contain an optional 'data:' section for heap initialization,
+     * and a 'code:' section for instructions.
+     *
+     * @param filePath the path to the compiled code file to execute.
+     */
     public VM(String filePath) {
         try {
             List<String> rawLines = Files.readAllLines(Paths.get(filePath));
@@ -23,6 +30,24 @@ public class VM {
         } catch (IOException e) {
             throw new RuntimeException("Error reading file: " + filePath, e);
         }
+    }
+
+    /**
+     * Starts execution of the instructions loaded into the VM's code segment.
+     * Execution continues until a HALT instruction is reached, or the program counter
+     * runs past the end of the segment.
+     *
+     * @return A status message indicating execution has finished.
+     */
+    public String run() {
+        boolean halted = false;
+
+        while (!halted && pc < segment.length) {
+            String currentInstruction = segment[pc];
+            String[] parts = currentInstruction.split("\\s+");
+            halted = executeInstruction(parts, currentInstruction);
+        }
+        return "Execution finished.";
     }
 
     private void loadSegment(List<String> rawLines) {
@@ -65,17 +90,6 @@ public class VM {
                 System.out.println("Invalid data entry: " + val);
             }
         }
-    }
-
-    public String run() {
-        boolean halted = false;
-
-        while (!halted && pc < segment.length) {
-            String currentInstruction = segment[pc];
-            String[] parts = currentInstruction.split("\\s+");
-            halted = executeInstruction(parts, currentInstruction);
-        }
-        return "Execution finished.";
     }
 
     private boolean executeInstruction(String[] parts, String currentInstruction) {
