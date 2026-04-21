@@ -85,7 +85,7 @@ public class Compiler {
     }
 
     private PhaseResult<CompilationUnit> createSymbolTable(CompilationUnit rootNode) {
-        new SymbolTableCreation(context.getSymbolTable()).visit(rootNode);
+        new SymbolTableCreation().visit(rootNode);
         return new PhaseResult<>(true, rootNode);
     }
 

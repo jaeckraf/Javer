@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
@@ -44,21 +43,14 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 
-@JacocoGenerated("jacoco-ignore")
 public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
 
     private SymbolTable symbolTable;
 
-    /**
-     * Constructs a new SymbolTableCreation instance.
-     * @param symbolTable The symbol table to build.
-     */
-    public SymbolTableCreation(SymbolTable symbolTable) {
-        this.symbolTable = symbolTable;
-    }
-
     @Override
     public Void visit(CompilationUnit node) {
+        symbolTable = node.getSymbolTable();
+
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
         }
