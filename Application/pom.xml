@@ -14,10 +14,10 @@
     <packaging>jar</packaging>
 
     <properties>
-        <maven.compiler.release>25</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>ch.zhaw.it.pm4.javer.application.Launcher</main.class>
-        <javafx.version>25.0.2</javafx.version>
+        <javafx.version>21.0.2</javafx.version>
         <!-- JAR paths - defaults for development, overridden by profiles -->
         <javer.compiler.jar>target/tools/compiler.jar</javer.compiler.jar>
         <javer.vm.jar>target/tools/vm.jar</javer.vm.jar>
