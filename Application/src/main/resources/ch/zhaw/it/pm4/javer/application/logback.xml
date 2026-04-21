@@ -5,9 +5,8 @@
     <property name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}"/>
 
     <property name="PATTERN"
-              value="%d{HH:mm:ss} | %-5level | %msg%n"/>
+              value="%d{HH:mm:ss} %-7level %-24.24logger{0} %.-24(%replace(%caller{1}){'^.*? ([^ ]+)$','$1'}) %.133msg%n"/>
 
-    <!-- FILE APPENDERS -->
     <appender name="ALL_FILE" class="ch.qos.logback.core.FileAppender">
         <file>${LOG_DIR}/javer-all.log</file>
         <append>false</append>
@@ -24,10 +23,12 @@
         </encoder>
     </appender>
 
-    <!-- GUI APPENDER -->
-    <appender name="GUI" class="ch.zhaw.it.pm4.javer.application.GuiLogAppender"/>
+    <appender name="GUI" class="ch.zhaw.it.pm4.javer.application.GuiLogAppender">
+        <encoder>
+            <pattern>${PATTERN}</pattern>
+        </encoder>
+    </appender>
 
-    <!-- ROOT -->
     <root level="${LOG_LEVEL}">
         <appender-ref ref="ALL_FILE"/>
         <appender-ref ref="MODULE_FILE"/>

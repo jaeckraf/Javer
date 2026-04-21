@@ -4,8 +4,13 @@
     <property name="MODULE" value="${MODULE:-unknown}"/>
     <property name="LOG_LEVEL" value="${LOG_LEVEL:-INFO}"/>
 
+    <!--
+      Format:
+      HH:mm:ss  LEVEL    ClassName                MethodName(optional)       Message
+      Die letzte Spalte wird abgeschnitten, sodass die Zeile max. 200 Zeichen lang bleibt.
+    -->
     <property name="PATTERN"
-              value="%d{HH:mm:ss} | %-5level | %msg%n"/>
+              value="%d{HH:mm:ss} %-7level %-24.24logger{0} %.-24(%replace(%caller{1}){'^.*? ([^ ]+)$','$1'}) %.133msg%n"/>
 
     <appender name="ALL_FILE" class="ch.qos.logback.core.FileAppender">
         <file>${LOG_DIR}/javer-all.log</file>

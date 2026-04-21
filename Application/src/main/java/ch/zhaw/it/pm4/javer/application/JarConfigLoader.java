@@ -5,14 +5,14 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
-import java.util.logging.Logger;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Loads JAR configuration from application.properties and sets system properties.
  * This class handles the initialization of JAR paths for Compiler and VM.
  */
 public class JarConfigLoader {
-    private static final Logger LOGGER = Logger.getLogger(JarConfigLoader.class.getName());
+
     private static final String PROPERTIES_FILE = "application.properties";
     private static final String COMPILER_JAR_PROPERTY = "javer.compiler.jar";
     private static final String VM_JAR_PROPERTY = "javer.vm.jar";
@@ -29,11 +29,11 @@ public class JarConfigLoader {
                 setSystemProperties(props);
                 logLoadedConfiguration();
             } else {
-                LOGGER.warning("Could not load application.properties from classpath. " +
+                JaverLogger.warning("Could not load application.properties from classpath. " +
                         "JAR paths must be configured via system properties.");
             }
         } catch (Exception e) {
-            LOGGER.severe("Error loading JAR configuration: " + e.getMessage());
+            JaverLogger.error("Error loading JAR configuration: " + e.getMessage());
         }
     }
 
@@ -44,7 +44,7 @@ public class JarConfigLoader {
         try (InputStream is = JarConfigLoader.class.getClassLoader()
                 .getResourceAsStream(PROPERTIES_FILE)) {
             if (is == null) {
-                LOGGER.warning("application.properties not found in classpath");
+                JaverLogger.warning("application.properties not found in classpath");
                 return null;
             }
             
@@ -104,7 +104,7 @@ public class JarConfigLoader {
                 return appRelative.toAbsolutePath().toString();
             }
         } catch (Exception e) {
-            LOGGER.fine("Could not resolve path relative to application base: " + e.getMessage());
+            JaverLogger.debug("Could not resolve path relative to application base: " + e.getMessage());
         }
 
         // Return the original path if no resolution was possible
@@ -141,10 +141,10 @@ public class JarConfigLoader {
     private static void logLoadedConfiguration() {
         String compilerJar = System.getProperty(COMPILER_JAR_PROPERTY);
         String vmJar = System.getProperty(VM_JAR_PROPERTY);
-        
-        LOGGER.info("JAR Configuration loaded:");
-        LOGGER.info("  Compiler JAR: " + (compilerJar != null ? compilerJar : "not set"));
-        LOGGER.info("  VM JAR: " + (vmJar != null ? vmJar : "not set"));
+
+        JaverLogger.info("JAR Configuration loaded:");
+        JaverLogger.info("  Compiler JAR: " + (compilerJar != null ? compilerJar : "not set"));
+        JaverLogger.info("  VM JAR: " + (vmJar != null ? vmJar : "not set"));
     }
 }
 

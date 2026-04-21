@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.application;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,7 +14,6 @@ public class ManagedProcessRunner {
     private final String name;
     private final OutputListener stdoutListener;
     private final OutputListener stderrListener;
-    private final StatusListener statusListener;
     private final RunningStateListener runningStateListener;
 
     private volatile Process process;
@@ -21,13 +22,11 @@ public class ManagedProcessRunner {
             String name,
             OutputListener stdoutListener,
             OutputListener stderrListener,
-            StatusListener statusListener,
             RunningStateListener runningStateListener
     ) {
         this.name = name;
         this.stdoutListener = stdoutListener;
         this.stderrListener = stderrListener;
-        this.statusListener = statusListener;
         this.runningStateListener = runningStateListener;
     }
 
@@ -44,12 +43,12 @@ public class ManagedProcessRunner {
 
     public synchronized void stop() {
         if (!isRunning()) {
-            statusListener.onStatus(name + " is not running.\n");
+            JaverLogger.warning(name + " is not running.");
             return;
         }
 
         process.destroyForcibly();
-        statusListener.onStatus(name + " process was killed.\n");
+        JaverLogger.warning(name + " process was killed.");
     }
 
     public synchronized boolean isRunning() {
@@ -58,7 +57,7 @@ public class ManagedProcessRunner {
 
     private void runProcess(List<String> command) {
         runningStateListener.onRunningStateChanged(true);
-        statusListener.onStatus("Starting " + name + "...\n");
+        JaverLogger.info("Starting " + name + ".");
 
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -76,12 +75,12 @@ public class ManagedProcessRunner {
             stdoutThread.join();
             stderrThread.join();
 
-            statusListener.onStatus(name + " finished with exit code " + exitCode + ".\n");
+            JaverLogger.info(name + " finished with exit code " + exitCode + ".");
         } catch (IOException e) {
-            statusListener.onStatus("Failed to start " + name + ": " + e.getMessage() + "\n");
+            JaverLogger.error("Failed to start " + name + ": " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            statusListener.onStatus(name + " was interrupted.\n");
+            JaverLogger.error(name + " was interrupted.", e);
         } finally {
             synchronized (this) {
                 process = null;
@@ -99,7 +98,7 @@ public class ManagedProcessRunner {
                     listener.onOutput(line + System.lineSeparator());
                 }
             } catch (IOException e) {
-                statusListener.onStatus("Stream read error in " + name + ": " + e.getMessage() + "\n");
+                JaverLogger.error("Stream read error in " + name + ": " + e.getMessage(), e);
             }
         }, name.toLowerCase() + "-stream");
 
@@ -111,11 +110,6 @@ public class ManagedProcessRunner {
     @FunctionalInterface
     public interface OutputListener {
         void onOutput(String text);
-    }
-
-    @FunctionalInterface
-    public interface StatusListener {
-        void onStatus(String text);
     }
 
     @FunctionalInterface

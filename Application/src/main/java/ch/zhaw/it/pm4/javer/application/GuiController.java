@@ -63,16 +63,14 @@ public class GuiController {
         compilerRunner = new ManagedProcessRunner(
                 "Compiler",
                 this::appendCompilerOutput,
-                this::appendStatus,
-                this::appendStatus,
+                this::appendCompilerOutput,
                 this::updateCompilerButtons
         );
 
         vmRunner = new ManagedProcessRunner(
                 "VM",
                 this::appendVMOutput,
-                this::appendStatus,
-                this::appendStatus,
+                this::appendVMOutput,
                 this::updateVMButtons
         );
 
@@ -93,7 +91,7 @@ public class GuiController {
 
         Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
         if (compilerJar == null) {
-            appendStatus("Compiler jar not configured. Set system property 'javer.compiler.jar'.\n");
+            JaverLogger.error("Compiler jar not configured. Set system property 'javer.compiler.jar'.\n");
             return;
         }
 
@@ -106,7 +104,7 @@ public class GuiController {
         ));
 
         if (!started) {
-            appendStatus("Compiler is already running.\n");
+            JaverLogger.error("Compiler is already running.\n");
         }
     }
 
@@ -121,7 +119,7 @@ public class GuiController {
 
         Path vmJar = resolveJarFromProperty("javer.vm.jar");
         if (vmJar == null) {
-            appendStatus("VM jar not configured. Set system property 'javer.vm.jar'.\n");
+            JaverLogger.error("VM jar not configured. Set system property 'javer.vm.jar'.\n");
             return;
         }
 
@@ -133,7 +131,7 @@ public class GuiController {
         ));
 
         if (!started) {
-            appendStatus("VM is already running.\n");
+            JaverLogger.error("VM is already running.\n");
         }
     }
 
@@ -150,7 +148,7 @@ public class GuiController {
     @FXML
     public void onRunCompilerAndVMClick(ActionEvent actionEvent) {
         if (compilerRunner.isRunning() || vmRunner.isRunning()) {
-            appendStatus("Compiler or VM is already running.\n");
+            JaverLogger.error("Compiler or VM is already running.\n");
             return;
         }
 
@@ -164,12 +162,12 @@ public class GuiController {
         Path vmJar = resolveJarFromProperty("javer.vm.jar");
 
         if (compilerJar == null) {
-            appendStatus("Compiler jar not configured. Set system property 'javer.compiler.jar'.\n");
+            JaverLogger.error("Compiler jar not configured. Set system property 'javer.compiler.jar'.\n");
             return;
         }
 
         if (vmJar == null) {
-            appendStatus("VM jar not configured. Set system property 'javer.vm.jar'.\n");
+            JaverLogger.error("VM jar not configured. Set system property 'javer.vm.jar'.\n");
             return;
         }
 
@@ -183,14 +181,14 @@ public class GuiController {
             ));
 
             if (!compilerStarted) {
-                appendStatus("Compiler is already running.\n");
+                JaverLogger.error("Compiler is already running.\n");
                 return;
             }
 
             waitUntilFinished(compilerRunner);
 
             if (vmRunner.isRunning()) {
-                appendStatus("VM is already running.\n");
+                JaverLogger.error("VM is already running.\n");
                 return;
             }
 
@@ -212,7 +210,7 @@ public class GuiController {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                appendStatus("Chained execution interrupted.\n");
+                JaverLogger.error("Chained execution interrupted.\n");
                 return;
             }
         }
@@ -229,9 +227,9 @@ public class GuiController {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
-            appendStatus("Created source input file: " + CONSOLE_INPUT_FILE.toAbsolutePath() + "\n");
+            JaverLogger.error("Created source input file: " + CONSOLE_INPUT_FILE.toAbsolutePath() + "\n");
         } catch (IOException exception) {
-            appendStatus("Failed to write source input file: " + exception.getMessage() + "\n");
+            JaverLogger.error("Failed to write source input file: " + exception.getMessage() + "\n");
         }
 
         return CONSOLE_INPUT_FILE.toAbsolutePath().toString();
@@ -246,29 +244,29 @@ public class GuiController {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
-            appendStatus("Created/cleared " + label + ": " + path.toAbsolutePath() + "\n");
+            JaverLogger.error("Created/cleared " + label + ": " + path.toAbsolutePath() + "\n");
         } catch (IOException e) {
-            appendStatus("Failed to create/clear " + label + ": " + e.getMessage() + "\n");
+            JaverLogger.error("Failed to create/clear " + label + ": " + e.getMessage() + "\n");
         }
     }
 
     private Path resolveJarFromProperty(String propertyName) {
         String value = System.getProperty(propertyName);
         if (value == null || value.isBlank()) {
-            appendStatus("ERROR: Missing system property: " + propertyName + "\n");
-            appendStatus("Please ensure JarConfigLoader.loadConfiguration() is called at startup or set the property manually.\n");
+            JaverLogger.error("ERROR: Missing system property: " + propertyName + "\n");
+            JaverLogger.error("Please ensure JarConfigLoader.loadConfiguration() is called at startup or set the property manually.\n");
             return null;
         }
         
         Path path = Path.of(value).toAbsolutePath().normalize();
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
-            appendStatus("ERROR: Configured jar does not exist: " + path + "\n");
-            appendStatus("Make sure the jar file is present at the expected location.\n");
-            appendStatus("Property '" + propertyName + "' is set to: " + value + "\n");
+            JaverLogger.error("ERROR: Configured jar does not exist: " + path + "\n");
+            JaverLogger.error("Make sure the jar file is present at the expected location.\n");
+            JaverLogger.error("Property '" + propertyName + "' is set to: " + value + "\n");
             return null;
         }
-        
-        appendStatus("Resolved " + propertyName + " to: " + path.toAbsolutePath() + "\n");
+
+        JaverLogger.error("Resolved " + propertyName + " to: " + path.toAbsolutePath() + "\n");
         return path;
     }
 

@@ -23,7 +23,8 @@ public class VM {
         BytecodeLoader bytecodeLoader = new BytecodeLoader(bytecodeFile);
         VM vm = new VM(bytecodeLoader);
         String result = vm.run();
-        System.out.println(result);
+        System.out.println("test");
+        System.err.println("error test");
     }
 
     public String run() {

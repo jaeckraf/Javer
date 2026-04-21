@@ -5,42 +5,51 @@ import org.slf4j.LoggerFactory;
 
 public final class JaverLogger {
 
-    private JaverLogger() {}
+    private JaverLogger() {
+    }
 
-    private static Logger getLogger() {
-        // Caller-Klasse automatisch bestimmen
-        String className = StackWalker.getInstance()
+    public static void debug(String message) {
+        resolveLogger().debug(message);
+    }
+
+    public static void debug(String message, Throwable throwable) {
+        resolveLogger().debug(message, throwable);
+    }
+
+    public static void info(String message) {
+        resolveLogger().info(message);
+    }
+
+    public static void info(String message, Throwable throwable) {
+        resolveLogger().info(message, throwable);
+    }
+
+    public static void warning(String message) {
+        resolveLogger().warn(message);
+    }
+
+    public static void warning(String message, Throwable throwable) {
+        resolveLogger().warn(message, throwable);
+    }
+
+    public static void error(String message) {
+        resolveLogger().error(message);
+    }
+
+    public static void error(String message, Throwable throwable) {
+        resolveLogger().error(message, throwable);
+    }
+
+    private static Logger resolveLogger() {
+        return LoggerFactory.getLogger(resolveCallerClassName());
+    }
+
+    private static String resolveCallerClassName() {
+        return StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
                 .walk(frames -> frames
-                        .skip(1)
+                        .filter(frame -> frame.getDeclaringClass() != JaverLogger.class)
                         .findFirst()
-                        .map(f -> f.getClassName())
-                        .orElse("Unknown"));
-        return LoggerFactory.getLogger(className);
-    }
-
-    public static void debug(String msg) {
-        getLogger().trace(trim(msg));
-    }
-
-    public static void info(String msg) {
-        getLogger().info(trim(msg));
-    }
-
-    public static void warning(String msg) {
-        getLogger().warn(trim(msg));
-    }
-
-    public static void error(String msg) {
-        getLogger().error(trim(msg));
-    }
-
-    public static void error(String msg, Throwable t) {
-        getLogger().error(trim(msg), t);
-    }
-
-    private static String trim(String msg) {
-        if (msg == null) return "";
-        if (msg.length() <= 200) return msg;
-        return msg.substring(0, 197) + "...";
+                        .map(frame -> frame.getDeclaringClass().getName())
+                        .orElse(JaverLogger.class.getName()));
     }
 }

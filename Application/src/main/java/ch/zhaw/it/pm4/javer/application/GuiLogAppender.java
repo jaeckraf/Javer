@@ -1,12 +1,13 @@
 package ch.zhaw.it.pm4.javer.application;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.AppenderBase;
+import ch.qos.logback.core.OutputStreamAppender;
 import javafx.application.Platform;
 
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
-public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
+public class GuiLogAppender extends OutputStreamAppender<ILoggingEvent> {
 
     private static volatile Consumer<String> consumer;
 
@@ -21,22 +22,19 @@ public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
     @Override
     protected void append(ILoggingEvent eventObject) {
         Consumer<String> currentConsumer = consumer;
-        if (currentConsumer == null) {
+        if (currentConsumer == null || encoder == null) {
             return;
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(eventObject.getFormattedMessage()).append(System.lineSeparator());
-
-        if (eventObject.getThrowableProxy() != null) {
-            sb.append(eventObject.getThrowableProxy().getClassName())
-                    .append(": ")
-                    .append(eventObject.getThrowableProxy().getMessage())
-                    .append(System.lineSeparator());
-        }
-
-        String text = sb.toString();
+        byte[] bytes = encoder.encode(eventObject);
+        String text = new String(bytes, StandardCharsets.UTF_8);
 
         Platform.runLater(() -> currentConsumer.accept(text));
     }
+
+    @Override
+    public void setEncoder(ch.qos.logback.core.encoder.Encoder<ILoggingEvent> encoder) {
+        super.setEncoder(encoder);
+    }
+
 }
