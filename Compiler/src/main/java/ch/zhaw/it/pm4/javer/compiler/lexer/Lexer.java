@@ -81,11 +81,10 @@ public class Lexer {
      * @param sourceCode  the raw source code to be tokenized
      * @param diagnostics the diagnostic bag to report lexical errors to (must not be
      *                    null)
-     * 
      */
     public Lexer(String sourceCode, DiagnosticBag diagnostics) {
         this.sourceCode = sourceCode == null ? "" : sourceCode;
-        this.diagnostics = Objects.requireNonNull(diagnostics, "DiagnosticBag must not be null");
+        this.diagnostics = Objects.requireNonNull(diagnostics, "Lexer: DiagnosticBag must not be null");
     }
 
     /**
@@ -98,13 +97,13 @@ public class Lexer {
      * the parser relies on as a sentinel.
      */
     public List<Token> lexSourcecode() {
-        JaverLogger.info("Lexer: starting tokenization of " + sourceCode.length() + " characters");
+        JaverLogger.info("Lexer: Starting tokenization of " + sourceCode.length() + " characters");
         List<Token> tokens = new ArrayList<>();
         while (true) {
             Token token = nextToken();
             tokens.add(token);
             if (token.getTokenType() == TokenType.SPECIAL_END_OF_FILE) {
-                JaverLogger.info("Lexer: finished tokenization, produced " + tokens.size() + " tokens");
+                JaverLogger.info("Lexer: Finished tokenization, produced " + tokens.size() + " token(s)");
                 return tokens;
             }
         }
@@ -114,7 +113,7 @@ public class Lexer {
      * This method will read characters from the source code, identify the type of
      * token (e.g., keyword, identifier, literal, symbol), and return a Token object
      * representing it.
-     * 
+     *
      * @return The next token from the source code.
      */
     private Token nextToken() {
@@ -150,20 +149,20 @@ public class Lexer {
      * @param tokenType the type of token to create (e.g., keyword, identifier,
      *                  literal, symbol)
      * @return A new Token object with the specified type and the current position
-     *         in the source code.
+     * in the source code.
      */
     private Token makeToken(TokenType tokenType) {
         String value = sourceCode.substring(tokenStartIndex, indexInSourceCode);
         SourceLocation location = defineSourceLocation();
         Token token = new Token(tokenType, value, location);
-        JaverLogger.debug("Lexer: produced token " + tokenType + " " + value + " at " + location);
+        JaverLogger.debug(String.format("Lexer: Produced token %10s %50s at %20s", tokenType, value, location));
         return token;
     }
 
     /**
      * @return A new SourceLocation object representing the current position in the
-     *         source code, using the start column, end column, and line number.
-     *         This is used for accurate error reporting and token metadata.
+     * source code, using the start column, end column, and line number.
+     * This is used for accurate error reporting and token metadata.
      */
     private SourceLocation defineSourceLocation() {
         int safeStart = Math.max(1, tokenStartColumn);
@@ -245,9 +244,9 @@ public class Lexer {
 
     /**
      * @return A Token object representing the next token in the source code, which
-     *         is a number literal.
-     *         Supports decimal integers/doubles (with optional exponent), hex
-     *         (0x..), octal (0o..) and binary (0b..) literals.
+     * is a number literal.
+     * Supports decimal integers/doubles (with optional exponent), hex
+     * (0x..), octal (0o..) and binary (0b..) literals.
      */
     private Token lexNumber() {
         if (currentChar() == '0' && (peek(1) == 'x' || peek(1) == 'X')) {
@@ -311,8 +310,8 @@ public class Lexer {
 
     /**
      * @return A Token object representing the next token in the source
-     *         code, which is a string literal.
-     *         Handles common escape sequences (\n, \t, \r, \\, \", \', \0, \b, \f).
+     * code, which is a string literal.
+     * Handles common escape sequences (\n, \t, \r, \\, \", \', \0, \b, \f).
      */
     private Token lexString() {
         advance();
@@ -346,9 +345,9 @@ public class Lexer {
 
     /**
      * @return A Token object representing the next token in the source
-     *         code, which is a char literal.
-     *         Supports single character or an escaped character between single
-     *         quotes.
+     * code, which is a char literal.
+     * Supports single character or an escaped character between single
+     * quotes.
      */
     private Token lexChar() {
         advance();
@@ -394,9 +393,9 @@ public class Lexer {
 
     /**
      * @return A Token object representing the next token in the source
-     *         code, which is a symbol literal.
-     *         Handles all operators and delimiters defined in TokenType.
-     *         Multi-character operators are matched greedily.
+     * code, which is a symbol literal.
+     * Handles all operators and delimiters defined in TokenType.
+     * Multi-character operators are matched greedily.
      */
     private Token lexSymbol() {
         char currentChar = currentChar();
@@ -508,7 +507,7 @@ public class Lexer {
      * @param shiftAssign token type for the shift-assign ({@code <<=}, {@code >>=})
      */
     private Token handleShiftOrRelationalOperator(char same, TokenType single, TokenType withAssign,
-                                    TokenType shift, TokenType shiftAssign) {
+                                                  TokenType shift, TokenType shiftAssign) {
         advance();
         if (currentChar() == '=') {
             advance();
@@ -527,14 +526,14 @@ public class Lexer {
 
     /**
      * @return A Token object representing the next token in the source
-     *         code, which is a keyword or an identifier.
-     *         The method will read characters until it encounters a non-identifier
-     *         character, then check if the resulting string matches any known
-     *         keywords.
-     *         If it does, it will return a keyword token; otherwise, it will return
-     *         an identifier token.
-     *         The literals {@code true}, {@code false} and {@code null} are
-     *         recognised here and emitted as LITERAL_BOOLEAN / LITERAL_NULL.
+     * code, which is a keyword or an identifier.
+     * The method will read characters until it encounters a non-identifier
+     * character, then check if the resulting string matches any known
+     * keywords.
+     * If it does, it will return a keyword token; otherwise, it will return
+     * an identifier token.
+     * The literals {@code true}, {@code false} and {@code null} are
+     * recognised here and emitted as LITERAL_BOOLEAN / LITERAL_NULL.
      */
     private Token lexIdentifierOrKeyword() {
         while (isIdentifierPart(currentChar())) {
@@ -558,12 +557,12 @@ public class Lexer {
 
     /**
      * @return The current character in the source code at the current
-     *         index. If the index is out of bounds (i.e., past the end of the
-     *         source code), it returns a null character ('\0') to indicate the end
-     *         of input.
-     *         This method is used to safely access characters in the source code
-     *         without risking an IndexOutOfBoundsException, and it allows the lexer
-     *         to detect when it has reached the end of the source code.
+     * index. If the index is out of bounds (i.e., past the end of the
+     * source code), it returns a null character ('\0') to indicate the end
+     * of input.
+     * This method is used to safely access characters in the source code
+     * without risking an IndexOutOfBoundsException, and it allows the lexer
+     * to detect when it has reached the end of the source code.
      */
     private char currentChar() {
         return indexInSourceCode < sourceCode.length() ? sourceCode.charAt(indexInSourceCode) : '\0';
@@ -571,12 +570,12 @@ public class Lexer {
 
     /**
      * @return The character at the specified offset from the current index in the
-     *         source code. If the resulting index is out of bounds, it returns a
-     *         null character ('\0').
-     *         This method allows the lexer to look ahead in the source code without
-     *         advancing the current position, which is useful for making decisions
-     *         based on upcoming characters (e.g., distinguishing between '=' and
-     *         '==').
+     * source code. If the resulting index is out of bounds, it returns a
+     * null character ('\0').
+     * This method allows the lexer to look ahead in the source code without
+     * advancing the current position, which is useful for making decisions
+     * based on upcoming characters (e.g., distinguishing between '=' and
+     * '==').
      */
     private char peek(int offset) {
         return indexInSourceCode + offset < sourceCode.length() ? sourceCode.charAt(indexInSourceCode + offset) : '\0';
@@ -616,13 +615,13 @@ public class Lexer {
 
     /**
      * @return True if the given character is a valid starting character for
-     *         an identifier (i.e., a letter or an underscore), and false otherwise.
-     *         This method is used to determine if the lexer should start lexing an
-     *         identifier or keyword when it encounters a character.
-     *         In many programming languages, identifiers must start with a letter
-     *         (a-z, A-Z) or an underscore (_), and cannot start with a digit or
-     *         other special characters. This method enforces that rule during
-     *         tokenization.
+     * an identifier (i.e., a letter or an underscore), and false otherwise.
+     * This method is used to determine if the lexer should start lexing an
+     * identifier or keyword when it encounters a character.
+     * In many programming languages, identifiers must start with a letter
+     * (a-z, A-Z) or an underscore (_), and cannot start with a digit or
+     * other special characters. This method enforces that rule during
+     * tokenization.
      */
     private boolean isIdentifierStart(char c) {
         return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_';
@@ -630,9 +629,9 @@ public class Lexer {
 
     /**
      * @return True if the given character is a valid continuation character
-     *         for an identifier (letter, digit, or underscore).
-     *         Identifier continuation characters are broader than start characters
-     *         since digits are allowed after the first character.
+     * for an identifier (letter, digit, or underscore).
+     * Identifier continuation characters are broader than start characters
+     * since digits are allowed after the first character.
      */
     private boolean isIdentifierPart(char c) {
         return isIdentifierStart(c) || isDecimalDigit(c);
@@ -640,16 +639,16 @@ public class Lexer {
 
     /**
      * @return True if the given character is a valid hexadecimal digit
-     *         (i.e., 0-9, a-f, A-F), and false otherwise. This method is used to
-     *         determine if a character can be part of a hexadecimal number literal
-     *         during tokenization.
-     *         Hexadecimal digits include the numbers 0 through 9 and the letters A
-     *         through F (both uppercase and lowercase), which represent the values
-     *         10 through 15. This method checks for those valid characters when
-     *         lexing hexadecimal literals.
-     *         For example, in a hexadecimal literal like "0x1A3F", the characters
-     *         '1', 'A', '3', and 'F' would all return true when passed to this
-     *         method.
+     * (i.e., 0-9, a-f, A-F), and false otherwise. This method is used to
+     * determine if a character can be part of a hexadecimal number literal
+     * during tokenization.
+     * Hexadecimal digits include the numbers 0 through 9 and the letters A
+     * through F (both uppercase and lowercase), which represent the values
+     * 10 through 15. This method checks for those valid characters when
+     * lexing hexadecimal literals.
+     * For example, in a hexadecimal literal like "0x1A3F", the characters
+     * '1', 'A', '3', and 'F' would all return true when passed to this
+     * method.
      */
     private boolean isHexDigit(char c) {
         return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
@@ -657,14 +656,14 @@ public class Lexer {
 
     /**
      * @return True if the given character is a valid decimal digit (i.e.,
-     *         0-9), and false otherwise. This method is used to determine if a
-     *         character can be part of a decimal number literal during
-     *         tokenization.
-     *         Decimal digits include the numbers 0 through 9. This method checks
-     *         for those valid characters when lexing decimal literals.
-     *         For example, in a decimal literal like "12345", the characters '1',
-     *         '2', '3', '4', and '5' would all return true when passed to this
-     *         method.
+     * 0-9), and false otherwise. This method is used to determine if a
+     * character can be part of a decimal number literal during
+     * tokenization.
+     * Decimal digits include the numbers 0 through 9. This method checks
+     * for those valid characters when lexing decimal literals.
+     * For example, in a decimal literal like "12345", the characters '1',
+     * '2', '3', '4', and '5' would all return true when passed to this
+     * method.
      */
     private boolean isDecimalDigit(char c) {
         return c >= '0' && c <= '9';
@@ -672,13 +671,13 @@ public class Lexer {
 
     /**
      * @return True if the given character is a valid octal digit (i.e.,
-     *         0-7), and false otherwise. This method is used to determine if a
-     *         character can be part of an octal number literal during tokenization.
-     *         Octal digits include the numbers 0 through 7. This method checks for
-     *         those valid characters when lexing octal literals.
-     *         For example, in an octal literal like "0o0755", the characters '0',
-     *         '7', '5', and '5' would all return true when passed to this method,
-     *         while '8' or '9' would return false.
+     * 0-7), and false otherwise. This method is used to determine if a
+     * character can be part of an octal number literal during tokenization.
+     * Octal digits include the numbers 0 through 7. This method checks for
+     * those valid characters when lexing octal literals.
+     * For example, in an octal literal like "0o0755", the characters '0',
+     * '7', '5', and '5' would all return true when passed to this method,
+     * while '8' or '9' would return false.
      */
     private boolean isOctalDigit(char c) {
         return c >= '0' && c <= '7';
@@ -686,13 +685,13 @@ public class Lexer {
 
     /**
      * @return True if the given character is a valid binary digit (i.e., 0
-     *         or 1), and false otherwise. This method is used to determine if a
-     *         character can be part of a binary number literal during tokenization.
-     *         Binary digits include only the numbers 0 and 1. This method checks
-     *         for those valid characters when lexing binary literals.
-     *         For example, in a binary literal like "0b1010", the characters '1'
-     *         and '0' would return true when passed to this method, while any other
-     *         character would return false.
+     * or 1), and false otherwise. This method is used to determine if a
+     * character can be part of a binary number literal during tokenization.
+     * Binary digits include only the numbers 0 and 1. This method checks
+     * for those valid characters when lexing binary literals.
+     * For example, in a binary literal like "0b1010", the characters '1'
+     * and '0' would return true when passed to this method, while any other
+     * character would return false.
      */
     private boolean isBinaryDigit(char c) {
         return c == '0' || c == '1';
@@ -702,16 +701,16 @@ public class Lexer {
      * @param c    the character to check
      * @param base the base of the number system (only 2, 8, 10, 16)
      * @return True if the given character is a valid digit for the
-     *         specified base (2, 8, 10, or 16), and false otherwise. This method is
-     *         used to determine if a character can be part of a number literal in
-     *         the given base during tokenization.
-     *         The method uses a switch statement to check the base and calls the
-     *         appropriate helper method (isBinaryDigit, isOctalDigit,
-     *         isDecimalDigit, or isHexDigit) to validate the character based on the
-     *         specified base.
-     *         For example, if the base is 16, this method will return true for
-     *         characters '0' through '9', 'a' through 'f', and 'A' through 'F',
-     *         while it will return false for any other character.
+     * specified base (2, 8, 10, or 16), and false otherwise. This method is
+     * used to determine if a character can be part of a number literal in
+     * the given base during tokenization.
+     * The method uses a switch statement to check the base and calls the
+     * appropriate helper method (isBinaryDigit, isOctalDigit,
+     * isDecimalDigit, or isHexDigit) to validate the character based on the
+     * specified base.
+     * For example, if the base is 16, this method will return true for
+     * characters '0' through '9', 'a' through 'f', and 'A' through 'F',
+     * while it will return false for any other character.
      */
     private boolean isDigitForBase(char c, int base) {
         return switch (base) {
@@ -737,8 +736,8 @@ public class Lexer {
 
     /**
      * @return returns true if the given character is a recognised escape sequence
-     *         character inside a string or char literal.
-     *         Recognised escapes: n, r, t, b, f, 0, ", ', \.
+     * character inside a string or char literal.
+     * Recognised escapes: n, r, t, b, f, 0, ", ', \.
      */
     private boolean isValidEscape(char c) {
         return c == 'n' || c == 'r' || c == 't' || c == 'b' || c == 'f'

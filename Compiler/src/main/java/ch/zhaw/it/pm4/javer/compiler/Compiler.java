@@ -39,6 +39,7 @@ public class Compiler {
     }
 
     public static void main(String[] args) {
+        System.setProperty("MODULE", "compiler");
         CompilerOptions options = CompilerOptions.create(args);
         Compiler compiler = new Compiler(options);
         System.out.println(compiler.compile()); // TOOO remove when DiagnosticBag returns string in error-stream

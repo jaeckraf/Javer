@@ -14,6 +14,7 @@ public class VM {
     }
 
     public static void main(String[] args) {
+        System.setProperty("MODULE", "vm");
         if (args.length < 1) {
             System.err.println("Usage: java VM <bytecode-file>");
             System.exit(1);

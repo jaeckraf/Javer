@@ -1,51 +1,46 @@
 package ch.zhaw.it.pm4.misc;
 
-import java.io.IOException;
-import java.util.logging.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class JaverLogger {
+public final class JaverLogger {
 
-    private static final Logger LOGGER = Logger.getLogger("JaverLogger");
+    private JaverLogger() {}
 
-    static {
-        try {
-            // Disable default console handler (optional)
-            LOGGER.setUseParentHandlers(false);
-
-            // ---- File Handler ----
-            FileHandler fileHandler = new FileHandler("javer.log", false);
-            fileHandler.setLevel(Level.ALL);
-
-            // Custom format
-            fileHandler.setFormatter(new SimpleFormatter());
-
-            // Add handlers
-            LOGGER.addHandler(fileHandler);
-
-            // Global log level
-            LOGGER.setLevel(Level.ALL);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private static Logger getLogger() {
+        // Caller-Klasse automatisch bestimmen
+        String className = StackWalker.getInstance()
+                .walk(frames -> frames
+                        .skip(1)
+                        .findFirst()
+                        .map(f -> f.getClassName())
+                        .orElse("Unknown"));
+        return LoggerFactory.getLogger(className);
     }
 
-    // ---- Public static methods ----
-
-    public static void debug(String message) {
-        LOGGER.finest(message);
+    public static void debug(String msg) {
+        getLogger().trace(trim(msg));
     }
 
-    public static void info(String message) {
-        LOGGER.info(message);
+    public static void info(String msg) {
+        getLogger().info(trim(msg));
     }
 
-    public static void warning(String message) {
-        LOGGER.warning(message);
+    public static void warning(String msg) {
+        getLogger().warn(trim(msg));
     }
 
-    public static void error(String message) {
-        LOGGER.severe(message);
+    public static void error(String msg) {
+        getLogger().error(trim(msg));
     }
 
+    public static void error(String msg, Throwable t) {
+        getLogger().error(trim(msg), t);
+    }
+
+    private static String trim(String msg) {
+        if (msg == null) return "";
+        if (msg.length() <= 200) return msg;
+        return msg.substring(0, 197) + "...";
+    }
 }

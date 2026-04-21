@@ -1,5 +1,6 @@
 package ch.zhaw.it.pm4.javer.application;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -55,6 +56,10 @@ public class GuiController {
 
     @FXML
     public void initialize() {
+        GuiLogAppender.setConsumer(this::appendStatus);
+
+        JaverLogger.info("GUI initialized");
+
         compilerRunner = new ManagedProcessRunner(
                 "Compiler",
                 this::appendCompilerOutput,
