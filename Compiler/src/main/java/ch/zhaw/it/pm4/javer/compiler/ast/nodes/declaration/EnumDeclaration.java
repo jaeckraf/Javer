@@ -1,9 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
+import java.util.List;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
-
-import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class EnumDeclaration implements DeclarationAstNode {
@@ -15,6 +15,15 @@ public final class EnumDeclaration implements DeclarationAstNode {
         this.name = name;
         this.items = items;
     }
+
+    public String getName() {
+        return name;
+    }
+
+    public List<EnumItem> getItems() {
+        return items;
+    }
+
 
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
