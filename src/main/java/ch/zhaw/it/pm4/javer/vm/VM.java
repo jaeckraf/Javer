@@ -14,8 +14,7 @@ public class VM {
     private String[] segment;
     private int pc = 0;
     private final Deque<Object> stack = new ArrayDeque<>();
-    private final int[] heap = new int[1024];
-    private int heapPointer = 0;
+    private final List<int[]> heap = new java.util.LinkedList<>();
 
     public VM(String filePath) {
         try {
@@ -28,12 +27,10 @@ public class VM {
 
     private void loadSegment(List<String> rawLines) {
         List<String> processedLines = new ArrayList<>();
+        boolean isDataSection = false;
+
         for (String line : rawLines) {
             String trimmed = line.trim();
-            if (trimmed.isEmpty() || trimmed.equalsIgnoreCase("code:") || trimmed.equalsIgnoreCase("data:")) {
-                continue;
-            }
-
             if (trimmed.contains("//")) {
                 trimmed = trimmed.substring(0, trimmed.indexOf("//")).trim();
             }
@@ -41,7 +38,35 @@ public class VM {
                 continue;
             }
 
-            processedLines.add(trimmed);
+            if (trimmed.equalsIgnoreCase("data:")) {
+                isDataSection = true;
+                continue;
+            } else if (trimmed.equalsIgnoreCase("code:")) {
+                isDataSection = false;
+                continue;
+            }
+
+            if (isDataSection) {
+                String[] parts = trimmed.split("\\s+");
+                for (String val : parts) {
+                    try {
+                        int numValue;
+                        if (val.matches("-?\\d+")) {
+                            numValue = Integer.parseInt(val);
+                        } else {
+                            numValue = val.charAt(0);
+                        }
+                        
+                        int[] element = new int[1];
+                        element[0] = numValue;
+                        heap.add(element);
+                    } catch (Exception e) {
+                        System.out.println("Invalid data entry: " + val);
+                    }
+                }
+            } else {
+                processedLines.add(trimmed);
+            }
         }
 
         this.segment = processedLines.toArray(new String[0]);
@@ -73,6 +98,15 @@ public class VM {
                 case "PRINT":
                     if (!stack.isEmpty()) {
                         System.out.println(stack.pop());
+                    }
+                    pc++;
+                    break;
+                case "PRINTC":
+                    if (!stack.isEmpty()) {
+                        Object val = stack.pop();
+                        if (val instanceof Number) {
+                            System.out.print((char) ((Number) val).intValue());
+                        }
                     }
                     pc++;
                     break;
@@ -211,23 +245,23 @@ public class VM {
                     break;
                 case "NEW":
                     int size = ((Number) stack.pop()).intValue();
-                    stack.push(heapPointer);
-                    heapPointer += size;
+                    heap.add(new int[size]);
+                    stack.push(heap.size() - 1);
                     pc++;
                     break;
                 case "HLOAD":
                     int offset = Integer.parseInt(parts[2]);
                     int pointerIndex = ((Number) stack.pop()).intValue();
-                    int address = heap[pointerIndex] + offset;
-                    stack.push(heap[address]);
+                    int[] hloadArray = heap.get(pointerIndex);
+                    stack.push(hloadArray[offset]);
                     pc++;
                     break;
                 case "HSTORE":
                     Object value = stack.pop();
                     int hstoreOffset = Integer.parseInt(parts[2]);
                     int hstorePointerIndex = ((Number) stack.pop()).intValue();
-                    int hstoreAddress = heap[hstorePointerIndex] + hstoreOffset;
-                    heap[hstoreAddress] = ((Number) value).intValue();
+                    int[] hstoreArray = heap.get(hstorePointerIndex);
+                    hstoreArray[hstoreOffset] = ((Number) value).intValue();
                     pc++;
                     break;
                 default:
