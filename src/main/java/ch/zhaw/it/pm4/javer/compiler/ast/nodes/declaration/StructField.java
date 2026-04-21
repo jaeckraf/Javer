@@ -16,6 +16,14 @@ public final class StructField implements AstNode {
         this.name = name;
     }
 
+    public TypeAstNode getType() {
+        return type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

@@ -12,7 +12,7 @@ public final class CompilationUnit implements AstNode {
 
     public CompilationUnit(List<DeclarationAstNode> declarations) {
         this.declarations = declarations;
-        symbolTable = new SymbolTable();
+        symbolTable = new SymbolTable(null);
     }
 
     public List<DeclarationAstNode> getDeclarations() {
