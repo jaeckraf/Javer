@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
@@ -15,14 +14,12 @@ public class CompilationContext {
      * - Logger
      * - DiagnosticBag
      * - SourceCache
-     * - SymbolTable
      */
 
 
     private CompilerOptions options;
     private DiagnosticBag diagnostics;
     private SourceCache sourceCache;
-    private SymbolTable symbolTable;
 
     public CompilationContext(
             CompilerOptions options,
@@ -32,7 +29,6 @@ public class CompilationContext {
         this.options = options;
         this.diagnostics = diagnostics;
         this.sourceCache = sourceCache;
-        this.symbolTable = new SymbolTable();
     }
 
 
@@ -58,13 +54,5 @@ public class CompilationContext {
 
     public void setSourceCache(SourceCache sourceCache) {
         this.sourceCache = sourceCache;
-    }
-
-    public SymbolTable getSymbolTable() {
-        return symbolTable;
-    }
-
-    public void setSymbolTable(SymbolTable symbolTable) {
-        this.symbolTable = symbolTable;
     }
 }
