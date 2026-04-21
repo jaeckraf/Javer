@@ -13,7 +13,7 @@ public class VM {
         this.bytecodeLoader = bytecodeLoader;
     }
 
-    static void main(String[] args) {
+    public static void main(String[] args) {
         if (args.length < 1) {
             System.err.println("Usage: java VM <bytecode-file>");
             System.exit(1);

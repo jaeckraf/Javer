@@ -19,8 +19,8 @@
         <main.class>ch.zhaw.it.pm4.javer.application.Launcher</main.class>
         <javafx.version>21.0.2</javafx.version>
         <!-- JAR paths - defaults for development, overridden by profiles -->
-        <javer.compiler.jar>target/tools/compiler.jar</javer.compiler.jar>
-        <javer.vm.jar>target/tools/vm.jar</javer.vm.jar>
+        <javer.compiler.jar>Application/target/tools/compiler.jar</javer.compiler.jar>
+        <javer.vm.jar>Application/target/tools/vm.jar</javer.vm.jar>
     </properties>
 
     <dependencies>
@@ -166,6 +166,32 @@
             <id>windows</id>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <version>3.3.2</version>
+                        <executions>
+                            <execution>
+                                <id>clean-jpackage-dest</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>clean</goal>
+                                </goals>
+                                <configuration>
+                                    <excludeDefaultDirectories>true</excludeDefaultDirectories>
+                                    <filesets>
+                                        <fileset>
+                                            <directory>${project.build.directory}/installer</directory>
+                                        </fileset>
+                                        <fileset>
+                                            <directory>${project.build.directory}/zipped</directory>
+                                        </fileset>
+                                    </filesets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
                     <plugin>
                         <groupId>org.panteleyev</groupId>
                         <artifactId>jpackage-maven-plugin</artifactId>

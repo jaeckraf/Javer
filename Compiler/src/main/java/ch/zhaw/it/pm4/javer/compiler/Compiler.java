@@ -38,7 +38,7 @@ public class Compiler {
         phase = CompilationPhase.ARGUMENT_PARSING;
     }
 
-    static void main(String[] args) {
+    public static void main(String[] args) {
         CompilerOptions options = CompilerOptions.create(args);
         Compiler compiler = new Compiler(options);
         System.out.println(compiler.compile()); // TOOO remove when DiagnosticBag returns string in error-stream
