@@ -497,13 +497,7 @@ public class Parser {
         consumeToken();
         String text = token.getValue();
         if (token.getTokenType() == TokenType.LITERAL_DOUBLE) {
-            try {
-                return new LiteralExpression<>(LiteralKind.DOUBLE, Double.parseDouble(text));
-            } catch (NumberFormatException e) {
-                LOGGER.log(Level.SEVERE, "Invalid double literal: " + text, e);
-                diagnosticBag.add(token.getPosition(), Severity.ERROR, "Invalid double literal");
-                return new LiteralExpression<>(LiteralKind.DOUBLE, 0.0);
-            }
+            return new LiteralExpression<>(LiteralKind.DOUBLE, Double.parseDouble(text));
         }
         
         int radix = 10;
@@ -519,13 +513,7 @@ public class Parser {
             numberPart = text.substring(2);
         }
 
-        try {
-            return new LiteralExpression<>(LiteralKind.INT, Integer.parseInt(numberPart, radix));
-        } catch (NumberFormatException e) {
-            LOGGER.log(Level.SEVERE, "Invalid integer literal: " + text, e);
-            diagnosticBag.add(token.getPosition(), Severity.ERROR, "Invalid integer literal");
-            return new LiteralExpression<>(LiteralKind.INT, 0);
-        }
+        return new LiteralExpression<>(LiteralKind.INT, Integer.parseInt(numberPart, radix));
     }
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
