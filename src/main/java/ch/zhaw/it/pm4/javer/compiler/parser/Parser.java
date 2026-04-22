@@ -226,6 +226,7 @@ public class Parser {
 
         Optional<String> functionName = parseIdentifierAndConsume();
         if (functionName.isEmpty()) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Function declaration requires a valid function name.");
             return Optional.empty();
         }
         List<FunctionParameter> parameters = parseFunctionParameters();
@@ -242,6 +243,7 @@ public class Parser {
 
         Optional<String> parameterName = parseIdentifierAndConsume();
         if (parameterName.isEmpty()) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Function parameter declaration requires a valid parameter name.");
             return Optional.empty();
         }
 
