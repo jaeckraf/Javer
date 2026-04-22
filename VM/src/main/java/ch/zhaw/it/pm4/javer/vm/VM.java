@@ -66,12 +66,10 @@ public class VM {
                         String instrName = parts[0].trim();
                         InstructionKind kind = getInstructionKind(instrName);
                         if (kind != null) {
-                            Instruction.Builder<String, String> builder = new Instruction.Builder<>(kind);
+                            Instruction.Builder<String> builder = new Instruction.Builder<>(kind);
                             String op1 = parts.length > 1 ? parts[1].trim() : null;
-                            String op2 = parts.length > 2 ? parts[2].trim() : null;
                             if (op1 != null) builder.op1(op1);
-                            if (op2 != null) builder.op2(op2);
-                            Instruction<String, String> instr = builder.build();
+                            Instruction<String> instr = builder.build();
                             code.put(address++, instr);
                         }
                     }
@@ -222,15 +220,13 @@ public class VM {
         public abstract void execute(VM vm);
     }
 
-    private static final class Instruction<U, V> extends AbstractInstruction {
+    private static final class Instruction<U> extends AbstractInstruction {
 
         private final U op1;
-        private final V op2;
         private final InstructionKind instructionKind;
 
-        public Instruction(Builder<U, V> builder) {
+        public Instruction(Builder<U> builder) {
             this.op1 = builder.op1;
-            this.op2 = builder.op2;
             this.instructionKind = builder.instructionKind;
         }
 
@@ -413,26 +409,20 @@ public class VM {
             }
         }
 
-        private static final class Builder<U, V> {
+        private static final class Builder<U> {
             private U op1;
-            private V op2;
             private InstructionKind instructionKind;
 
             public Builder(InstructionKind instructionKind) {
                 this.instructionKind = instructionKind;
             }
 
-            public Builder<U, V> op1(U op1) {
+            public Builder<U> op1(U op1) {
                 this.op1 = op1;
                 return this;
             }
 
-            public Builder<U, V> op2(V op2) {
-                this.op2 = op2;
-                return this;
-            }
-
-            public Instruction<U, V> build() {
+            public Instruction<U> build() {
                 return new Instruction<>(this);
             }
         }
