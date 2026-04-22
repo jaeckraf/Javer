@@ -45,7 +45,12 @@ public class VM {
         while (!halted && pc < segment.length) {
             String currentInstruction = segment[pc];
             String[] parts = currentInstruction.split("\\s+");
-            halted = executeInstruction(parts, currentInstruction);
+            try {
+                halted = executeInstruction(parts, currentInstruction);
+            } catch (VMRuntimeException e) {
+                System.out.println(e.getMessage());
+                halted = true;
+            }
         }
         return "Execution finished.";
     }
@@ -102,28 +107,46 @@ public class VM {
                 pc++;
             }
             case "POP" -> {
-                if (!stack.isEmpty()) stack.pop();
+                if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on POP");
+                stack.pop();
                 pc++;
             }
-            
+
             // Output Operations
             case "PRINT" -> {
-                if (!stack.isEmpty()) System.out.println(stack.pop());
+                if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on PRINT");
+                System.out.println(stack.pop());
                 pc++;
             }
             case "PRINTC" -> {
-                if (!stack.isEmpty() && stack.pop() instanceof Number val) {
-                    System.out.print((char) val.intValue());
+                if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on PRINTC");
+                Object val = stack.pop();
+                if (val instanceof Number num) {
+                    System.out.print((char) num.intValue());
+                } else {
+                    throw new VMRuntimeException(pc, "Type mismatch: PRINTC expects a Number");
                 }
                 pc++;
             }
-            
+
             // Integer Math & Bitwise Operations
             case "ADD" -> { binaryOp(Integer::sum); pc++; }
             case "SUB" -> { binaryOp((a, b) -> a - b); pc++; }
             case "MUL" -> { binaryOp((a, b) -> a * b); pc++; }
-            case "DIV" -> { binaryOp((a, b) -> a / b); pc++; }
-            case "MOD" -> { binaryOp((a, b) -> a % b); pc++; }
+            case "DIV" -> {
+                binaryOp((a, b) -> {
+                    if (b == 0) throw new VMRuntimeException(pc, "Division by zero");
+                    return a / b;
+                });
+                pc++;
+            }
+            case "MOD" -> {
+                binaryOp((a, b) -> {
+                    if (b == 0) throw new VMRuntimeException(pc, "Modulo by zero");
+                    return a % b;
+                });
+                pc++;
+            }
             case "SHIFTR" -> { binaryOp((a, b) -> a >> b); pc++; }
             case "SHIFTL" -> { binaryOp((a, b) -> a << b); pc++; }
             case "AND" -> { binaryOp((a, b) -> a & b); pc++; }
@@ -131,81 +154,95 @@ public class VM {
             case "XOR" -> { binaryOp((a, b) -> a ^ b); pc++; }
             case "BITWISEINVERT" -> { unaryOp(a -> ~a); pc++; }
             case "NEGATE" -> { unaryOp(a -> -a); pc++; }
-            
+
             // Relational & Equality Operations
             case "LT" -> { binaryOp((a, b) -> a < b ? 1 : 0); pc++; }
             case "LE" -> { binaryOp((a, b) -> a <= b ? 1 : 0); pc++; }
             case "GT" -> { binaryOp((a, b) -> a > b ? 1 : 0); pc++; }
             case "GE" -> { binaryOp((a, b) -> a >= b ? 1 : 0); pc++; }
             case "COMPARE" -> { binaryOp((a, b) -> a.equals(b) ? 1 : 0); pc++; }
-            
+
             // Floating Point Math
             case "ADDF" -> { binaryOpF(Float::sum); pc++; }
             case "SUBF" -> { binaryOpF((a, b) -> a - b); pc++; }
             case "MULF" -> { binaryOpF((a, b) -> a * b); pc++; }
-            case "DIVF" -> { binaryOpF((a, b) -> a / b); pc++; }
+            case "DIVF" -> {
+                binaryOpF((a, b) -> {
+                    if (b == 0.0f) throw new VMRuntimeException(pc, "Division by zero");
+                    return a / b;
+                });
+                pc++;
+            }
             case "NEGATEF" -> { unaryOpF(a -> -a); pc++; }
-            
+
             // Branching & Control Flow
             case "JMP" -> {
                 pc = getJumpTarget(parts[1]);
-                if (pc == -1) return true;
             }
             case "JT" -> {
                 if (isTopTrue()) {
                     pc = getJumpTarget(parts[1]);
-                    if (pc == -1) return true;
                 } else pc++;
             }
             case "JF" -> {
                 if (!isTopTrue()) {
                     pc = getJumpTarget(parts[1]);
-                    if (pc == -1) return true;
                 } else pc++;
             }
             case "CALL" -> {
                 int targetPc = getJumpTarget(parts[1]);
-                if (targetPc != -1) {
-                    stack.push(pc + 1);
-                    pc = targetPc;
-                } else return true;
+                stack.push(pc + 1);
+                pc = targetPc;
             }
             case "RET" -> {
-                if (!stack.isEmpty() && stack.pop() instanceof Integer returnAddress) {
+                if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on RET: Missing return address");
+                Object retAddr = stack.pop();
+                if (retAddr instanceof Integer returnAddress) {
                     pc = returnAddress;
                 } else {
-                    System.out.println("outor: Return address on stack is missing or not an Integer.");
-                    return true;
+                    throw new VMRuntimeException(pc, "Type mismatch: Return address on stack is not an Integer");
                 }
             }
             case "HALT" -> {
                 return true;
             }
-            
+
             // Heap & Memory Operations
             case "NEW" -> {
-                if (!stack.isEmpty() && stack.pop() instanceof Number size) {
+                if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on NEW");
+                Object val = stack.pop();
+                if (val instanceof Number size) {
                     heap.add(new int[size.intValue()]);
                     stack.push(heap.size() - 1);
                     pc++;
+                } else {
+                    throw new VMRuntimeException(pc, "Type mismatch: NEW expects a Number for size");
                 }
             }
             case "HLOAD" -> {
+                if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on HLOAD");
                 int offset = Integer.parseInt(parts[2]);
-                if (!stack.isEmpty() && stack.pop() instanceof Number pointerIndex) {
+                Object ptr = stack.pop();
+                if (ptr instanceof Number pointerIndex) {
                     stack.push(heap.get(pointerIndex.intValue())[offset]);
                     pc++;
+                } else {
+                    throw new VMRuntimeException(pc, "Type mismatch: HLOAD expects a Number for pointer index");
                 }
             }
             case "HSTORE" -> {
+                if (stack.size() < 2) throw new VMRuntimeException(pc, "Stack underflow on HSTORE");
                 Object value = stack.pop();
+                Object ptr = stack.pop();
                 int offset = Integer.parseInt(parts[2]);
-                if (!stack.isEmpty() && stack.pop() instanceof Number pointerIndex && value instanceof Number valNum) {
+                if (ptr instanceof Number pointerIndex && value instanceof Number valNum) {
                     heap.get(pointerIndex.intValue())[offset] = valNum.intValue();
                     pc++;
+                } else {
+                    throw new VMRuntimeException(pc, "Type mismatch: HSTORE expects Numbers for pointer and value");
                 }
             }
-            
+
             // Fallback
             default -> {
                 System.out.println("Unknown instruction at line " + (pc + 1) + ": " + currentInstruction);
@@ -216,37 +253,41 @@ public class VM {
     }
 
     private void binaryOp(BiFunction<Integer, Integer, Integer> op) {
-        if (stack.size() >= 2) {
-            Number b = (Number) stack.pop();
-            Number a = (Number) stack.pop();
-            stack.push(op.apply(a.intValue(), b.intValue()));
+        if (stack.size() < 2) {
+            throw new VMRuntimeException(pc, "Stack underflow: Not enough operands for binary operation.");
         }
+        Number b = (Number) stack.pop();
+        Number a = (Number) stack.pop();
+        stack.push(op.apply(a.intValue(), b.intValue()));
     }
 
     private void unaryOp(Function<Integer, Integer> op) {
-        if (!stack.isEmpty()) {
-            Number a = (Number) stack.pop();
-            stack.push(op.apply(a.intValue()));
+        if (stack.isEmpty()) {
+            throw new VMRuntimeException(pc, "Stack underflow: Missing operand for unary operation.");
         }
+        Number a = (Number) stack.pop();
+        stack.push(op.apply(a.intValue()));
     }
 
     private void binaryOpF(BiFunction<Float, Float, Float> op) {
-        if (stack.size() >= 2) {
-            Number b = (Number) stack.pop();
-            Number a = (Number) stack.pop();
-            stack.push(op.apply(a.floatValue(), b.floatValue()));
+        if (stack.size() < 2) {
+            throw new VMRuntimeException(pc, "Stack underflow: Not enough operands for float binary operation.");
         }
+        Number b = (Number) stack.pop();
+        Number a = (Number) stack.pop();
+        stack.push(op.apply(a.floatValue(), b.floatValue()));
     }
 
     private void unaryOpF(Function<Float, Float> op) {
-        if (!stack.isEmpty()) {
-            Number a = (Number) stack.pop();
-            stack.push(op.apply(a.floatValue()));
+        if (stack.isEmpty()) {
+            throw new VMRuntimeException(pc, "Stack underflow: Missing operand for float unary operation.");
         }
+        Number a = (Number) stack.pop();
+        stack.push(op.apply(a.floatValue()));
     }
 
     private boolean isTopTrue() {
-        if (stack.isEmpty()) return false;
+        if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow during condition check");
         Object top = stack.pop();
         if (top instanceof Number) {
             return ((Number) top).intValue() != 0;
@@ -258,14 +299,16 @@ public class VM {
         try {
             int line = Integer.parseInt(target);
             int targetPc = line - 1;
+
             if (targetPc >= 0 && targetPc < segment.length) {
                 return targetPc;
+            } else {
+                throw new VMRuntimeException(pc, "Jump target out of bounds: line " + line);
             }
+
         } catch (NumberFormatException e) {
-            // Handled below
+            throw new VMRuntimeException(pc, "Invalid jump target format: '" + target + "' is not a number.");
         }
-        System.out.println("Invalid jump target: '" + target + "' is not a valid line number.");
-        return -1;
     }
 
     private Object parseValue(String val) {

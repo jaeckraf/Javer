@@ -325,4 +325,196 @@ class VMTest {
         vm.run();
         assertEquals("77", getOutput());
     }
+
+    @Test
+    void testDivisionByZeroInteger() throws IOException {
+        String code = """
+                code:
+                PUSHCONST 10
+                PUSHCONST 0
+                DIV
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // Fails safely and prints the exact exception message
+        assertEquals("Runtime Error at line 3: Division by zero", getOutput());
+    }
+
+    @Test
+    void testModuloByZeroInteger() throws IOException {
+        String code = """
+                code:
+                PUSHCONST 10
+                PUSHCONST 0
+                MOD
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        assertEquals("Runtime Error at line 3: Modulo by zero", getOutput());
+    }
+
+    @Test
+    void testDivisionByZeroFloat() throws IOException {
+        String code = """
+                code:
+                PUSHCONST 5.0
+                PUSHCONST 0.0
+                DIVF
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        assertEquals("Runtime Error at line 3: Division by zero", getOutput());
+    }
+
+    @Test
+    void testUnknownInstruction() throws IOException {
+        String code = """
+                code:
+                FAKEINSTRUCTION
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        assertEquals("Unknown instruction at line 1: FAKEINSTRUCTION", getOutput());
+    }
+
+    @Test
+    void testInvalidJumpTarget() throws IOException {
+        String code = """
+                code:
+                JMP 999
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        assertEquals("Runtime Error at line 1: Jump target out of bounds: line 999", getOutput());
+    }
+
+    @Test
+    void testMissingReturnAddress() throws IOException {
+        String code = """
+                code:
+                RET
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // Updated to expect the new standard VMRuntimeException format!
+        assertEquals("Runtime Error at line 1: Stack underflow on RET: Missing return address", getOutput());
+    }
+
+    @Test
+    void testStackUnderflowPop() throws IOException {
+        String code = """
+                code:
+                POP
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // POP is on line 1, stack is empty
+        assertEquals("Runtime Error at line 1: Stack underflow on POP", getOutput());
+    }
+
+    @Test
+    void testStackUnderflowBinaryOp() throws IOException {
+        String code = """
+                code:
+                PUSHCONST 10
+                ADD
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // ADD is on line 2, but there is only 1 item on the stack
+        assertEquals("Runtime Error at line 2: Stack underflow: Not enough operands for binary operation.", getOutput());
+    }
+
+    @Test
+    void testStackUnderflowFloatBinaryOp() throws IOException {
+        String code = """
+                code:
+                ADDF
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // ADDF is on line 1, stack is empty
+        assertEquals("Runtime Error at line 1: Stack underflow: Not enough operands for float binary operation.", getOutput());
+    }
+
+    @Test
+    void testStackUnderflowCondition() throws IOException {
+        String code = """
+                code:
+                JT 5
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // JT expects a boolean/number to evaluate, but stack is empty
+        assertEquals("Runtime Error at line 1: Stack underflow during condition check", getOutput());
+    }
+
+    @Test
+    void testTypeMismatchPrintc() throws IOException {
+        String code = """
+                code:
+                PUSHCONST "Hello"
+                PRINTC
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // PRINTC expects a Number to convert to a char, not a String
+        assertEquals("Runtime Error at line 2: Type mismatch: PRINTC expects a Number", getOutput());
+    }
+
+    @Test
+    void testTypeMismatchNew() throws IOException {
+        String code = """
+                code:
+                PUSHCONST "Five"
+                NEW
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // NEW expects a Number for the array size
+        assertEquals("Runtime Error at line 2: Type mismatch: NEW expects a Number for size", getOutput());
+    }
+
+    @Test
+    void testTypeMismatchHStore() throws IOException {
+        String code = """
+                code:
+                PUSHCONST 5
+                NEW
+                PUSHCONST "InvalidPointer"
+                PUSHCONST 42
+                HSTORE X 0
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // The pointer index pushed before the value is a String, not a Number
+        assertEquals("Runtime Error at line 5: Type mismatch: HSTORE expects Numbers for pointer and value", getOutput());
+    }
+
+    @Test
+    void testTypeMismatchRet() throws IOException {
+        String code = """
+                code:
+                PUSHCONST 3.14
+                RET
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        // RET expects an Integer (Program Counter address), not a Float
+        assertEquals("Runtime Error at line 2: Type mismatch: Return address on stack is not an Integer", getOutput());
+    }
 }
