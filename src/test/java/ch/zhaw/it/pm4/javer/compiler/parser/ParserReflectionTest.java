@@ -8,6 +8,7 @@ import org.junit.jupiter.api.*;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -382,8 +383,7 @@ class ParserReflectionTest {
 
             invokePrivate(parser, "expectTokenType", TokenType.class, TokenType.OPERATOR_PLUS);
 
-            // An deine echte DiagnosticBag-API anpassen:
-            verify(diagnostics).add(any());
+            verify(diagnostics).add(any(SourceLocation.class), any(), contains("Expected token"));
         }
     }
 
@@ -411,9 +411,11 @@ class ParserReflectionTest {
                     token(TokenType.SPECIAL_END_OF_FILE)
             );
 
-            Object function = invokePrivate(parser, "parseFunctionDeclaration");
+            @SuppressWarnings("unchecked")
+            Optional<Object> parsedFunction = (Optional<Object>) invokePrivate(parser, "parseFunctionDeclaration");
 
-            assertNotNull(function);
+            assertTrue(parsedFunction.isPresent());
+            Object function = parsedFunction.get();
             assertEquals("FunctionDeclaration", function.getClass().getSimpleName());
             assertEquals("main", readPrivateField(function, "name"));
             assertEquals("VoidType", readPrivateField(function, "returnType").getClass().getSimpleName());
@@ -429,7 +431,7 @@ class ParserReflectionTest {
         }
 
         @Test
-        void parseFunctionDeclaration_identifierAfterFn_isTreatedAsNamedReturnType() throws Exception {
+        void parseFunctionDeclaration_missingFunctionName_returnsEmptyOptional() throws Exception {
             Parser parser = createParser(
                     token(TokenType.KEYWORD_FUNCTION),
                     new Token(TokenType.ID_IDENTIFIER, "main", new SourceLocation(1, 1, 1)),
@@ -440,14 +442,13 @@ class ParserReflectionTest {
                     token(TokenType.SPECIAL_END_OF_FILE)
             );
 
-            Object function = invokePrivate(parser, "parseFunctionDeclaration");
+            @SuppressWarnings("unchecked")
+            Optional<Object> parsedFunction = (Optional<Object>) invokePrivate(parser, "parseFunctionDeclaration");
 
-            assertNotNull(function);
-            assertEquals("dummy", readPrivateField(function, "name"));
-            assertEquals("NamedType", readPrivateField(function, "returnType").getClass().getSimpleName());
+            assertTrue(parsedFunction.isEmpty());
 
             Token current = (Token) invokePrivate(parser, "currentToken");
-            assertEquals(TokenType.SPECIAL_END_OF_FILE, current.getTokenType());
+            assertEquals(TokenType.SYMBOL_LEFT_PARENTHESIS, current.getTokenType());
         }
     }
 

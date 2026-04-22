@@ -17,6 +17,7 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A Recursive Descent Parser for the Javer programming language.
@@ -185,11 +186,13 @@ public class Parser {
         return new CompilationUnit(parseDeclarations());
     }
 
-    private DeclarationAstNode parseDeclaration() {
-        if(matchCurrentToken(TokenType.TYPE_ENUM)) return parseEnumDeclaration();
-        if(matchCurrentToken(TokenType.TYPE_STRUCT)) return parseStructDeclaration();
-        if(matchCurrentToken(TokenType.KEYWORD_FUNCTION)) return parseFunctionDeclaration();
-        return null;
+    private Optional<DeclarationAstNode> parseDeclaration() {
+        if (matchCurrentToken(TokenType.TYPE_ENUM)) return Optional.of(parseEnumDeclaration());
+        if (matchCurrentToken(TokenType.TYPE_STRUCT)) return Optional.of(parseStructDeclaration());
+        if (matchCurrentToken(TokenType.KEYWORD_FUNCTION)) {
+            return parseFunctionDeclaration().map(function -> (DeclarationAstNode) function);
+        }
+        return Optional.empty();
     }
 
     private EnumDeclaration parseEnumDeclaration() {
@@ -211,38 +214,47 @@ public class Parser {
         return new StructField(new PrimitiveType(PrimitiveTypeKind.BOOL), "dummy");
     }
 
-    private FunctionDeclaration parseFunctionDeclaration() {
-        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.KEYWORD_FUNCTION);
-
-        TypeAstNode returnType = parseReturnType();
-
-        String functionName = "dummy";
-        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_LEFT_PARENTHESIS);
-        if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
-            functionName = currentToken().getValue();
-            consumeToken();
-        } else {
-            expectTokenType(TokenType.ID_IDENTIFIER);
+    private Optional<FunctionDeclaration> parseFunctionDeclaration() {
+        if (!expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.KEYWORD_FUNCTION)) {
+            return Optional.empty();
         }
-        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+
+        Optional<TypeAstNode> returnType = parseReturnType();
+        if (returnType.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<String> functionName = parseIdentifierAndConsume();
+        if (functionName.isEmpty()) {
+            return Optional.empty();
+        }
         List<FunctionParameter> parameters = parseFunctionParameters();
         BlockStatement body = parseBlock();
 
-        return new FunctionDeclaration(returnType, functionName, parameters, body);
+        return Optional.of(new FunctionDeclaration(returnType.get(), functionName.get(), parameters, body));
     }
 
-    private FunctionParameter parseFunctionParameter() {
-        TypeAstNode parameterType = parseType();
-
-        String parameterName = "dummy";
-        if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
-            parameterName = currentToken().getValue();
-            consumeToken();
-        } else {
-            expectTokenType(TokenType.ID_IDENTIFIER);
+    private Optional<FunctionParameter> parseFunctionParameter() {
+        Optional<TypeAstNode> parameterType = parseType();
+        if (parameterType.isEmpty()) {
+            return Optional.empty();
         }
 
-        return new FunctionParameter(parameterName, parameterType);
+        Optional<String> parameterName = parseIdentifierAndConsume();
+        if (parameterName.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new FunctionParameter(parameterName.get(), parameterType.get()));
+    }
+
+    private Optional<String> parseIdentifierAndConsume() {
+        if (!expectTokenType(TokenType.ID_IDENTIFIER)) {
+            return Optional.empty();
+        }
+        String identifier = currentToken().getValue();
+        consumeToken();
+        return Optional.of(identifier);
     }
 
 
@@ -250,17 +262,20 @@ public class Parser {
     // Types
     // ============================================================
 
-    private TypeAstNode parseType() {
-        TypeAstNode baseType = parseTypeHead();
-        return wrapArrayDimensions(baseType);
+    private Optional<TypeAstNode> parseType() {
+        Optional<TypeAstNode> baseType = parseTypeHead();
+        if (baseType.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(wrapArrayDimensions(baseType.get()));
     }
 
-    private TypeAstNode parseReturnType() {
-        if (matchCurrentToken(TokenType.TYPE_VOID)) return parseVoidType();
+    private Optional<TypeAstNode> parseReturnType() {
+        if (matchCurrentToken(TokenType.TYPE_VOID)) return Optional.of(parseVoidType());
         return parseType();
     }
 
-    private TypeAstNode parseTypeHead() {
+    private Optional<TypeAstNode> parseTypeHead() {
         if (matchAnyCurrentToken(
                 TokenType.TYPE_INTEGER,
                 TokenType.TYPE_DOUBLE,
@@ -268,9 +283,9 @@ public class Parser {
                 TokenType.TYPE_STRING,
                 TokenType.TYPE_CHARACTER
         )) {
-            return parsePrimitiveType();
+            return Optional.of(parsePrimitiveType());
         }
-        return parseNamedType();
+        return parseNamedType().map(type -> (TypeAstNode) type);
     }
 
     private PrimitiveType parsePrimitiveType() {
@@ -279,22 +294,19 @@ public class Parser {
         return primitiveType;
     }
 
-    private NamedType parseNamedType() {
+    private Optional<NamedType> parseNamedType() {
         NameTypeKind kind = NameTypeKind.INVALID;
         if (matchAnyCurrentToken(TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM)) {
             kind = toNameTypeKind(currentToken());
             consumeToken();
         }
 
-        String name = "dummy";
-        if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
-            name = currentToken().getValue();
-            consumeToken();
-        } else {
-            expectTokenType(TokenType.ID_IDENTIFIER);
+        Optional<String> name = parseIdentifierAndConsume();
+        if (name.isEmpty()) {
+            return Optional.empty();
         }
 
-        return new NamedType(kind, name);
+        return Optional.of(new NamedType(kind, name.get()));
     }
 
     private VoidType parseVoidType() {
@@ -680,11 +692,8 @@ public class Parser {
 
         while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
             int startPosition = currentPosition;
-            DeclarationAstNode declaration = parseDeclaration();
-
-            if (declaration != null) {
-                declarations.add(declaration);
-            }
+            Optional<DeclarationAstNode> declaration = parseDeclaration();
+            declaration.ifPresent(declarations::add);
 
             // Recovery: bei unbekanntem Top-Level-Token oder fehlendem Fortschritt
             // ein Token konsumieren, um Endlosschleifen zu vermeiden.
@@ -715,10 +724,19 @@ public class Parser {
             return parameters;
         }
 
-        parameters.add(parseFunctionParameter());
+        Optional<FunctionParameter> firstParameter = parseFunctionParameter();
+        if (firstParameter.isEmpty()) {
+            expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+            return parameters;
+        }
+        parameters.add(firstParameter.get());
         while (matchCurrentToken(TokenType.SYMBOL_COMMA)) {
             consumeToken();
-            parameters.add(parseFunctionParameter());
+            Optional<FunctionParameter> parameter = parseFunctionParameter();
+            if (parameter.isEmpty()) {
+                break;
+            }
+            parameters.add(parameter.get());
         }
 
         expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
