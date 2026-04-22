@@ -13,6 +13,7 @@ import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -165,8 +166,15 @@ public class Parser {
      * @param tokenType The token type that was expected but not found at the current position.
      * This method creates a syntax error diagnostic indicating that the expected token type was not found.
      * */
-    // TODO
     private void reportExpectedToken(TokenType tokenType) {
+        Token current = currentToken();
+        SourceLocation location = current.getPosition();
+        String message = String.format(
+                "Expected token %s but found %s.",
+                tokenType,
+                current.getTokenType()
+        );
+        diagnosticBag.add(location, Severity.ERROR, message);
     }
 
     // ============================================================
