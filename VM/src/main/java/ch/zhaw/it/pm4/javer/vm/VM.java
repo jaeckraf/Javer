@@ -11,16 +11,17 @@ import java.util.Map;
 
 public class VM {
 
-    private final byte[] stack = new byte[1048576]; // 1 MB
-    private final List<byte[]> heap = new ArrayList<>();
-    private int sp = 0;
-    private int pc = 0;
+    private static final int STACK_SIZE = 1048576; // 1 MB
 
+    private final byte[] stack = new byte[STACK_SIZE];
+    private final List<byte[]> heap = new ArrayList<>();
     private final Map<Integer, Instruction> code = new HashMap<>();
-    private final List<String> lines;
     private final Map<String, byte[]> dataMap = new HashMap<>();
     private final Map<String, Integer> labels = new HashMap<>();
+    private final List<String> lines;
 
+    private int sp = 0;
+    private int pc = 0;
     private int programEndAddress = 0;
     private boolean halted = false;
 
@@ -51,101 +52,148 @@ public class VM {
 
     private void parse() throws ParseException {
         List<String> errors = new ArrayList<>();
+        List<PendingJumpCheck> pendingJumpChecks = new ArrayList<>();
 
-        int state = 0; // 0: none, 1: code, 2: data
-        int address = 0;
-        int lineNumber = 0;
+        int codeLineIndex = -1;
+        int dataLineIndex = -1;
 
-        // First pass: collect labels and instruction addresses
-        for (String rawLine : lines) {
-            lineNumber++;
-            String line = rawLine.trim();
-
+        // section detection with strict order: code first, then data
+        for (int i = 0; i < lines.size(); i++) {
+            String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty()) {
                 continue;
             }
 
             if (line.equals("code:")) {
-                state = 1;
-                continue;
-            }
-
-            if (line.equals("data:")) {
-                state = 2;
-                continue;
-            }
-
-            if (state == 1) {
-                if (isLabel(line)) {
-                    String labelName = extractLabelName(line);
-                    if (labels.containsKey(labelName)) {
-                        errors.add("Line " + lineNumber + ": duplicate label '" + labelName + "'");
-                    } else {
-                        labels.put(labelName, address);
-                    }
+                if (codeLineIndex != -1) {
+                    errors.add("Line " + (i + 1) + ": duplicate 'code:' section");
+                } else if (dataLineIndex != -1) {
+                    errors.add("Line " + (i + 1) + ": 'code:' section must appear before 'data:'");
                 } else {
-                    address++;
+                    codeLineIndex = i;
                 }
+            } else if (line.equals("data:")) {
+                if (codeLineIndex == -1) {
+                    errors.add("Line " + (i + 1) + ": 'data:' section must appear after 'code:'");
+                } else if (dataLineIndex != -1) {
+                    errors.add("Line " + (i + 1) + ": duplicate 'data:' section");
+                } else {
+                    dataLineIndex = i;
+                }
+            }
+        }
+
+        if (codeLineIndex == -1) {
+            errors.add("Missing required 'code:' section");
+        }
+        if (dataLineIndex == -1) {
+            errors.add("Missing required 'data:' section");
+        }
+
+        if (!errors.isEmpty()) {
+            printErrors(errors);
+            throw new ParseException(errors);
+        }
+
+        int address = 0;
+
+        // first pass: labels in code section
+        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
+            String line = stripComment(lines.get(i)).trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+
+            if (line.equals("code:") || line.equals("data:")) {
+                errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
+                continue;
+            }
+
+            if (isLabel(line)) {
+                String labelName = extractLabelName(line);
+                if (labels.containsKey(labelName)) {
+                    errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
+                } else {
+                    labels.put(labelName, address);
+                }
+            } else {
+                address++;
             }
         }
 
         programEndAddress = address;
 
-        // Second pass: parse code and data
-        state = 0;
+        // second pass: parse code instructions
         address = 0;
-        lineNumber = 0;
-
-        for (String rawLine : lines) {
-            lineNumber++;
-            String line = rawLine.trim();
-
+        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
+            String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty()) {
                 continue;
             }
 
-            if (line.equals("code:")) {
-                state = 1;
+            if (isLabel(line)) {
                 continue;
             }
 
-            if (line.equals("data:")) {
-                state = 2;
+            try {
+                Instruction instruction = parseInstruction(line, i + 1, pendingJumpChecks);
+                code.put(address++, instruction);
+            } catch (ParseException e) {
+                errors.addAll(e.getErrors());
+            }
+        }
+
+        // parse data section
+        for (int i = dataLineIndex + 1; i < lines.size(); i++) {
+            String line = stripComment(lines.get(i)).trim();
+            if (line.isEmpty()) {
                 continue;
             }
 
-            if (state == 1) {
-                if (isLabel(line)) {
-                    continue;
-                }
+            if (line.equals("code:") || line.equals("data:")) {
+                errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
+                continue;
+            }
 
-                try {
-                    Instruction instruction = parseInstruction(line, lineNumber);
-                    code.put(address++, instruction);
-                } catch (ParseException e) {
-                    errors.addAll(e.getErrors());
-                }
-            } else if (state == 2) {
-                try {
-                    parseDataLine(line, lineNumber);
-                } catch (ParseException e) {
-                    errors.addAll(e.getErrors());
-                }
-            } else {
-                errors.add("Line " + lineNumber + ": content outside of 'code:' or 'data:' section");
+            if (isLabel(line)) {
+                errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
+                continue;
+            }
+
+            try {
+                parseDataLine(line, i + 1);
+            } catch (ParseException e) {
+                errors.addAll(e.getErrors());
             }
         }
 
-        if (!code.containsKey(programEndAddress)) {
-            code.put(programEndAddress, new HaltInstruction());
+        // validate jump labels
+        for (PendingJumpCheck check : pendingJumpChecks) {
+            if (!labels.containsKey(check.labelName())) {
+                errors.add("Line " + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
+            }
         }
+
+        code.put(programEndAddress, new HaltInstruction());
 
         if (!errors.isEmpty()) {
-            for (String error : errors) {
-                System.err.println(error);
-            }
+            printErrors(errors);
             throw new ParseException(errors);
         }
+    }
+
+    private void printErrors(List<String> errors) {
+        for (String error : errors) {
+            System.err.println(error);
+        }
+    }
+
+    private String stripComment(String line) {
+        int index = line.indexOf("//");
+        if (index >= 0) {
+            return line.substring(0, index);
+        }
+        return line;
     }
 
     private boolean isLabel(String line) {
@@ -156,9 +204,11 @@ public class VM {
         return line.substring(1, line.length() - 1);
     }
 
-    private Instruction parseInstruction(String line, int lineNumber) throws ParseException {
-        String[] parts = line.split(",");
-        if (parts.length == 0) {
+    private Instruction parseInstruction(String line, int lineNumber, List<PendingJumpCheck> pendingJumpChecks)
+            throws ParseException {
+
+        String[] parts = splitOperands(line);
+        if (parts.length == 0 || parts[0].isBlank()) {
             throw new ParseException("Line " + lineNumber + ": empty instruction");
         }
 
@@ -169,87 +219,165 @@ public class VM {
             throw new ParseException("Line " + lineNumber + ": unknown instruction '" + instrName + "'");
         }
 
-        String operand = parts.length > 1 ? parts[1].trim() : null;
-
-        if (parts.length > 2) {
-            throw new ParseException("Line " + lineNumber + ": too many operands for instruction '" + instrName + "'");
-        }
-
         return switch (kind) {
-            // Stack operations with typed operands
-            case PUSHB -> new PushByteInstruction(parseByteOperand(operand, instrName, lineNumber));
-            case PUSHC -> new PushCharInstruction(parseCharOperand(operand, instrName, lineNumber));
-            case PUSHI -> new PushIntInstruction(parseIntOperand(operand, instrName, lineNumber));
-            case PUSHD -> new PushDoubleInstruction(parseDoubleOperand(operand, instrName, lineNumber));
+            case PUSHB -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new PushByteInstruction(parseByteOperand(parts[1], instrName, lineNumber));
+            }
+            case PUSHC -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new PushCharInstruction(parseCharOperand(parts[1], instrName, lineNumber));
+            }
+            case PUSHI -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new PushIntInstruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case PUSHD -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new PushDoubleInstruction(parseDoubleOperand(parts[1], instrName, lineNumber));
+            }
 
-            // Stack operations without operands
-            case POPB -> requireNoOperandAndReturn(new PopByteInstruction(), operand, instrName, lineNumber);
-            case POPC -> requireNoOperandAndReturn(new PopCharInstruction(), operand, instrName, lineNumber);
-            case POPI -> requireNoOperandAndReturn(new PopIntInstruction(), operand, instrName, lineNumber);
-            case POPD -> requireNoOperandAndReturn(new PopDoubleInstruction(), operand, instrName, lineNumber);
+            case LOADB -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new LoadByteFromDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+            case LOADC -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new LoadCharFromDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+            case LOADI -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new LoadIntFromDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+            case LOADD -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new LoadDoubleFromDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
 
-            // Heap operations
-            case HLOAD1 -> requireNoOperandAndReturn(new HLoad1Instruction(), operand, instrName, lineNumber);
-            case HLOAD2 -> requireNoOperandAndReturn(new HLoad2Instruction(), operand, instrName, lineNumber);
-            case HLOAD4 -> requireNoOperandAndReturn(new HLoad4Instruction(), operand, instrName, lineNumber);
-            case HLOAD8 -> requireNoOperandAndReturn(new HLoad8Instruction(), operand, instrName, lineNumber);
-            case HSTORE1 -> requireNoOperandAndReturn(new HStore1Instruction(), operand, instrName, lineNumber);
-            case HSTORE2 -> requireNoOperandAndReturn(new HStore2Instruction(), operand, instrName, lineNumber);
-            case HSTORE4 -> requireNoOperandAndReturn(new HStore4Instruction(), operand, instrName, lineNumber);
-            case HSTORE8 -> requireNoOperandAndReturn(new HStore8Instruction(), operand, instrName, lineNumber);
-            case NEW -> requireNoOperandAndReturn(new NewInstruction(), operand, instrName, lineNumber);
+            case STOREB -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new StoreByteToDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+            case STOREC -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new StoreCharToDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+            case STOREI -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new StoreIntToDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+            case STORED -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                yield new StoreDoubleToDataInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber),
+                        parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
 
-            // Arithmetic
-            case IADD -> requireNoOperandAndReturn(new IAddInstruction(), operand, instrName, lineNumber);
-            case ISUB -> requireNoOperandAndReturn(new ISubInstruction(), operand, instrName, lineNumber);
-            case IMUL -> requireNoOperandAndReturn(new IMulInstruction(), operand, instrName, lineNumber);
-            case IDIV -> requireNoOperandAndReturn(new IDivInstruction(), operand, instrName, lineNumber);
-            case IMOD -> requireNoOperandAndReturn(new IModInstruction(), operand, instrName, lineNumber);
-            case DADD -> requireNoOperandAndReturn(new DAddInstruction(), operand, instrName, lineNumber);
-            case DSUB -> requireNoOperandAndReturn(new DSubInstruction(), operand, instrName, lineNumber);
-            case DMUL -> requireNoOperandAndReturn(new DMulInstruction(), operand, instrName, lineNumber);
-            case DDIV -> requireNoOperandAndReturn(new DDivInstruction(), operand, instrName, lineNumber);
+            case POPB -> noOperand(parts, instrName, lineNumber, new PopByteInstruction());
+            case POPC -> noOperand(parts, instrName, lineNumber, new PopCharInstruction());
+            case POPI -> noOperand(parts, instrName, lineNumber, new PopIntInstruction());
+            case POPD -> noOperand(parts, instrName, lineNumber, new PopDoubleInstruction());
 
-            // Comparisons
-            case ILT -> requireNoOperandAndReturn(new ILtInstruction(), operand, instrName, lineNumber);
-            case ILE -> requireNoOperandAndReturn(new ILeInstruction(), operand, instrName, lineNumber);
-            case IGT -> requireNoOperandAndReturn(new IGtInstruction(), operand, instrName, lineNumber);
-            case IGE -> requireNoOperandAndReturn(new IGeInstruction(), operand, instrName, lineNumber);
-            case IEQ -> requireNoOperandAndReturn(new IEqInstruction(), operand, instrName, lineNumber);
-            case INE -> requireNoOperandAndReturn(new INeInstruction(), operand, instrName, lineNumber);
-            case DLT -> requireNoOperandAndReturn(new DLtInstruction(), operand, instrName, lineNumber);
-            case DLE -> requireNoOperandAndReturn(new DLeInstruction(), operand, instrName, lineNumber);
-            case DGT -> requireNoOperandAndReturn(new DGtInstruction(), operand, instrName, lineNumber);
-            case DGE -> requireNoOperandAndReturn(new DGeInstruction(), operand, instrName, lineNumber);
-            case DEQ -> requireNoOperandAndReturn(new DEqInstruction(), operand, instrName, lineNumber);
-            case DNE -> requireNoOperandAndReturn(new DNeInstruction(), operand, instrName, lineNumber);
+            case HLOAD1 -> noOperand(parts, instrName, lineNumber, new HLoad1Instruction());
+            case HLOAD2 -> noOperand(parts, instrName, lineNumber, new HLoad2Instruction());
+            case HLOAD4 -> noOperand(parts, instrName, lineNumber, new HLoad4Instruction());
+            case HLOAD8 -> noOperand(parts, instrName, lineNumber, new HLoad8Instruction());
+            case HSTORE1 -> noOperand(parts, instrName, lineNumber, new HStore1Instruction());
+            case HSTORE2 -> noOperand(parts, instrName, lineNumber, new HStore2Instruction());
+            case HSTORE4 -> noOperand(parts, instrName, lineNumber, new HStore4Instruction());
+            case HSTORE8 -> noOperand(parts, instrName, lineNumber, new HStore8Instruction());
+            case NEW -> noOperand(parts, instrName, lineNumber, new NewInstruction());
 
-            // Shifts
-            case ISHL -> requireNoOperandAndReturn(new IShlInstruction(), operand, instrName, lineNumber);
-            case ISHR -> requireNoOperandAndReturn(new IShrInstruction(), operand, instrName, lineNumber);
+            case IADD -> noOperand(parts, instrName, lineNumber, new IAddInstruction());
+            case ISUB -> noOperand(parts, instrName, lineNumber, new ISubInstruction());
+            case IMUL -> noOperand(parts, instrName, lineNumber, new IMulInstruction());
+            case IDIV -> noOperand(parts, instrName, lineNumber, new IDivInstruction());
+            case IMOD -> noOperand(parts, instrName, lineNumber, new IModInstruction());
+            case DADD -> noOperand(parts, instrName, lineNumber, new DAddInstruction());
+            case DSUB -> noOperand(parts, instrName, lineNumber, new DSubInstruction());
+            case DMUL -> noOperand(parts, instrName, lineNumber, new DMulInstruction());
+            case DDIV -> noOperand(parts, instrName, lineNumber, new DDivInstruction());
 
-            // Bit operations
-            case IAND -> requireNoOperandAndReturn(new IAndInstruction(), operand, instrName, lineNumber);
-            case IOR -> requireNoOperandAndReturn(new IOrInstruction(), operand, instrName, lineNumber);
-            case IXOR -> requireNoOperandAndReturn(new IXorInstruction(), operand, instrName, lineNumber);
+            case ILT -> noOperand(parts, instrName, lineNumber, new ILtInstruction());
+            case ILE -> noOperand(parts, instrName, lineNumber, new ILeInstruction());
+            case IGT -> noOperand(parts, instrName, lineNumber, new IGtInstruction());
+            case IGE -> noOperand(parts, instrName, lineNumber, new IGeInstruction());
+            case IEQ -> noOperand(parts, instrName, lineNumber, new IEqInstruction());
+            case INE -> noOperand(parts, instrName, lineNumber, new INeInstruction());
+            case DLT -> noOperand(parts, instrName, lineNumber, new DLtInstruction());
+            case DLE -> noOperand(parts, instrName, lineNumber, new DLeInstruction());
+            case DGT -> noOperand(parts, instrName, lineNumber, new DGtInstruction());
+            case DGE -> noOperand(parts, instrName, lineNumber, new DGeInstruction());
+            case DEQ -> noOperand(parts, instrName, lineNumber, new DEqInstruction());
+            case DNE -> noOperand(parts, instrName, lineNumber, new DNeInstruction());
 
-            // Unary
-            case INEG -> requireNoOperandAndReturn(new INegInstruction(), operand, instrName, lineNumber);
-            case DNEG -> requireNoOperandAndReturn(new DNegInstruction(), operand, instrName, lineNumber);
-            case IINV -> requireNoOperandAndReturn(new IInvInstruction(), operand, instrName, lineNumber);
+            case ISHL -> noOperand(parts, instrName, lineNumber, new IShlInstruction());
+            case ISHR -> noOperand(parts, instrName, lineNumber, new IShrInstruction());
 
-            // Jump instructions
-            case JUMP -> new JumpInstruction(parseLabelOperand(operand, instrName, lineNumber));
-            case JUMPT -> new JumpTrueInstruction(parseLabelOperand(operand, instrName, lineNumber));
-            case JUMPF -> new JumpFalseInstruction(parseLabelOperand(operand, instrName, lineNumber));
+            case IAND -> noOperand(parts, instrName, lineNumber, new IAndInstruction());
+            case IOR -> noOperand(parts, instrName, lineNumber, new IOrInstruction());
+            case IXOR -> noOperand(parts, instrName, lineNumber, new IXorInstruction());
 
-            // Halt and print
-            case HALT -> requireNoOperandAndReturn(new HaltInstruction(), operand, instrName, lineNumber);
-            case PRINTB -> requireNoOperandAndReturn(new PrintByteInstruction(), operand, instrName, lineNumber);
-            case PRINTC -> requireNoOperandAndReturn(new PrintCharInstruction(), operand, instrName, lineNumber);
-            case PRINTI -> requireNoOperandAndReturn(new PrintIntInstruction(), operand, instrName, lineNumber);
-            case PRINTD -> requireNoOperandAndReturn(new PrintDoubleInstruction(), operand, instrName, lineNumber);
+            case INEG -> noOperand(parts, instrName, lineNumber, new INegInstruction());
+            case DNEG -> noOperand(parts, instrName, lineNumber, new DNegInstruction());
+            case IINV -> noOperand(parts, instrName, lineNumber, new IInvInstruction());
+
+            case JUMP -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
+                yield new JumpInstruction(label);
+            }
+            case JUMPT -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
+                yield new JumpTrueInstruction(label);
+            }
+            case JUMPF -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
+                yield new JumpFalseInstruction(label);
+            }
+
+            case HALT -> noOperand(parts, instrName, lineNumber, new HaltInstruction());
+            case PRINTB -> noOperand(parts, instrName, lineNumber, new PrintByteInstruction());
+            case PRINTC -> noOperand(parts, instrName, lineNumber, new PrintCharInstruction());
+            case PRINTI -> noOperand(parts, instrName, lineNumber, new PrintIntInstruction());
+            case PRINTD -> noOperand(parts, instrName, lineNumber, new PrintDoubleInstruction());
         };
+    }
+
+    private String[] splitOperands(String line) {
+        String[] raw = line.split(",");
+        String[] trimmed = new String[raw.length];
+        for (int i = 0; i < raw.length; i++) {
+            trimmed[i] = raw[i].trim();
+        }
+        return trimmed;
     }
 
     private void parseDataLine(String line, int lineNumber) throws ParseException {
@@ -259,8 +387,11 @@ public class VM {
         }
 
         String name = parts[0];
-        int size;
+        if (dataMap.containsKey(name)) {
+            throw new ParseException("Line " + lineNumber + ": duplicate data symbol '" + name + "'");
+        }
 
+        int size;
         try {
             size = Integer.parseInt(parts[1]);
         } catch (NumberFormatException e) {
@@ -293,82 +424,93 @@ public class VM {
         dataMap.put(name, dataBytes);
     }
 
-    private byte parseByteOperand(String operand, String instrName, int lineNumber) throws ParseException {
-        if (operand == null) {
-            throw new ParseException("Line " + lineNumber + ": missing operand for instruction '" + instrName + "'");
+    private void ensureOperandCount(String[] parts, int expectedCount, String instrName, int lineNumber)
+            throws ParseException {
+        if (parts.length != expectedCount) {
+            throw new ParseException(
+                    "Line " + lineNumber + ": instruction '" + instrName + "' expects "
+                            + (expectedCount - 1) + " operand(s), got " + (parts.length - 1)
+            );
         }
+    }
 
+    private Instruction noOperand(String[] parts, String instrName, int lineNumber, Instruction instruction)
+            throws ParseException {
+        ensureOperandCount(parts, 1, instrName, lineNumber);
+        return instruction;
+    }
+
+    private byte parseByteOperand(String operand, String instrName, int lineNumber) throws ParseException {
         try {
-            return Byte.parseByte(operand);
+            return Byte.parseByte(operand.trim());
         } catch (NumberFormatException e) {
             throw new ParseException("Line " + lineNumber + ": invalid byte operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private char parseCharOperand(String operand, String instrName, int lineNumber) throws ParseException {
-        if (operand == null) {
-            throw new ParseException("Line " + lineNumber + ": missing operand for instruction '" + instrName + "'");
-        }
-
         try {
-            return (char) Integer.parseInt(operand);
+            return (char) Integer.parseInt(operand.trim());
         } catch (NumberFormatException e) {
             throw new ParseException("Line " + lineNumber + ": invalid char operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private int parseIntOperand(String operand, String instrName, int lineNumber) throws ParseException {
-        if (operand == null) {
-            throw new ParseException("Line " + lineNumber + ": missing operand for instruction '" + instrName + "'");
-        }
-
         try {
-            return Integer.parseInt(operand);
+            return Integer.parseInt(operand.trim());
         } catch (NumberFormatException e) {
             throw new ParseException("Line " + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private double parseDoubleOperand(String operand, String instrName, int lineNumber) throws ParseException {
-        if (operand == null) {
-            throw new ParseException("Line " + lineNumber + ": missing operand for instruction '" + instrName + "'");
-        }
-
         try {
-            return Double.parseDouble(operand);
+            return Double.parseDouble(operand.trim());
         } catch (NumberFormatException e) {
             throw new ParseException("Line " + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private String parseLabelOperand(String operand, String instrName, int lineNumber) throws ParseException {
-        if (operand == null || operand.isBlank()) {
+        String value = operand.trim();
+        if (value.isEmpty()) {
             throw new ParseException("Line " + lineNumber + ": missing label operand for instruction '" + instrName + "'");
         }
-        return operand;
+        return value;
     }
 
-    private Instruction requireNoOperandAndReturn(Instruction instruction, String operand, String instrName, int lineNumber)
+    private String parseIdentifier(String operand, String instrName, String description, int lineNumber)
             throws ParseException {
-        if (operand != null && !operand.isBlank()) {
-            throw new ParseException("Line " + lineNumber + ": instruction '" + instrName + "' does not accept an operand");
+        String value = operand.trim();
+        if (value.isEmpty()) {
+            throw new ParseException("Line " + lineNumber + ": missing " + description + " for instruction '" + instrName + "'");
         }
-        return instruction;
+        return value;
     }
 
     private InstructionKind getInstructionKind(String name) {
         return switch (name.toUpperCase()) {
-            // Stack operations
             case "PUSHB" -> InstructionKind.PUSHB;
             case "PUSHC" -> InstructionKind.PUSHC;
             case "PUSHI" -> InstructionKind.PUSHI;
             case "PUSHD" -> InstructionKind.PUSHD;
+
+            case "LOADB" -> InstructionKind.LOADB;
+            case "LOADC" -> InstructionKind.LOADC;
+            case "LOADI" -> InstructionKind.LOADI;
+            case "LOADD" -> InstructionKind.LOADD;
+
+            case "STOREB" -> InstructionKind.STOREB;
+            case "STOREC" -> InstructionKind.STOREC;
+            case "STOREI" -> InstructionKind.STOREI;
+            case "STORED" -> InstructionKind.STORED;
+
             case "POPB" -> InstructionKind.POPB;
             case "POPC" -> InstructionKind.POPC;
             case "POPI" -> InstructionKind.POPI;
             case "POPD" -> InstructionKind.POPD;
 
-            // Heap operations
             case "HLOAD1" -> InstructionKind.HLOAD1;
             case "HLOAD2" -> InstructionKind.HLOAD2;
             case "HLOAD4" -> InstructionKind.HLOAD4;
@@ -379,7 +521,6 @@ public class VM {
             case "HSTORE8" -> InstructionKind.HSTORE8;
             case "NEW" -> InstructionKind.NEW;
 
-            // Arithmetic
             case "IADD" -> InstructionKind.IADD;
             case "ISUB" -> InstructionKind.ISUB;
             case "IMUL" -> InstructionKind.IMUL;
@@ -390,7 +531,6 @@ public class VM {
             case "DMUL" -> InstructionKind.DMUL;
             case "DDIV" -> InstructionKind.DDIV;
 
-            // Comparisons
             case "ILT" -> InstructionKind.ILT;
             case "ILE" -> InstructionKind.ILE;
             case "IGT" -> InstructionKind.IGT;
@@ -404,26 +544,21 @@ public class VM {
             case "DEQ" -> InstructionKind.DEQ;
             case "DNE" -> InstructionKind.DNE;
 
-            // Shifts
             case "ISHL" -> InstructionKind.ISHL;
             case "ISHR" -> InstructionKind.ISHR;
 
-            // Bit operations
             case "IAND" -> InstructionKind.IAND;
             case "IOR" -> InstructionKind.IOR;
             case "IXOR" -> InstructionKind.IXOR;
 
-            // Unary
             case "INEG" -> InstructionKind.INEG;
             case "DNEG" -> InstructionKind.DNEG;
             case "IINV" -> InstructionKind.IINV;
 
-            // Jump instructions
             case "JUMP" -> InstructionKind.JUMP;
             case "JUMPT" -> InstructionKind.JUMPT;
             case "JUMPF" -> InstructionKind.JUMPF;
 
-            // Halt and Print
             case "HALT" -> InstructionKind.HALT;
             case "PRINTB" -> InstructionKind.PRINTB;
             case "PRINTC" -> InstructionKind.PRINTC;
@@ -455,33 +590,43 @@ public class VM {
         return target;
     }
 
-    // Stack helper methods
+    private void ensureStackCapacity(int bytesToPush) {
+        if (sp + bytesToPush > stack.length) {
+            throw new VMExecutionException("Stack overflow while pushing " + bytesToPush + " byte(s)");
+        }
+    }
+
+    private void ensureStackAvailable(int bytesToPop, String typeName) {
+        if (sp < bytesToPop) {
+            throw new VMExecutionException("Stack underflow on " + typeName + " pop");
+        }
+    }
+
     private void pushByte(byte val) {
+        ensureStackCapacity(1);
         stack[sp++] = val;
     }
 
     private byte popByte() {
-        if (sp < 1) {
-            throw new VMExecutionException("Stack underflow on byte pop");
-        }
+        ensureStackAvailable(1, "byte");
         return stack[--sp];
     }
 
     private void pushChar(char val) {
+        ensureStackCapacity(2);
         stack[sp++] = (byte) (val & 0xFF);
         stack[sp++] = (byte) ((val >> 8) & 0xFF);
     }
 
     private char popChar() {
-        if (sp < 2) {
-            throw new VMExecutionException("Stack underflow on char pop");
-        }
+        ensureStackAvailable(2, "char");
         byte high = stack[--sp];
         byte low = stack[--sp];
         return (char) (((high & 0xFF) << 8) | (low & 0xFF));
     }
 
     private void pushInt(int val) {
+        ensureStackCapacity(4);
         stack[sp++] = (byte) (val & 0xFF);
         stack[sp++] = (byte) ((val >> 8) & 0xFF);
         stack[sp++] = (byte) ((val >> 16) & 0xFF);
@@ -489,9 +634,7 @@ public class VM {
     }
 
     private int popInt() {
-        if (sp < 4) {
-            throw new VMExecutionException("Stack underflow on int pop");
-        }
+        ensureStackAvailable(4, "int");
         byte b3 = stack[--sp];
         byte b2 = stack[--sp];
         byte b1 = stack[--sp];
@@ -503,6 +646,7 @@ public class VM {
     }
 
     private void pushDouble(double val) {
+        ensureStackCapacity(8);
         long bits = Double.doubleToLongBits(val);
         for (int i = 0; i < 8; i++) {
             stack[sp++] = (byte) (bits & 0xFF);
@@ -511,9 +655,7 @@ public class VM {
     }
 
     private double popDouble() {
-        if (sp < 8) {
-            throw new VMExecutionException("Stack underflow on double pop");
-        }
+        ensureStackAvailable(8, "double");
         long bits = 0;
         for (int i = 0; i < 8; i++) {
             bits |= ((long) (stack[--sp] & 0xFF)) << (8 * i);
@@ -534,13 +676,25 @@ public class VM {
         }
     }
 
-    // ===== Instruction hierarchy =====
-
-    private static abstract class Instruction {
-        public abstract void execute(VM vm);
+    private byte[] getDataObject(String name) {
+        byte[] data = dataMap.get(name);
+        if (data == null) {
+            throw new VMExecutionException("Data object '" + name + "' not found");
+        }
+        return data;
     }
 
-    // ===== Stack operations =====
+    private void checkDataAccess(String name, byte[] data, int offset, int size) {
+        if (offset < 0 || offset + size > data.length) {
+            throw new VMExecutionException(
+                    "Data access out of bounds for '" + name + "' (offset=" + offset + ", size=" + size + ")"
+            );
+        }
+    }
+
+    private abstract static class Instruction {
+        public abstract void execute(VM vm);
+    }
 
     private static final class PushByteInstruction extends Instruction {
         private final byte value;
@@ -594,6 +748,165 @@ public class VM {
         }
     }
 
+    private static final class LoadByteFromDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public LoadByteFromDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 1);
+            vm.pushByte(data[offset]);
+        }
+    }
+
+    private static final class LoadCharFromDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public LoadCharFromDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 2);
+            byte low = data[offset];
+            byte high = data[offset + 1];
+            char value = (char) (((high & 0xFF) << 8) | (low & 0xFF));
+            vm.pushChar(value);
+        }
+    }
+
+    private static final class LoadIntFromDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public LoadIntFromDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 4);
+            int value = 0;
+            for (int i = 0; i < 4; i++) {
+                value |= (data[offset + i] & 0xFF) << (8 * i);
+            }
+            vm.pushInt(value);
+        }
+    }
+
+    private static final class LoadDoubleFromDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public LoadDoubleFromDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 8);
+            long bits = 0;
+            for (int i = 0; i < 8; i++) {
+                bits |= ((long) (data[offset + i] & 0xFF)) << (8 * i);
+            }
+            vm.pushDouble(Double.longBitsToDouble(bits));
+        }
+    }
+
+    private static final class StoreByteToDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public StoreByteToDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte value = vm.popByte();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 1);
+            data[offset] = value;
+        }
+    }
+
+    private static final class StoreCharToDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public StoreCharToDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            char value = vm.popChar();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 2);
+            data[offset] = (byte) (value & 0xFF);
+            data[offset + 1] = (byte) ((value >> 8) & 0xFF);
+        }
+    }
+
+    private static final class StoreIntToDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public StoreIntToDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int value = vm.popInt();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 4);
+            for (int i = 0; i < 4; i++) {
+                data[offset + i] = (byte) (value & 0xFF);
+                value >>= 8;
+            }
+        }
+    }
+
+    private static final class StoreDoubleToDataInstruction extends Instruction {
+        private final String name;
+        private final int offset;
+
+        public StoreDoubleToDataInstruction(String name, int offset) {
+            this.name = name;
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            double dValue = vm.popDouble();
+            long value = Double.doubleToLongBits(dValue);
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 8);
+            for (int i = 0; i < 8; i++) {
+                data[offset + i] = (byte) (value & 0xFF);
+                value >>= 8;
+            }
+        }
+    }
+
     private static final class PopByteInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
@@ -622,8 +935,6 @@ public class VM {
         }
     }
 
-    // ===== Heap operations =====
-
     private static final class HLoad1Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
@@ -642,7 +953,6 @@ public class VM {
             int base = vm.popInt();
             byte[] obj = vm.getHeapObject(base);
             vm.checkHeapAccess(obj, offset, 2);
-
             byte low = obj[offset];
             byte high = obj[offset + 1];
             char value = (char) (((high & 0xFF) << 8) | (low & 0xFF));
@@ -657,7 +967,6 @@ public class VM {
             int base = vm.popInt();
             byte[] obj = vm.getHeapObject(base);
             vm.checkHeapAccess(obj, offset, 4);
-
             int value = 0;
             for (int i = 0; i < 4; i++) {
                 value |= (obj[offset + i] & 0xFF) << (8 * i);
@@ -673,7 +982,6 @@ public class VM {
             int base = vm.popInt();
             byte[] obj = vm.getHeapObject(base);
             vm.checkHeapAccess(obj, offset, 8);
-
             long bits = 0;
             for (int i = 0; i < 8; i++) {
                 bits |= ((long) (obj[offset + i] & 0xFF)) << (8 * i);
@@ -702,7 +1010,6 @@ public class VM {
             int base = vm.popInt();
             byte[] obj = vm.getHeapObject(base);
             vm.checkHeapAccess(obj, offset, 2);
-
             obj[offset] = (byte) (value & 0xFF);
             obj[offset + 1] = (byte) ((value >> 8) & 0xFF);
         }
@@ -716,7 +1023,6 @@ public class VM {
             int base = vm.popInt();
             byte[] obj = vm.getHeapObject(base);
             vm.checkHeapAccess(obj, offset, 4);
-
             for (int i = 0; i < 4; i++) {
                 obj[offset + i] = (byte) (value & 0xFF);
                 value >>= 8;
@@ -733,7 +1039,6 @@ public class VM {
             int base = vm.popInt();
             byte[] obj = vm.getHeapObject(base);
             vm.checkHeapAccess(obj, offset, 8);
-
             for (int i = 0; i < 8; i++) {
                 obj[offset + i] = (byte) (value & 0xFF);
                 value >>= 8;
@@ -752,8 +1057,6 @@ public class VM {
             vm.pushInt(vm.heap.size() - 1);
         }
     }
-
-    // ===== Arithmetic =====
 
     private static final class IAddInstruction extends Instruction {
         @Override
@@ -836,8 +1139,6 @@ public class VM {
             vm.pushDouble(a / b);
         }
     }
-
-    // ===== Comparisons =====
 
     private static final class ILtInstruction extends Instruction {
         @Override
@@ -939,8 +1240,6 @@ public class VM {
         }
     }
 
-    // ===== Shifts =====
-
     private static final class IShlInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
@@ -958,8 +1257,6 @@ public class VM {
             vm.pushInt(a >> b);
         }
     }
-
-    // ===== Bit operations =====
 
     private static final class IAndInstruction extends Instruction {
         @Override
@@ -982,8 +1279,6 @@ public class VM {
         }
     }
 
-    // ===== Unary =====
-
     private static final class INegInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
@@ -1004,8 +1299,6 @@ public class VM {
             vm.pushInt(~vm.popInt());
         }
     }
-
-    // ===== Jumps =====
 
     private static final class JumpInstruction extends Instruction {
         private final String labelName;
@@ -1055,8 +1348,6 @@ public class VM {
         }
     }
 
-    // ===== Halt / Print =====
-
     private static final class HaltInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
@@ -1067,7 +1358,7 @@ public class VM {
     private static final class PrintByteInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
-            System.out.print(vm.popByte());
+            System.out.print((char) vm.popByte());
         }
     }
 
@@ -1093,38 +1384,25 @@ public class VM {
     }
 
     private enum InstructionKind {
-        // Stack operations
         PUSHB, PUSHC, PUSHI, PUSHD,
+        LOADB, LOADC, LOADI, LOADD,
+        STOREB, STOREC, STOREI, STORED,
         POPB, POPC, POPI, POPD,
-
-        // Heap operations
         HLOAD1, HLOAD2, HLOAD4, HLOAD8,
         HSTORE1, HSTORE2, HSTORE4, HSTORE8,
         NEW,
-
-        // Arithmetic
         IADD, ISUB, IMUL, IDIV, IMOD,
         DADD, DSUB, DMUL, DDIV,
-
-        // Comparisons
         ILT, ILE, IGT, IGE, IEQ, INE,
         DLT, DLE, DGT, DGE, DEQ, DNE,
-
-        // Shifts
         ISHL, ISHR,
-
-        // Bit operations
         IAND, IOR, IXOR,
-
-        // Unary
         INEG, DNEG, IINV,
-
-        // Jump instructions
         JUMP, JUMPT, JUMPF,
-
-        // Halt and Print
         HALT, PRINTB, PRINTC, PRINTI, PRINTD
     }
+
+    private record PendingJumpCheck(String labelName, int lineNumber) { }
 
     private static final class ParseException extends Exception {
         private final List<String> errors;
