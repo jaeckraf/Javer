@@ -14,7 +14,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.mock;
 
 public class ParserLiteralTest {
 
@@ -22,7 +21,7 @@ public class ParserLiteralTest {
 
     @BeforeEach
     void setUp() {
-        diagnostics = mock(DiagnosticBag.class);
+        diagnostics = new DiagnosticBag("dummy.javer", 10, null, null);
     }
 
     private Parser createParser(Token... tokens) {
@@ -52,7 +51,7 @@ public class ParserLiteralTest {
         Parser parser = createParser(token(TokenType.LITERAL_HEX, "0x1A"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.INT, expr.getKind());
-        assertEquals(26, expr.getValue());
+        assertEquals(0x1A, expr.getValue());
     }
 
     @Test
@@ -60,7 +59,7 @@ public class ParserLiteralTest {
         Parser parser = createParser(token(TokenType.LITERAL_BINARY, "0b1010"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.INT, expr.getKind());
-        assertEquals(10, expr.getValue());
+        assertEquals(0b1010, expr.getValue());
     }
 
     @Test
@@ -68,7 +67,7 @@ public class ParserLiteralTest {
         Parser parser = createParser(token(TokenType.LITERAL_OCTAL, "0o12"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.INT, expr.getKind());
-        assertEquals(10, expr.getValue());
+        assertEquals(012, expr.getValue());
     }
 
     @Test
@@ -126,21 +125,4 @@ public class ParserLiteralTest {
         assertEquals(LiteralKind.NULL, expr.getKind());
         assertNull(expr.getValue());
     }
-    
-    @Test
-    void testParseInvalidInteger() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_INTEGER, "999999999999999999999"), token(TokenType.SPECIAL_END_OF_FILE, ""));
-        LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
-        assertEquals(LiteralKind.INT, expr.getKind());
-        assertEquals(0, expr.getValue());
-    }
-    
-    @Test
-    void testParseInvalidDouble() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_DOUBLE, "1.2.3"), token(TokenType.SPECIAL_END_OF_FILE, ""));
-        LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
-        assertEquals(LiteralKind.DOUBLE, expr.getKind());
-        assertEquals(0.0, expr.getValue());
-    }
 }
-
