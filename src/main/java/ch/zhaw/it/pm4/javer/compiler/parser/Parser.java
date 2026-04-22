@@ -13,9 +13,12 @@ import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A Recursive Descent Parser for the Javer programming language.
@@ -32,6 +35,7 @@ import java.util.List;
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class Parser {
 
+    private static final Logger LOGGER = Logger.getLogger(Parser.class.getName());
     private final List<Token> tokens;
     private final DiagnosticBag diagnosticBag;
     private int currentPosition = 0;
@@ -483,8 +487,8 @@ public class Parser {
             case LITERAL_NULL:
                 return parseNullLiteral();
             default:
-                diagnosticBag.add(token.getPosition(), ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity.ERROR, "Expected literal expression");
-                return new LiteralExpression<>(LiteralKind.NULL, null);
+                diagnosticBag.add(token.getPosition(), Severity.ERROR, "Expected literal expression");
+                return new LiteralExpression<>(LiteralKind.INT, 1);
         }
     }
 
@@ -496,7 +500,8 @@ public class Parser {
             try {
                 return new LiteralExpression<>(LiteralKind.DOUBLE, Double.parseDouble(text));
             } catch (NumberFormatException e) {
-                diagnosticBag.add(token.getPosition(), ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity.ERROR, "Invalid double literal");
+                LOGGER.log(Level.SEVERE, "Invalid double literal: " + text, e);
+                diagnosticBag.add(token.getPosition(), Severity.ERROR, "Invalid double literal");
                 return new LiteralExpression<>(LiteralKind.DOUBLE, 0.0);
             }
         }
@@ -517,7 +522,8 @@ public class Parser {
         try {
             return new LiteralExpression<>(LiteralKind.INT, Integer.parseInt(numberPart, radix));
         } catch (NumberFormatException e) {
-            diagnosticBag.add(token.getPosition(), ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity.ERROR, "Invalid integer literal");
+            LOGGER.log(Level.SEVERE, "Invalid integer literal: " + text, e);
+            diagnosticBag.add(token.getPosition(), Severity.ERROR, "Invalid integer literal");
             return new LiteralExpression<>(LiteralKind.INT, 0);
         }
     }
@@ -532,35 +538,34 @@ public class Parser {
         Token token = currentToken();
         consumeToken();
         String text = token.getValue();
-        // Remove surrounding quotes if they exist
-        if (text.startsWith("\"") && text.endsWith("\"") && text.length() >= 2) {
-            text = text.substring(1, text.length() - 1);
-        }
-        return new LiteralExpression<>(LiteralKind.STRING, text);
+        // Lexer already guarantees surrounding quotes
+        String stringValue = text.substring(1, text.length() - 1);
+        return new LiteralExpression<>(LiteralKind.STRING, stringValue);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
         Token token = currentToken();
         consumeToken();
         String text = token.getValue();
-        char value = '\0';
-        if (text.startsWith("'") && text.endsWith("'") && text.length() >= 2) {
-            String inner = text.substring(1, text.length() - 1);
-            if (inner.length() == 1) {
-                value = inner.charAt(0);
-            } else if (inner.length() == 2 && inner.charAt(0) == '\\') {
-                switch (inner.charAt(1)) {
-                    case 'n': value = '\n'; break;
-                    case 'r': value = '\r'; break;
-                    case 't': value = '\t'; break;
-                    case 'b': value = '\b'; break;
-                    case 'f': value = '\f'; break;
-                    case '0': value = '\0'; break;
-                    case '"': value = '\"'; break;
-                    case '\'': value = '\''; break;
-                    case '\\': value = '\\'; break;
-                }
-            }
+        // Lexer already guarantees surrounding quotes and correct length
+        String inner = text.substring(1, text.length() - 1);
+        
+        char value;
+        if (inner.length() == 1) {
+            value = inner.charAt(0);
+        } else {
+            value = switch (inner.charAt(1)) {
+                case 'n' -> '\n';
+                case 'r' -> '\r';
+                case 't' -> '\t';
+                case 'b' -> '\b';
+                case 'f' -> '\f';
+                case '0' -> '\0';
+                case '"' -> '\"';
+                case '\'' -> '\'';
+                case '\\' -> '\\';
+                default -> throw new IllegalStateException("Lexer passed invalid escape sequence: " + inner);
+            };
         }
         return new LiteralExpression<>(LiteralKind.CHAR, value);
     }
