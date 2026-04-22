@@ -148,6 +148,20 @@ public class Parser {
     }
 
     /**
+     * Expects the current token type and consumes it if the expectation matches.
+     *
+     * @param tokenType The token type to expect and consume.
+     * @return true if the current token matched and was consumed, false otherwise.
+     */
+    private boolean expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType tokenType) {
+        if (expectTokenType(tokenType)) {
+            consumeToken();
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * @param tokenType The token type that was expected but not found at the current position.
      * This method creates a syntax error diagnostic indicating that the expected token type was not found.
      * */
@@ -190,22 +204,19 @@ public class Parser {
     }
 
     private FunctionDeclaration parseFunctionDeclaration() {
-        if (matchCurrentToken(TokenType.KEYWORD_FUNCTION)) {
-            consumeToken();
-        } else {
-            expectTokenType(TokenType.KEYWORD_FUNCTION);
-        }
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.KEYWORD_FUNCTION);
 
         TypeAstNode returnType = parseReturnType();
 
         String functionName = "dummy";
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_LEFT_PARENTHESIS);
         if (matchCurrentToken(TokenType.ID_IDENTIFIER)) {
             functionName = currentToken().getValue();
             consumeToken();
         } else {
             expectTokenType(TokenType.ID_IDENTIFIER);
         }
-
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         List<FunctionParameter> parameters = parseFunctionParameters();
         BlockStatement body = parseBlock();
 
@@ -279,8 +290,7 @@ public class Parser {
     }
 
     private VoidType parseVoidType() {
-        if (matchCurrentToken(TokenType.TYPE_VOID)) consumeToken();
-        else expectTokenType(TokenType.TYPE_VOID);
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.TYPE_VOID);
         return new VoidType();
     }
 
@@ -288,8 +298,7 @@ public class Parser {
         TypeAstNode wrappedType = baseType;
         while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
             consumeToken();
-            expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
-            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACKET)) consumeToken();
+            expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_BRACKET);
             wrappedType = new ArrayType(wrappedType);
         }
         return wrappedType;
@@ -690,15 +699,11 @@ public class Parser {
     private List<FunctionParameter> parseFunctionParameters() {
         List<FunctionParameter> parameters = new ArrayList<>();
 
-        if (matchCurrentToken(TokenType.SYMBOL_LEFT_PARENTHESIS)) {
-            consumeToken();
-        } else {
-            expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        if (!expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_LEFT_PARENTHESIS)) {
             return parameters;
         }
 
-        if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) {
-            consumeToken();
+        if (expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS)) {
             return parameters;
         }
 
@@ -708,11 +713,7 @@ public class Parser {
             parameters.add(parseFunctionParameter());
         }
 
-        if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) {
-            consumeToken();
-        } else {
-            expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
-        }
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
 
         return parameters;
     }
