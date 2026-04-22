@@ -17,6 +17,8 @@ public class VM {
     private final HashMap<Integer, AbstractInstruction> code = new HashMap<>();
     private final List<String> lines;
     private final HashMap<String, byte[]> dataMap = new HashMap<>();
+    private final HashMap<String, Integer> labels = new HashMap<>();
+    private int haltAddress = 0;
 
 
     public static void main(String[] args) {
@@ -41,6 +43,30 @@ public class VM {
     private void parse() {
         int state = 0; // 0: none, 1: code, 2: data
         int address = 0;
+        // First pass: collect labels
+        for (String line : lines) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            if (line.equals("code:")) {
+                state = 1;
+                continue;
+            }
+            if (line.equals("data:")) {
+                state = 2;
+                continue;
+            }
+            if (state == 1 && line.matches("^_[a-zA-Z_][a-zA-Z0-9_]*:$")) {
+                String name = line.substring(1, line.length() - 1);
+                labels.put(name, address);
+            } else if (state == 1 && !line.matches("^_[a-zA-Z_][a-zA-Z0-9_]*:$")) {
+                address++;
+            }
+        }
+        haltAddress = address;
+        
+        // Second pass: parse code
+        state = 0;
+        address = 0;
         for (String line : lines) {
             line = line.trim();
             if (line.isEmpty()) continue;
@@ -56,7 +82,6 @@ public class VM {
                 // parse code
                 if (line.matches("^_[a-zA-Z_][a-zA-Z0-9_]*:$")) {
                     // label
-                    String name = line.substring(1, line.length() - 1);
                     code.put(address, new LabelInstruction(address));
                     // address not incremented for labels
                 } else {
@@ -97,6 +122,8 @@ public class VM {
                 }
             }
         }
+        // Add HALT instruction at the end
+        code.put(haltAddress, new HaltInstruction());
     }
 
     private InstructionKind getInstructionKind(String name) {
@@ -154,6 +181,10 @@ public class VM {
             case "INEG" -> InstructionKind.INEG;
             case "DNEG" -> InstructionKind.DNEG;
             case "IINV" -> InstructionKind.IINV;
+            // Jump instructions
+            case "JUMP" -> InstructionKind.JUMP;
+            case "JUMPT" -> InstructionKind.JUMPT;
+            case "JUMPF" -> InstructionKind.JUMPF;
             default -> null;
         };
     }
@@ -323,12 +354,22 @@ public class VM {
                 case IDIV -> {
                     int b = vm.popInt();
                     int a = vm.popInt();
-                    vm.pushInt(a / b);
+                    if (b == 0) {
+                        System.err.println("Error: Division by zero");
+                        vm.pc = vm.haltAddress - 1;
+                    } else {
+                        vm.pushInt(a / b);
+                    }
                 }
                 case IMOD -> {
                     int b = vm.popInt();
                     int a = vm.popInt();
-                    vm.pushInt(a % b);
+                    if (b == 0) {
+                        System.err.println("Error: Modulo by zero");
+                        vm.pc = vm.haltAddress - 1;
+                    } else {
+                        vm.pushInt(a % b);
+                    }
                 }
                 case DADD -> vm.pushDouble(vm.popDouble() + vm.popDouble());
                 case DSUB -> {
@@ -340,53 +381,58 @@ public class VM {
                 case DDIV -> {
                     double b = vm.popDouble();
                     double a = vm.popDouble();
-                    vm.pushDouble(a / b);
+                    if (b == 0.0) {
+                        System.err.println("Error: Division by zero");
+                        vm.pc = vm.haltAddress - 1;
+                    } else {
+                        vm.pushDouble(a / b);
+                    }
                 }
                 // Comparisons
                 case ILT -> {
                     int b = vm.popInt();
                     int a = vm.popInt();
-                    vm.pushInt(a < b ? 1 : 0);
+                    vm.pushByte((byte) (a < b ? 1 : 0));
                 }
                 case ILE -> {
                     int b = vm.popInt();
                     int a = vm.popInt();
-                    vm.pushInt(a <= b ? 1 : 0);
+                    vm.pushByte((byte) (a <= b ? 1 : 0));
                 }
                 case IGT -> {
                     int b = vm.popInt();
                     int a = vm.popInt();
-                    vm.pushInt(a > b ? 1 : 0);
+                    vm.pushByte((byte) (a > b ? 1 : 0));
                 }
                 case IGE -> {
                     int b = vm.popInt();
                     int a = vm.popInt();
-                    vm.pushInt(a >= b ? 1 : 0);
+                    vm.pushByte((byte) (a >= b ? 1 : 0));
                 }
-                case IEQ -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0);
-                case INE -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0);
+                case IEQ -> vm.pushByte((byte) (vm.popInt() == vm.popInt() ? 1 : 0));
+                case INE -> vm.pushByte((byte) (vm.popInt() != vm.popInt() ? 1 : 0));
                 case DLT -> {
                     double b = vm.popDouble();
                     double a = vm.popDouble();
-                    vm.pushInt(a < b ? 1 : 0);
+                    vm.pushByte((byte) (a < b ? 1 : 0));
                 }
                 case DLE -> {
                     double b = vm.popDouble();
                     double a = vm.popDouble();
-                    vm.pushInt(a <= b ? 1 : 0);
+                    vm.pushByte((byte) (a <= b ? 1 : 0));
                 }
                 case DGT -> {
                     double b = vm.popDouble();
                     double a = vm.popDouble();
-                    vm.pushInt(a > b ? 1 : 0);
+                    vm.pushByte((byte) (a > b ? 1 : 0));
                 }
                 case DGE -> {
                     double b = vm.popDouble();
                     double a = vm.popDouble();
-                    vm.pushInt(a >= b ? 1 : 0);
+                    vm.pushByte((byte) (a >= b ? 1 : 0));
                 }
-                case DEQ -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0);
-                case DNE -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0);
+                case DEQ -> vm.pushByte((byte) (vm.popDouble() == vm.popDouble() ? 1 : 0));
+                case DNE -> vm.pushByte((byte) (vm.popDouble() != vm.popDouble() ? 1 : 0));
                 // Shifts
                 case ISHL -> {
                     int b = vm.popInt();
@@ -406,6 +452,43 @@ public class VM {
                 case INEG -> vm.pushInt(-vm.popInt());
                 case DNEG -> vm.pushDouble(-vm.popDouble());
                 case IINV -> vm.pushInt(~vm.popInt());
+                // Jump instructions
+                case JUMP -> {
+                    String labelName = (String) op1;
+                    Integer target = vm.labels.get(labelName);
+                    if (target == null) {
+                        System.err.println("Error: Label '" + labelName + "' not found");
+                        vm.pc = vm.haltAddress - 1;
+                    } else {
+                        vm.pc = target - 1;
+                    }
+                }
+                case JUMPT -> {
+                    byte condition = vm.popByte();
+                    String labelName = (String) op1;
+                    if (condition != 0) {
+                        Integer target = vm.labels.get(labelName);
+                        if (target == null) {
+                            System.err.println("Error: Label '" + labelName + "' not found");
+                            vm.pc = vm.haltAddress - 1;
+                        } else {
+                            vm.pc = target - 1;
+                        }
+                    }
+                }
+                case JUMPF -> {
+                    byte condition = vm.popByte();
+                    String labelName = (String) op1;
+                    if (condition == 0) {
+                        Integer target = vm.labels.get(labelName);
+                        if (target == null) {
+                            System.err.println("Error: Label '" + labelName + "' not found");
+                            vm.pc = vm.haltAddress - 1;
+                        } else {
+                            vm.pc = target - 1;
+                        }
+                    }
+                }
             }
         }
 
@@ -442,6 +525,14 @@ public class VM {
         }
     }
 
+    private static final class HaltInstruction extends AbstractInstruction {
+
+        @Override
+        public void execute(VM vm) {
+            // HALT instruction does nothing, it's just a stop point
+        }
+    }
+
     private enum InstructionKind {
         // Stack operations
         PUSHB, PUSHC, PUSHI, PUSHD,
@@ -462,6 +553,8 @@ public class VM {
         IAND, IOR, IXOR,
         // Unary
         INEG, DNEG, IINV,
+        // Jump instructions
+        JUMP, JUMPT, JUMPF,
     }
 
 }
