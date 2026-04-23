@@ -44,6 +44,19 @@ class VMTest {
         ));
 
         assertEquals("Successfully executed program", vm.run());
+        assertEquals(List.of(42), vm.getStackSnapshot());
+    }
+
+    @Test
+    void runWithReturnClearsPreviousStackValuesExceptReturnValue() {
+        VM vm = createVmWithProgram(List.of(
+                new Instruction(OPCode.PUSH, new Operand<>(1)),
+                new Instruction(OPCode.PUSH, new Operand<>(2)),
+                new Instruction(OPCode.RETURN)
+        ));
+
+        assertEquals("Successfully executed program", vm.run());
+        assertEquals(List.of(2), vm.getStackSnapshot());
     }
 
     @Test

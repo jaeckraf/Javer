@@ -9,6 +9,7 @@ import java.util.List;
 public class VM {
 
     private final BytecodeLoader bytecodeLoader;
+    private final List<Object> stack = new ArrayList<>();
 
     public VM(BytecodeLoader bytecodeLoader) {
         this.bytecodeLoader = bytecodeLoader;
@@ -18,7 +19,7 @@ public class VM {
        int programCounter = 0;
        boolean isRunning = true;
        List<Instruction> instructions = bytecodeLoader.getInstructions();
-       List<Object> stack = new ArrayList<>();
+       stack.clear();
        MemorySegment staticSegment; // TODO sind im Moment Dummies (MemorySegment)
        MemorySegment argumentSegment; // TODO sind im Moment Dummies (MemorySegment)
        MemorySegment localSegment; // TODO sind im Moment Dummies (MemorySegment)
@@ -39,6 +40,11 @@ public class VM {
            }
 
             if (instruction.getOperationCode() == OPCode.HALT || instruction.getOperationCode() == OPCode.RETURN) {
+                if (instruction.getOperationCode() == OPCode.RETURN && !stack.isEmpty()) {
+                    Object returnValue = stack.get(stack.size() - 1);
+                    stack.clear();
+                    stack.add(returnValue);
+                }
                return "Successfully executed program";
            }
 
@@ -48,6 +54,10 @@ public class VM {
        return new VMError("Program terminated without HALT", programCounter,
                new Instruction(OPCode.HALT)).toString();
 
+    }
+
+    List<Object> getStackSnapshot() {
+        return List.copyOf(stack);
     }
 
 }
