@@ -337,19 +337,21 @@ public class Parser {
     private BlockStatement parseBlock() {
         List<StatementAstNode> statements = new ArrayList<>();
         if (!matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) {
-            expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Block statement must start with '{'.");
             return new BlockStatement(statements);
         }
+        consumeToken();
 
-        int braceDepth = 0;
-        do {
-            if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) {
-                braceDepth++;
-            } else if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE)) {
-                braceDepth--;
+        while (!matchAnyCurrentToken(TokenType.SYMBOL_RIGHT_BRACE, TokenType.SPECIAL_END_OF_FILE)) {
+            int startPosition = currentPosition;
+            statements.add(parseStatement());
+            // Recovery to avoid infinite loops when a statement parser does not consume tokens.
+            if (currentPosition == startPosition) {
+                consumeToken();
             }
-            consumeToken();
-        } while (braceDepth > 0 && !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE));
+        }
+
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_BRACE);
 
         return new BlockStatement(statements);
     }
@@ -363,6 +365,7 @@ public class Parser {
             case TokenType.KEYWORD_SWITCH -> parseSwitchStatement();
             case TokenType.KEYWORD_RETURN, TokenType.KEYWORD_BREAK, TokenType.KEYWORD_CONTINUE -> parseJumpStatement();
             case TokenType.KEYWORD_LET -> parseVarDeclarationStatement();
+            case TokenType.SYMBOL_LEFT_BRACE -> parseBlock();
             default -> parseExpressionStatement();
         };
     }
