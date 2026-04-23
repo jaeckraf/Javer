@@ -236,19 +236,19 @@ public class VM {
                 continue;
             }
 
-            if (line.equals("code:")) {
+            if (line.equals(".code")) {
                 if (codeLineIndex != -1) {
-                    errors.add("Line " + (i + 1) + ": duplicate 'code:' section");
+                    errors.add("Line " + (i + 1) + ": duplicate '.code' section");
                 } else if (dataLineIndex != -1) {
-                    errors.add("Line " + (i + 1) + ": 'code:' section must appear before 'data:'");
+                    errors.add("Line " + (i + 1) + ": '.code' section must appear before '.data'");
                 } else {
                     codeLineIndex = i;
                 }
-            } else if (line.equals("data:")) {
+            } else if (line.equals(".data")) {
                 if (codeLineIndex == -1) {
-                    errors.add("Line " + (i + 1) + ": 'data:' section must appear after 'code:'");
+                    errors.add("Line " + (i + 1) + ": '.data' section must appear after '.code'");
                 } else if (dataLineIndex != -1) {
-                    errors.add("Line " + (i + 1) + ": duplicate 'data:' section");
+                    errors.add("Line " + (i + 1) + ": duplicate '.data' section");
                 } else {
                     dataLineIndex = i;
                 }
@@ -256,10 +256,10 @@ public class VM {
         }
 
         if (codeLineIndex == -1) {
-            errors.add("Missing required 'code:' section");
+            errors.add("Missing required '.code' section");
         }
         if (dataLineIndex == -1) {
-            errors.add("Missing required 'data:' section");
+            errors.add("Missing required '.data' section");
         }
 
         if (!errors.isEmpty()) {
@@ -275,7 +275,7 @@ public class VM {
                 continue;
             }
 
-            if (line.equals("code:") || line.equals("data:")) {
+            if (line.equals(".code") || line.equals(".data")) {
                 errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
                 continue;
             }
@@ -322,7 +322,7 @@ public class VM {
                 continue;
             }
 
-            if (line.equals("code:") || line.equals("data:")) {
+            if (line.equals(".code") || line.equals(".data")) {
                 errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
                 continue;
             }
@@ -368,11 +368,11 @@ public class VM {
     }
 
     private boolean isLabel(String line) {
-        return line.matches("^_[a-zA-Z_][a-zA-Z0-9_]*:$");
+        return line.matches("^(_?[a-zA-Z][a-zA-Z0-9_]*):$");
     }
 
     private String extractLabelName(String line) {
-        return line.substring(1, line.length() - 1);
+        return line.substring(0, line.length() - 1);
     }
 
     private Instruction parseInstruction(String line, int lineNumber, List<PendingJumpCheck> pendingJumpChecks)
@@ -580,9 +580,8 @@ public class VM {
             case JUMP -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
-                // JUMP muss auf label ohne _ gehen (lokale Sprünge)
                 if (label.startsWith("_")) {
-                    throw new ParseException("Line " + lineNumber + ": JUMP must target a local label (not starting with _), got '" + label + "'");
+                    throw new ParseException("Line " + lineNumber + ": JUMP must target a normal label (without _), got '" + label + "'");
                 }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield new JumpInstruction(label);
@@ -590,9 +589,8 @@ public class VM {
             case JUMPT -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
-                // JUMPT muss auf label ohne _ gehen (lokale Sprünge)
                 if (label.startsWith("_")) {
-                    throw new ParseException("Line " + lineNumber + ": JUMPT must target a local label (not starting with _), got '" + label + "'");
+                    throw new ParseException("Line " + lineNumber + ": JUMPT must target a normal label (without _), got '" + label + "'");
                 }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield new JumpTrueInstruction(label);
@@ -600,9 +598,8 @@ public class VM {
             case JUMPF -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
-                // JUMPF muss auf label ohne _ gehen (lokale Sprünge)
                 if (label.startsWith("_")) {
-                    throw new ParseException("Line " + lineNumber + ": JUMPF must target a local label (not starting with _), got '" + label + "'");
+                    throw new ParseException("Line " + lineNumber + ": JUMPF must target a normal label (without _), got '" + label + "'");
                 }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield new JumpFalseInstruction(label);
@@ -1020,6 +1017,16 @@ public class VM {
         if (offset < 0 || offset + size > obj.length) {
             throw new VMExecutionException("Heap access out of bounds (offset=" + offset + ", size=" + size + ")");
         }
+    }
+
+    private int checkFrameAccess(int offset, int size) {
+        int addr = fp + offset;
+        if (addr < 0 || addr + size - 1 >= stack.length) {
+            throw new VMExecutionException(
+                    "Frame access out of bounds: fp=" + fp + ", offset=" + offset + ", size=" + size
+            );
+        }
+        return addr;
     }
 
     private byte[] getDataObject(String name) {
@@ -2032,10 +2039,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset);
-            }
+            int addr = vm.checkFrameAccess(offset, 1);
             byte val = vm.stack[addr];
             vm.pushByte(val);
         }
@@ -2050,10 +2054,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr + 1 >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=2");
-            }
+            int addr = vm.checkFrameAccess(offset, 2);
             byte b0 = vm.stack[addr];
             byte b1 = vm.stack[addr + 1];
             vm.pushChar((char) (((b1 & 0xFF) << 8) | (b0 & 0xFF)));
@@ -2069,10 +2070,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr + 3 >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=4");
-            }
+            int addr = vm.checkFrameAccess(offset, 4);
             byte b0 = vm.stack[addr];
             byte b1 = vm.stack[addr + 1];
             byte b2 = vm.stack[addr + 2];
@@ -2091,10 +2089,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr + 7 >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=8");
-            }
+            int addr = vm.checkFrameAccess(offset, 8);
             long bits = 0;
             for (int i = 7; i >= 0; i--) {
                 bits |= ((long) (vm.stack[addr + i] & 0xFF)) << (8 * i);
@@ -2113,10 +2108,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             byte val = vm.popByte();
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset);
-            }
+            int addr = vm.checkFrameAccess(offset, 1);
             vm.stack[addr] = val;
         }
     }
@@ -2131,10 +2123,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             char val = vm.popChar();
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr + 1 >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=2");
-            }
+            int addr = vm.checkFrameAccess(offset, 2);
             vm.stack[addr] = (byte) (val & 0xFF);
             vm.stack[addr + 1] = (byte) ((val >> 8) & 0xFF);
         }
@@ -2150,10 +2139,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int val = vm.popInt();
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr + 3 >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=4");
-            }
+            int addr = vm.checkFrameAccess(offset, 4);
             vm.stack[addr] = (byte) (val & 0xFF);
             vm.stack[addr + 1] = (byte) ((val >> 8) & 0xFF);
             vm.stack[addr + 2] = (byte) ((val >> 16) & 0xFF);
@@ -2171,10 +2157,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             double val = vm.popDouble();
-            int addr = vm.fp + offset;
-            if (addr < 0 || addr + 7 >= vm.stack.length) {
-                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=8");
-            }
+            int addr = vm.checkFrameAccess(offset, 8);
             long bits = Double.doubleToLongBits(val);
             for (int i = 0; i < 8; i++) {
                 vm.stack[addr + i] = (byte) (bits & 0xFF);
