@@ -20,9 +20,11 @@ public class VM {
     private final Map<String, byte[]> dataMap = new HashMap<>();
     private final Map<String, Integer> labels = new HashMap<>();
     private final List<String> lines;
+    private final List<Integer> callStack = new ArrayList<>(); // Stack für Return-Adressen
 
     private int sp = 0;
     private int pc = 0;
+    private int fp = 0; // Frame Pointer für lokale Variablen
     private int programEndAddress = 0;
     private boolean halted = false;
 
@@ -181,6 +183,46 @@ public class VM {
         System.out.println(sb);
     }
 
+    private void validateEnterInstructions(int codeLineIndex, int dataLineIndex, List<String> errors) {
+        // Track which labels are followed by ENTER
+        String lastLabelName = null;
+        boolean lastWasLabel = false;
+        String currentFunctionLabel = null;
+        boolean enterSeenInCurrentFunction = false;
+        
+        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
+            String line = stripComment(lines.get(i)).trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            
+            if (isLabel(line)) {
+                lastLabelName = extractLabelName(line);
+                lastWasLabel = true;
+                // If we encounter a new function label, reset the ENTER flag
+                if (lastLabelName.startsWith("_")) {
+                    currentFunctionLabel = lastLabelName;
+                    enterSeenInCurrentFunction = false;
+                }
+            } else {
+                String instrName = line.split(",")[0].trim().toUpperCase();
+                
+                if ("ENTER".equals(instrName)) {
+                    // ENTER is only allowed directly after a function label (starting with _)
+                    if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
+                        errors.add("Line " + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
+                    }
+                    if (enterSeenInCurrentFunction) {
+                        errors.add("Line " + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
+                    }
+                    enterSeenInCurrentFunction = true;
+                }
+                // If we see any other instruction after ENTER, we can have no more ENTER in this function
+                lastWasLabel = false;
+            }
+        }
+    }
+
     private void parse() throws ParseException {
         List<String> errors = new ArrayList<>();
         List<PendingJumpCheck> pendingJumpChecks = new ArrayList<>();
@@ -270,6 +312,9 @@ public class VM {
                 errors.addAll(e.getErrors());
             }
         }
+
+        // Validate ENTER instructions: must come directly after function label
+        validateEnterInstructions(codeLineIndex, dataLineIndex, errors);
 
         for (int i = dataLineIndex + 1; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
@@ -535,20 +580,88 @@ public class VM {
             case JUMP -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                // JUMP muss auf label ohne _ gehen (lokale Sprünge)
+                if (label.startsWith("_")) {
+                    throw new ParseException("Line " + lineNumber + ": JUMP must target a local label (not starting with _), got '" + label + "'");
+                }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield new JumpInstruction(label);
             }
             case JUMPT -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                // JUMPT muss auf label ohne _ gehen (lokale Sprünge)
+                if (label.startsWith("_")) {
+                    throw new ParseException("Line " + lineNumber + ": JUMPT must target a local label (not starting with _), got '" + label + "'");
+                }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield new JumpTrueInstruction(label);
             }
             case JUMPF -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                // JUMPF muss auf label ohne _ gehen (lokale Sprünge)
+                if (label.startsWith("_")) {
+                    throw new ParseException("Line " + lineNumber + ": JUMPF must target a local label (not starting with _), got '" + label + "'");
+                }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield new JumpFalseInstruction(label);
+            }
+
+            case CALL -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                String label = parseLabelOperand(parts[1], instrName, lineNumber);
+                // CALL muss auf _label gehen (Funktionslabel)
+                if (!label.startsWith("_")) {
+                    throw new ParseException("Line " + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
+                }
+                pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
+                yield new CallInstruction(label);
+            }
+
+            case ENTER -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int size = parseIntOperand(parts[1], instrName, lineNumber);
+                if (size < 0) {
+                    throw new ParseException("Line " + lineNumber + ": ENTER size must be non-negative, got " + size);
+                }
+                yield new EnterInstruction(size);
+            }
+
+            case RET -> noOperand(parts, instrName, lineNumber, new RetInstruction());
+
+            case FLOAD1 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FLoad1Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case FLOAD2 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FLoad2Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case FLOAD4 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FLoad4Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case FLOAD8 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FLoad8Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+
+            case FSTORE1 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FStore1Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case FSTORE2 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FStore2Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case FSTORE4 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FStore4Instruction(parseIntOperand(parts[1], instrName, lineNumber));
+            }
+            case FSTORE8 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new FStore8Instruction(parseIntOperand(parts[1], instrName, lineNumber));
             }
 
             case HALT -> noOperand(parts, instrName, lineNumber, new HaltInstruction());
@@ -704,6 +817,16 @@ public class VM {
             case "DSTORE4" -> InstructionKind.DSTORE4;
             case "DSTORE8" -> InstructionKind.DSTORE8;
 
+            case "FLOAD1" -> InstructionKind.FLOAD1;
+            case "FLOAD2" -> InstructionKind.FLOAD2;
+            case "FLOAD4" -> InstructionKind.FLOAD4;
+            case "FLOAD8" -> InstructionKind.FLOAD8;
+
+            case "FSTORE1" -> InstructionKind.FSTORE1;
+            case "FSTORE2" -> InstructionKind.FSTORE2;
+            case "FSTORE4" -> InstructionKind.FSTORE4;
+            case "FSTORE8" -> InstructionKind.FSTORE8;
+
             case "POPB" -> InstructionKind.POPB;
             case "POPC" -> InstructionKind.POPC;
             case "POPI" -> InstructionKind.POPI;
@@ -769,6 +892,10 @@ public class VM {
             case "JUMPT" -> InstructionKind.JUMPT;
             case "JUMPF" -> InstructionKind.JUMPF;
 
+            case "CALL" -> InstructionKind.CALL;
+            case "ENTER" -> InstructionKind.ENTER;
+            case "RET" -> InstructionKind.RET;
+
             case "HALT" -> InstructionKind.HALT;
             case "PRINTB" -> InstructionKind.PRINTB;
             case "PRINTC" -> InstructionKind.PRINTC;
@@ -780,6 +907,14 @@ public class VM {
     }
 
     public void run() {
+        // Implicitly call _main at startup
+        if (labels.containsKey("_main")) {
+            callStack.add(-1); // Terminator: -1 means end of program
+            pc = labels.get("_main");
+        } else {
+            throw new VMExecutionException("No _main function found");
+        }
+
         while (!halted && code.containsKey(pc)) {
             // dumpStackWindow(STACK_WINDOW);
             Instruction instruction = code.get(pc);
@@ -1839,12 +1974,223 @@ public class VM {
         }
     }
 
+    private static final class CallInstruction extends Instruction {
+        private final String label;
+
+        public CallInstruction(String label) {
+            this.label = label;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            vm.callStack.add(vm.pc); // Save return address
+            vm.pc = vm.resolveLabel(label) - 1; // -1 because pc will be incremented after instruction
+        }
+    }
+
+    private static final class EnterInstruction extends Instruction {
+        private final int size;
+
+        public EnterInstruction(int size) {
+            this.size = size;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            // Initialize frame pointer and allocate space for local variables
+            vm.fp = vm.sp; // fp points to start of local variables
+            vm.sp += size; // Allocate size bytes for local variables
+            if (vm.sp > VM.STACK_SIZE) {
+                throw new VMExecutionException("Stack overflow: cannot allocate " + size + " bytes for local variables");
+            }
+        }
+    }
+
+    private static final class RetInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            if (vm.callStack.isEmpty()) {
+                throw new VMExecutionException("RET: call stack is empty");
+            }
+            int returnAddr = vm.callStack.remove(vm.callStack.size() - 1);
+            
+            // If return address is -1, it's the terminator (end of program)
+            if (returnAddr == -1) {
+                vm.halted = true;
+            } else {
+                vm.pc = returnAddr; // Return address is set to be incremented after this instruction
+            }
+        }
+    }
+
+    private static final class FLoad1Instruction extends Instruction {
+        private final int offset;
+
+        public FLoad1Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset);
+            }
+            byte val = vm.stack[addr];
+            vm.pushByte(val);
+        }
+    }
+
+    private static final class FLoad2Instruction extends Instruction {
+        private final int offset;
+
+        public FLoad2Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr + 1 >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=2");
+            }
+            byte b0 = vm.stack[addr];
+            byte b1 = vm.stack[addr + 1];
+            vm.pushChar((char) (((b1 & 0xFF) << 8) | (b0 & 0xFF)));
+        }
+    }
+
+    private static final class FLoad4Instruction extends Instruction {
+        private final int offset;
+
+        public FLoad4Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr + 3 >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=4");
+            }
+            byte b0 = vm.stack[addr];
+            byte b1 = vm.stack[addr + 1];
+            byte b2 = vm.stack[addr + 2];
+            byte b3 = vm.stack[addr + 3];
+            int val = ((b3 & 0xFF) << 24) | ((b2 & 0xFF) << 16) | ((b1 & 0xFF) << 8) | (b0 & 0xFF);
+            vm.pushInt(val);
+        }
+    }
+
+    private static final class FLoad8Instruction extends Instruction {
+        private final int offset;
+
+        public FLoad8Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr + 7 >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=8");
+            }
+            long bits = 0;
+            for (int i = 7; i >= 0; i--) {
+                bits |= ((long) (vm.stack[addr + i] & 0xFF)) << (8 * i);
+            }
+            vm.pushDouble(Double.longBitsToDouble(bits));
+        }
+    }
+
+    private static final class FStore1Instruction extends Instruction {
+        private final int offset;
+
+        public FStore1Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte val = vm.popByte();
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset);
+            }
+            vm.stack[addr] = val;
+        }
+    }
+
+    private static final class FStore2Instruction extends Instruction {
+        private final int offset;
+
+        public FStore2Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            char val = vm.popChar();
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr + 1 >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=2");
+            }
+            vm.stack[addr] = (byte) (val & 0xFF);
+            vm.stack[addr + 1] = (byte) ((val >> 8) & 0xFF);
+        }
+    }
+
+    private static final class FStore4Instruction extends Instruction {
+        private final int offset;
+
+        public FStore4Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int val = vm.popInt();
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr + 3 >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=4");
+            }
+            vm.stack[addr] = (byte) (val & 0xFF);
+            vm.stack[addr + 1] = (byte) ((val >> 8) & 0xFF);
+            vm.stack[addr + 2] = (byte) ((val >> 16) & 0xFF);
+            vm.stack[addr + 3] = (byte) ((val >> 24) & 0xFF);
+        }
+    }
+
+    private static final class FStore8Instruction extends Instruction {
+        private final int offset;
+
+        public FStore8Instruction(int offset) {
+            this.offset = offset;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            double val = vm.popDouble();
+            int addr = vm.fp + offset;
+            if (addr < 0 || addr + 7 >= vm.stack.length) {
+                throw new VMExecutionException("Frame access out of bounds: fp=" + vm.fp + ", offset=" + offset + ", size=8");
+            }
+            long bits = Double.doubleToLongBits(val);
+            for (int i = 0; i < 8; i++) {
+                vm.stack[addr + i] = (byte) (bits & 0xFF);
+                bits >>= 8;
+            }
+        }
+    }
+
     private enum InstructionKind {
         PUSHB, PUSHC, PUSHI, PUSHD,
         LOADB, LOADC, LOADI, LOADD,
         DLOAD1, DLOAD2, DLOAD4, DLOAD8,
         STOREB, STOREC, STOREI, STORED,
         DSTORE1, DSTORE2, DSTORE4, DSTORE8,
+        FLOAD1, FLOAD2, FLOAD4, FLOAD8,
+        FSTORE1, FSTORE2, FSTORE4, FSTORE8,
         POPB, POPC, POPI, POPD,
         HLOAD1, HLOAD2, HLOAD4, HLOAD8,
         HSTORE1, HSTORE2, HSTORE4, HSTORE8,
@@ -1859,6 +2205,7 @@ public class VM {
         B2I, C2I, I2D, D2I, I2B, I2C,
         DUPB, DUPC, DUPI, DUPD,
         JUMP, JUMPT, JUMPF,
+        CALL, ENTER, RET,
         HALT, PRINTB, PRINTC, PRINTI, PRINTD
     }
 
