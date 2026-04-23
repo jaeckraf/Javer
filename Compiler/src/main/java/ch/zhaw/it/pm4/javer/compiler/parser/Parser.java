@@ -24,9 +24,12 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A Recursive Descent Parser for the Javer programming language.
@@ -43,6 +46,7 @@ import java.util.List;
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class Parser {
 
+    private static final Logger LOGGER = Logger.getLogger(Parser.class.getName());
     private final List<Token> tokens;
     private final DiagnosticBag diagnosticBag;
     private int currentPosition = 0;
@@ -477,26 +481,96 @@ public class Parser {
     // ============================================================
 
     private LiteralExpression<?> parseLiteralExpression() {
-        return new LiteralExpression<>(LiteralKind.INT, 1);
+        Token token = currentToken();
+        switch (token.getTokenType()) {
+            case LITERAL_INTEGER:
+            case LITERAL_DOUBLE:
+            case LITERAL_HEX:
+            case LITERAL_BINARY:
+            case LITERAL_OCTAL:
+                return parseNumberLiteral();
+            case LITERAL_BOOLEAN:
+                return parseBooleanLiteral();
+            case LITERAL_STRING:
+                return parseStringLiteral();
+            case LITERAL_CHAR:
+                return parseCharLiteral();
+            case LITERAL_NULL:
+                return parseNullLiteral();
+            default:
+                diagnosticBag.add(token.getPosition(), Severity.ERROR, "Expected literal expression");
+                return new LiteralExpression<>(LiteralKind.INT, 1);
+        }
     }
 
     private LiteralExpression<?> parseNumberLiteral() {
-        return parseLiteralExpression();
+        Token token = currentToken();
+        consumeToken();
+        String text = token.getValue();
+        if (token.getTokenType() == TokenType.LITERAL_DOUBLE) {
+            return new LiteralExpression<>(LiteralKind.DOUBLE, Double.parseDouble(text));
+        }
+        
+        int radix = 10;
+        String numberPart = text;
+        if (token.getTokenType() == TokenType.LITERAL_HEX) {
+            radix = 16;
+            numberPart = text.substring(2);
+        } else if (token.getTokenType() == TokenType.LITERAL_BINARY) {
+            radix = 2;
+            numberPart = text.substring(2);
+        } else if (token.getTokenType() == TokenType.LITERAL_OCTAL) {
+            radix = 8;
+            numberPart = text.substring(2);
+        }
+
+        return new LiteralExpression<>(LiteralKind.INT, Integer.parseInt(numberPart, radix));
     }
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
-        return new LiteralExpression<>(LiteralKind.BOOLEAN, true);
+        Token token = currentToken();
+        consumeToken();
+        return new LiteralExpression<>(LiteralKind.BOOLEAN, Boolean.parseBoolean(token.getValue()));
     }
 
     private LiteralExpression<String> parseStringLiteral() {
-        return new LiteralExpression<>(LiteralKind.STRING, "dummy");
+        Token token = currentToken();
+        consumeToken();
+        String text = token.getValue();
+        // Lexer already guarantees surrounding quotes
+        String stringValue = text.substring(1, text.length() - 1);
+        return new LiteralExpression<>(LiteralKind.STRING, stringValue);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
-        return new LiteralExpression<>(LiteralKind.CHAR, 'a');
+        Token token = currentToken();
+        consumeToken();
+        String text = token.getValue();
+        // Lexer already guarantees surrounding quotes and correct length
+        String inner = text.substring(1, text.length() - 1);
+        
+        char value;
+        if (inner.length() == 1) {
+            value = inner.charAt(0);
+        } else {
+            value = switch (inner.charAt(1)) {
+                case 'n' -> '\n';
+                case 'r' -> '\r';
+                case 't' -> '\t';
+                case 'b' -> '\b';
+                case 'f' -> '\f';
+                case '0' -> '\0';
+                case '"' -> '\"';
+                case '\'' -> '\'';
+                case '\\' -> '\\';
+                default -> throw new IllegalStateException("Lexer passed invalid escape sequence: " + inner);
+            };
+        }
+        return new LiteralExpression<>(LiteralKind.CHAR, value);
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
+        consumeToken();
         return new LiteralExpression<>(LiteralKind.NULL, null);
     }
 
