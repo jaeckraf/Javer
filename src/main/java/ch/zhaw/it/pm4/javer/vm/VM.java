@@ -12,13 +12,14 @@ import java.util.function.Function;
 
 public class VM {
     private String[] segment;
+    private Object[] dataSegment;
     private int pc = 0;
     private final Deque<Object> stack = new ArrayDeque<>();
     private final List<int[]> heap = new ArrayList<>();
 
     /**
      * Constructs a new VM by loading the compiled program from the given file.
-     * The file is expected to contain an optional 'data:' section for heap initialization,
+     * The file is expected to contain an optional 'data:' section for static data,
      * and a 'code:' section for instructions.
      *
      * @param filePath the path to the compiled code file to execute.
@@ -57,6 +58,7 @@ public class VM {
 
     private void loadSegment(List<String> rawLines) {
         List<String> processedLines = new ArrayList<>();
+        List<Object> dataLines = new ArrayList<>(); // Temporary list for static data
         boolean isDataSection = false;
 
         for (String line : rawLines) {
@@ -70,13 +72,14 @@ public class VM {
             } else if (trimmed.equalsIgnoreCase("code:")) {
                 isDataSection = false;
             } else if (isDataSection) {
-                parseDataEntry(trimmed);
+                parseDataEntry(trimmed, dataLines); // Pass the new list instead of using heap
             } else {
                 processedLines.add(trimmed);
             }
         }
 
         this.segment = processedLines.toArray(new String[0]);
+        this.dataSegment = dataLines.toArray(); // Initialize the separate data section
     }
 
     private String stripComments(String line) {
@@ -85,15 +88,10 @@ public class VM {
         return commentIdx != -1 ? trimmed.substring(0, commentIdx).trim() : trimmed;
     }
 
-    private void parseDataEntry(String entry) {
+    private void parseDataEntry(String entry, List<Object> dataLines) {
         String[] parts = entry.split("\\s+");
         for (String val : parts) {
-            try {
-                int numValue = val.matches("-?\\d+") ? Integer.parseInt(val) : val.charAt(0);
-                heap.add(new int[]{ numValue });
-            } catch (Exception e) {
-                System.out.println("Invalid data entry: " + val);
-            }
+            dataLines.add(parseValue(val));
         }
     }
 
@@ -109,6 +107,16 @@ public class VM {
             case "POP" -> {
                 if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on POP");
                 stack.pop();
+                pc++;
+            }
+
+            // Static Data Operation
+            case "LOAD" -> {
+                int index = Integer.parseInt(parts[1]);
+                if (index < 0 || index >= dataSegment.length) {
+                    throw new VMRuntimeException(pc, "Data segment access out of bounds: " + index);
+                }
+                stack.push(dataSegment[index]);
                 pc++;
             }
 

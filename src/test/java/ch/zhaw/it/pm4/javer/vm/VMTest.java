@@ -59,14 +59,56 @@ class VMTest {
                 42
                 
                 code:
-                PUSH 0
-                HLOAD X 0
+                LOAD 0
                 PRINT
                 HALT
                 """;
         VM vm = createVMWithCode(code);
         vm.run();
         assertEquals("42", getOutput());
+    }
+
+    @Test
+    void testSpaceSeparatedStringData() throws IOException {
+        String code = """
+                data:
+                "H" "i" "!"
+                
+                code:
+                LOAD 0
+                PRINT
+                LOAD 1
+                PRINT
+                LOAD 2
+                PRINT
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+
+        assertEquals("H\ni\n!", getOutput());
+    }
+
+    @Test
+    void testMultipleDataEntries() throws IOException {
+        String code = """
+                data:
+                42
+                3.14
+                "S" "u" "c" "c" "e" "s" "s"
+                
+                code:
+                LOAD 2
+                PRINT
+                LOAD 1
+                PRINT
+                LOAD 0
+                PRINT
+                HALT
+                """;
+        VM vm = createVMWithCode(code);
+        vm.run();
+        assertEquals("S\n3.14\n42", getOutput());
     }
 
     @Test
