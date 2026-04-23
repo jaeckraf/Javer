@@ -41,8 +41,8 @@ class VMTest {
     void runBasicMath() throws IOException {
         String code = """
                 code:
-                PUSHCONST 10
-                PUSHCONST 5
+                PUSH 10
+                PUSH 5
                 ADD
                 PRINT
                 HALT
@@ -59,7 +59,7 @@ class VMTest {
                 42
                 
                 code:
-                PUSHCONST 0
+                PUSH 0
                 HLOAD X 0
                 PRINT
                 HALT
@@ -73,12 +73,12 @@ class VMTest {
     void testBranching() throws IOException {
         String correctCode = """
                 code:
-                PUSHCONST 1
+                PUSH 1
                 JT 6
-                PUSHCONST 99
+                PUSH 99
                 PRINT
                 HALT
-                PUSHCONST 42
+                PUSH 42
                 PRINT
                 HALT
                 """;
@@ -91,9 +91,10 @@ class VMTest {
     void testFunctionCall() throws IOException {
         String code = """
                 code:
-                CALL 3
+                PUSH 2
+                JMP 4
                 HALT
-                PUSHCONST 123
+                PUSH 123
                 PRINT
                 RET
                 """;
@@ -106,9 +107,9 @@ class VMTest {
     void testPrintChar() throws IOException {
         String code = """
                 code:
-                PUSHCONST 72
+                PUSH 72
                 PRINTC
-                PUSHCONST 105
+                PUSH 105
                 PRINTC
                 HALT
                 """;
@@ -122,7 +123,7 @@ class VMTest {
         String code = """
                 code:
                 PUSH 10
-                PUSHCONST 20
+                PUSH 20
                 POP
                 PRINT
                 HALT
@@ -136,46 +137,46 @@ class VMTest {
     void testIntegerMathAndBitwise() throws IOException {
         String code = """
                 code:
-                PUSHCONST 10
-                PUSHCONST 4
+                PUSH 10
+                PUSH 4
                 SUB
                 PRINT
-                PUSHCONST 10
-                PUSHCONST 4
+                PUSH 10
+                PUSH 4
                 MUL
                 PRINT
-                PUSHCONST 10
-                PUSHCONST 4
+                PUSH 10
+                PUSH 4
                 DIV
                 PRINT
-                PUSHCONST 10
-                PUSHCONST 4
+                PUSH 10
+                PUSH 4
                 MOD
                 PRINT
-                PUSHCONST 16
-                PUSHCONST 2
+                PUSH 16
+                PUSH 2
                 SHIFTR
                 PRINT
-                PUSHCONST 2
-                PUSHCONST 3
+                PUSH 2
+                PUSH 3
                 SHIFTL
                 PRINT
-                PUSHCONST 12
-                PUSHCONST 10
+                PUSH 12
+                PUSH 10
                 AND
                 PRINT
-                PUSHCONST 12
-                PUSHCONST 10
+                PUSH 12
+                PUSH 10
                 OR
                 PRINT
-                PUSHCONST 12
-                PUSHCONST 10
+                PUSH 12
+                PUSH 10
                 XOR
                 PRINT
-                PUSHCONST 12
+                PUSH 12
                 BITWISEINVERT
                 PRINT
-                PUSHCONST 42
+                PUSH 42
                 NEGATE
                 PRINT
                 HALT
@@ -201,24 +202,24 @@ class VMTest {
     void testRelationalAndEquality() throws IOException {
         String code = """
                 code:
-                PUSHCONST 5
-                PUSHCONST 10
+                PUSH 5
+                PUSH 10
                 LT
                 PRINT
-                PUSHCONST 10
-                PUSHCONST 5
+                PUSH 10
+                PUSH 5
                 LE
                 PRINT
-                PUSHCONST 10
-                PUSHCONST 5
+                PUSH 10
+                PUSH 5
                 GT
                 PRINT
-                PUSHCONST 5
-                PUSHCONST 10
+                PUSH 5
+                PUSH 10
                 GE
                 PRINT
-                PUSHCONST 5
-                PUSHCONST 5
+                PUSH 5
+                PUSH 5
                 COMPARE
                 PRINT
                 HALT
@@ -237,23 +238,23 @@ class VMTest {
     void testFloatingPointMath() throws IOException {
         String code = """
                 code:
-                PUSHCONST 2.5
-                PUSHCONST 1.5
+                PUSH 2.5
+                PUSH 1.5
                 ADDF
                 PRINT
-                PUSHCONST 5.5
-                PUSHCONST 2.0
+                PUSH 5.5
+                PUSH 2.0
                 SUBF
                 PRINT
-                PUSHCONST 2.0
-                PUSHCONST 3.5
+                PUSH 2.0
+                PUSH 3.5
                 MULF
                 PRINT
-                PUSHCONST 5.0
-                PUSHCONST 2.0
+                PUSH 5.0
+                PUSH 2.0
                 DIVF
                 PRINT
-                PUSHCONST 3.14
+                PUSH 3.14
                 NEGATEF
                 PRINT
                 HALT
@@ -274,24 +275,24 @@ class VMTest {
         String code = """
                 code:
                 JMP 4
-                PUSHCONST 99
+                PUSH 99
                 PRINT
-                PUSHCONST 0
+                PUSH 0
                 JF 8
-                PUSHCONST 88
+                PUSH 88
                 PRINT
-                PUSHCONST 42
+                PUSH 42
                 PRINT
                 HALT
                 """;
-        // Line 1: JMP 4 -> Jumps to Line 4 (PUSHCONST 0)
-        // Line 2: PUSHCONST 99 (skipped)
+        // Line 1: JMP 4 -> Jumps to Line 4 (PUSH 0)
+        // Line 2: PUSH 99 (skipped)
         // Line 3: PRINT (skipped)
-        // Line 4: PUSHCONST 0
+        // Line 4: PUSH 0
         // Line 5: JF 8 -> Pops 0 (false), jumps to Line 8
-        // Line 6: PUSHCONST 88 (skipped)
+        // Line 6: PUSH 88 (skipped)
         // Line 7: PRINT (skipped)
-        // Line 8: PUSHCONST 42
+        // Line 8: PUSH 42
         // Line 9: PRINT (prints 42)
         // Line 10: HALT
         VM vm = createVMWithCode(code);
@@ -303,22 +304,22 @@ class VMTest {
     void testHeapMemoryNewAndStore() throws IOException {
         String code = """
                 code:
-                PUSHCONST 3
+                PUSH 3
                 NEW
-                PUSHCONST 0
-                PUSHCONST 77
+                PUSH 0
+                PUSH 77
                 HSTORE X 1
-                PUSHCONST 0
+                PUSH 0
                 HLOAD X 1
                 PRINT
                 HALT
                 """;
-        // PUSHCONST 3
+        // PUSH 3
         // NEW (pops 3, pushes heap index 0)
-        // PUSHCONST 0
-        // PUSHCONST 77
+        // PUSH 0
+        // PUSH 77
         // HSTORE X 1 (pops value 77, index 0, stores at offset 1)
-        // PUSHCONST 0
+        // PUSH 0
         // HLOAD X 1 (pops index 0, loads from offset 1, pushes 77)
         // PRINT -> 77
         VM vm = createVMWithCode(code);
@@ -330,8 +331,8 @@ class VMTest {
     void testDivisionByZeroInteger() throws IOException {
         String code = """
                 code:
-                PUSHCONST 10
-                PUSHCONST 0
+                PUSH 10
+                PUSH 0
                 DIV
                 HALT
                 """;
@@ -345,8 +346,8 @@ class VMTest {
     void testModuloByZeroInteger() throws IOException {
         String code = """
                 code:
-                PUSHCONST 10
-                PUSHCONST 0
+                PUSH 10
+                PUSH 0
                 MOD
                 HALT
                 """;
@@ -359,8 +360,8 @@ class VMTest {
     void testDivisionByZeroFloat() throws IOException {
         String code = """
                 code:
-                PUSHCONST 5.0
-                PUSHCONST 0.0
+                PUSH 5.0
+                PUSH 0.0
                 DIVF
                 HALT
                 """;
@@ -423,7 +424,7 @@ class VMTest {
     void testStackUnderflowBinaryOp() throws IOException {
         String code = """
                 code:
-                PUSHCONST 10
+                PUSH 10
                 ADD
                 HALT
                 """;
@@ -463,7 +464,7 @@ class VMTest {
     void testTypeMismatchPrintc() throws IOException {
         String code = """
                 code:
-                PUSHCONST "Hello"
+                PUSH "Hello"
                 PRINTC
                 HALT
                 """;
@@ -477,7 +478,7 @@ class VMTest {
     void testTypeMismatchNew() throws IOException {
         String code = """
                 code:
-                PUSHCONST "Five"
+                PUSH "Five"
                 NEW
                 HALT
                 """;
@@ -491,10 +492,10 @@ class VMTest {
     void testTypeMismatchHStore() throws IOException {
         String code = """
                 code:
-                PUSHCONST 5
+                PUSH 5
                 NEW
-                PUSHCONST "InvalidPointer"
-                PUSHCONST 42
+                PUSH "InvalidPointer"
+                PUSH 42
                 HSTORE X 0
                 HALT
                 """;
@@ -508,7 +509,7 @@ class VMTest {
     void testTypeMismatchRet() throws IOException {
         String code = """
                 code:
-                PUSHCONST 3.14
+                PUSH 3.14
                 RET
                 HALT
                 """;

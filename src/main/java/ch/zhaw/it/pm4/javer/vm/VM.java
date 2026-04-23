@@ -14,7 +14,7 @@ public class VM {
     private String[] segment;
     private int pc = 0;
     private final Deque<Object> stack = new ArrayDeque<>();
-    private final List<int[]> heap = new java.util.LinkedList<>();
+    private final List<int[]> heap = new ArrayList<>();
 
     /**
      * Constructs a new VM by loading the compiled program from the given file.
@@ -102,7 +102,7 @@ public class VM {
 
         switch (opcode) {
             // Stack Operations
-            case "PUSHCONST", "PUSH" -> {
+            case "PUSH" -> {
                 stack.push(parseValue(parts[1]));
                 pc++;
             }
@@ -188,11 +188,6 @@ public class VM {
                 if (!isTopTrue()) {
                     pc = getJumpTarget(parts[1]);
                 } else pc++;
-            }
-            case "CALL" -> {
-                int targetPc = getJumpTarget(parts[1]);
-                stack.push(pc + 1);
-                pc = targetPc;
             }
             case "RET" -> {
                 if (stack.isEmpty()) throw new VMRuntimeException(pc, "Stack underflow on RET: Missing return address");
