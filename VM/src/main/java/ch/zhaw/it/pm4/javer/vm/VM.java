@@ -188,7 +188,6 @@ public class VM {
         int codeLineIndex = -1;
         int dataLineIndex = -1;
 
-        // section detection with strict order: code first, then data
         for (int i = 0; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty()) {
@@ -228,7 +227,6 @@ public class VM {
 
         int address = 0;
 
-        // first pass: labels in code section
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty()) {
@@ -254,7 +252,6 @@ public class VM {
 
         programEndAddress = address;
 
-        // second pass: parse code instructions
         address = 0;
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
@@ -274,7 +271,6 @@ public class VM {
             }
         }
 
-        // parse data section
         for (int i = dataLineIndex + 1; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty()) {
@@ -298,7 +294,6 @@ public class VM {
             }
         }
 
-        // validate jump labels
         for (PendingJumpCheck check : pendingJumpChecks) {
             if (!labels.containsKey(check.labelName())) {
                 errors.add("Line " + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
@@ -397,6 +392,31 @@ public class VM {
                 );
             }
 
+            case DLOAD1 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DLoad1Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case DLOAD2 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DLoad2Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case DLOAD4 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DLoad4Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case DLOAD8 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DLoad8Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+
             case STOREB -> {
                 ensureOperandCount(parts, 3, instrName, lineNumber);
                 yield new StoreByteToDataInstruction(
@@ -423,6 +443,31 @@ public class VM {
                 yield new StoreDoubleToDataInstruction(
                         parseIdentifier(parts[1], instrName, "data name", lineNumber),
                         parseIntOperand(parts[2], instrName, lineNumber)
+                );
+            }
+
+            case DSTORE1 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DStore1Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case DSTORE2 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DStore2Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case DSTORE4 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DStore4Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case DSTORE8 -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DStore8Instruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
                 );
             }
 
@@ -474,6 +519,13 @@ public class VM {
             case INEG -> noOperand(parts, instrName, lineNumber, new INegInstruction());
             case DNEG -> noOperand(parts, instrName, lineNumber, new DNegInstruction());
             case IINV -> noOperand(parts, instrName, lineNumber, new IInvInstruction());
+
+            case B2I -> noOperand(parts, instrName, lineNumber, new B2IInstruction());
+            case C2I -> noOperand(parts, instrName, lineNumber, new C2IInstruction());
+            case I2D -> noOperand(parts, instrName, lineNumber, new I2DInstruction());
+            case D2I -> noOperand(parts, instrName, lineNumber, new D2IInstruction());
+            case I2B -> noOperand(parts, instrName, lineNumber, new I2BInstruction());
+            case I2C -> noOperand(parts, instrName, lineNumber, new I2CInstruction());
 
             case DUPB -> noOperand(parts, instrName, lineNumber, new DupByteInstruction());
             case DUPC -> noOperand(parts, instrName, lineNumber, new DupCharInstruction());
@@ -637,10 +689,20 @@ public class VM {
             case "LOADI" -> InstructionKind.LOADI;
             case "LOADD" -> InstructionKind.LOADD;
 
+            case "DLOAD1" -> InstructionKind.DLOAD1;
+            case "DLOAD2" -> InstructionKind.DLOAD2;
+            case "DLOAD4" -> InstructionKind.DLOAD4;
+            case "DLOAD8" -> InstructionKind.DLOAD8;
+
             case "STOREB" -> InstructionKind.STOREB;
             case "STOREC" -> InstructionKind.STOREC;
             case "STOREI" -> InstructionKind.STOREI;
             case "STORED" -> InstructionKind.STORED;
+
+            case "DSTORE1" -> InstructionKind.DSTORE1;
+            case "DSTORE2" -> InstructionKind.DSTORE2;
+            case "DSTORE4" -> InstructionKind.DSTORE4;
+            case "DSTORE8" -> InstructionKind.DSTORE8;
 
             case "POPB" -> InstructionKind.POPB;
             case "POPC" -> InstructionKind.POPC;
@@ -691,6 +753,13 @@ public class VM {
             case "DNEG" -> InstructionKind.DNEG;
             case "IINV" -> InstructionKind.IINV;
 
+            case "B2I" -> InstructionKind.B2I;
+            case "C2I" -> InstructionKind.C2I;
+            case "I2D" -> InstructionKind.I2D;
+            case "D2I" -> InstructionKind.D2I;
+            case "I2B" -> InstructionKind.I2B;
+            case "I2C" -> InstructionKind.I2C;
+
             case "DUPB" -> InstructionKind.DUPB;
             case "DUPC" -> InstructionKind.DUPC;
             case "DUPI" -> InstructionKind.DUPI;
@@ -712,7 +781,7 @@ public class VM {
 
     public void run() {
         while (!halted && code.containsKey(pc)) {
-            //dumpStackWindow(8);
+            // dumpStackWindow(STACK_WINDOW);
             Instruction instruction = code.get(pc);
             instruction.execute(this);
             pc++;
@@ -969,6 +1038,84 @@ public class VM {
         }
     }
 
+    private static final class DLoad1Instruction extends Instruction {
+        private final String name;
+
+        public DLoad1Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int offset = vm.popInt();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 1);
+            vm.pushByte(data[offset]);
+        }
+    }
+
+    private static final class DLoad2Instruction extends Instruction {
+        private final String name;
+
+        public DLoad2Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int offset = vm.popInt();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 2);
+
+            byte low = data[offset];
+            byte high = data[offset + 1];
+            char value = (char) (((high & 0xFF) << 8) | (low & 0xFF));
+            vm.pushChar(value);
+        }
+    }
+
+    private static final class DLoad4Instruction extends Instruction {
+        private final String name;
+
+        public DLoad4Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int offset = vm.popInt();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 4);
+
+            int value = 0;
+            for (int i = 0; i < 4; i++) {
+                value |= (data[offset + i] & 0xFF) << (8 * i);
+            }
+            vm.pushInt(value);
+        }
+    }
+
+    private static final class DLoad8Instruction extends Instruction {
+        private final String name;
+
+        public DLoad8Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int offset = vm.popInt();
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 8);
+
+            long bits = 0;
+            for (int i = 0; i < 8; i++) {
+                bits |= ((long) (data[offset + i] & 0xFF)) << (8 * i);
+            }
+            vm.pushDouble(Double.longBitsToDouble(bits));
+        }
+    }
+
     private static final class StoreByteToDataInstruction extends Instruction {
         private final String name;
         private final int offset;
@@ -1042,6 +1189,89 @@ public class VM {
             long value = Double.doubleToLongBits(dValue);
             byte[] data = vm.getDataObject(name);
             vm.checkDataAccess(name, data, offset, 8);
+            for (int i = 0; i < 8; i++) {
+                data[offset + i] = (byte) (value & 0xFF);
+                value >>= 8;
+            }
+        }
+    }
+
+    private static final class DStore1Instruction extends Instruction {
+        private final String name;
+
+        public DStore1Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte value = vm.popByte();
+            int offset = vm.popInt();
+
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 1);
+            data[offset] = value;
+        }
+    }
+
+    private static final class DStore2Instruction extends Instruction {
+        private final String name;
+
+        public DStore2Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            char value = vm.popChar();
+            int offset = vm.popInt();
+
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 2);
+
+            data[offset] = (byte) (value & 0xFF);
+            data[offset + 1] = (byte) ((value >> 8) & 0xFF);
+        }
+    }
+
+    private static final class DStore4Instruction extends Instruction {
+        private final String name;
+
+        public DStore4Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int value = vm.popInt();
+            int offset = vm.popInt();
+
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 4);
+
+            for (int i = 0; i < 4; i++) {
+                data[offset + i] = (byte) (value & 0xFF);
+                value >>= 8;
+            }
+        }
+    }
+
+    private static final class DStore8Instruction extends Instruction {
+        private final String name;
+
+        public DStore8Instruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            double dValue = vm.popDouble();
+            long value = Double.doubleToLongBits(dValue);
+            int offset = vm.popInt();
+
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, offset, 8);
+
             for (int i = 0; i < 8; i++) {
                 data[offset + i] = (byte) (value & 0xFF);
                 value >>= 8;
@@ -1442,6 +1672,54 @@ public class VM {
         }
     }
 
+    private static final class B2IInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            byte b = vm.popByte();
+            vm.pushInt(b);
+        }
+    }
+
+    private static final class C2IInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            char c = vm.popChar();
+            vm.pushInt(c);
+        }
+    }
+
+    private static final class I2DInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            int i = vm.popInt();
+            vm.pushDouble((double) i);
+        }
+    }
+
+    private static final class D2IInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            double d = vm.popDouble();
+            vm.pushInt((int) d);
+        }
+    }
+
+    private static final class I2BInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            int i = vm.popInt();
+            vm.pushByte((byte) i);
+        }
+    }
+
+    private static final class I2CInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            int i = vm.popInt();
+            vm.pushChar((char) i);
+        }
+    }
+
     private static final class DupByteInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
@@ -1564,7 +1842,9 @@ public class VM {
     private enum InstructionKind {
         PUSHB, PUSHC, PUSHI, PUSHD,
         LOADB, LOADC, LOADI, LOADD,
+        DLOAD1, DLOAD2, DLOAD4, DLOAD8,
         STOREB, STOREC, STOREI, STORED,
+        DSTORE1, DSTORE2, DSTORE4, DSTORE8,
         POPB, POPC, POPI, POPD,
         HLOAD1, HLOAD2, HLOAD4, HLOAD8,
         HSTORE1, HSTORE2, HSTORE4, HSTORE8,
@@ -1576,6 +1856,7 @@ public class VM {
         ISHL, ISHR,
         IAND, IOR, IXOR,
         INEG, DNEG, IINV,
+        B2I, C2I, I2D, D2I, I2B, I2C,
         DUPB, DUPC, DUPI, DUPD,
         JUMP, JUMPT, JUMPF,
         HALT, PRINTB, PRINTC, PRINTI, PRINTD
@@ -1607,4 +1888,3 @@ public class VM {
         }
     }
 }
-
