@@ -40,11 +40,7 @@ public class VM {
             System.exit(1);
         }
         String bytecodeFile = args[0];
-        BytecodeLoader bytecodeLoader = new BytecodeLoader(bytecodeFile);
-        VM vm = new VM(bytecodeLoader);
-        String result = vm.run();
-        System.out.println("test");
-        System.err.println("error test");
+        new VM(bytecodeFile).run();
     }
 
     /**
