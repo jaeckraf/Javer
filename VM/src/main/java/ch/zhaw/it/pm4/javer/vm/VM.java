@@ -12,6 +12,7 @@ import java.util.Map;
 public class VM {
 
     private static final int STACK_SIZE = 1048576; // 1 MB
+    private static final int STACK_WINDOW = 8;
 
     private final byte[] stack = new byte[STACK_SIZE];
     private final List<byte[]> heap = new ArrayList<>();
@@ -46,8 +47,138 @@ public class VM {
     }
 
     public VM(String filePath) throws IOException, ParseException {
-        this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.US_ASCII);
+        this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
         parse();
+    }
+
+    private void dumpStack() {
+        System.out.println("=== STACK DUMP ===");
+        System.out.println("sp = " + sp);
+
+        if (sp == 0) {
+            System.out.println("<empty>");
+        } else {
+            for (int i = 0; i < sp; i++) {
+                int unsigned = stack[i] & 0xFF;
+                System.out.printf("[%d] 0x%02X (%d)%n", i, unsigned, stack[i]);
+            }
+        }
+    }
+
+    private void dumpStackWindow(int range) {
+        System.out.println("=== STACK WINDOW (sp ± " + range + ") ===");
+
+        int start = Math.max(0, sp - range);
+        int end = Math.min(stack.length, sp + range);
+
+        for (int i = start; i < end; i++) {
+            int unsigned = stack[i] & 0xFF;
+
+            String spMarker = (i == sp) ? "<-- sp" : "";
+            String state = (i < sp) ? "VAL" : "INV";
+
+            System.out.printf("[%05d] 0x%02X (%d) %s %s%n", i, unsigned, stack[i], state, spMarker);
+        }
+    }
+
+    private void dumpHeap() {
+        System.out.println("=== HEAP DUMP ===");
+        System.out.println("objects = " + heap.size());
+
+        if (heap.isEmpty()) {
+            System.out.println("<empty>");
+            return;
+        }
+
+        for (int i = 0; i < heap.size(); i++) {
+            byte[] obj = heap.get(i);
+            System.out.print("heap[" + i + "] = ");
+            dumpByteArrayInline(obj);
+        }
+    }
+
+    private void dumpData() {
+        System.out.println("=== DATA DUMP ===");
+
+        if (dataMap.isEmpty()) {
+            System.out.println("<empty>");
+            return;
+        }
+
+        for (Map.Entry<String, byte[]> entry : dataMap.entrySet()) {
+            System.out.print(entry.getKey() + " = ");
+            dumpByteArrayInline(entry.getValue());
+        }
+    }
+
+    private void dumpLabels() {
+        System.out.println("=== LABELS DUMP ===");
+
+        if (labels.isEmpty()) {
+            System.out.println("<empty>");
+            return;
+        }
+
+        for (Map.Entry<String, Integer> entry : labels.entrySet()) {
+            System.out.println(entry.getKey() + " -> " + entry.getValue());
+        }
+    }
+
+    private void dumpState() {
+        System.out.println("========================================");
+        System.out.println("VM STATE DUMP");
+        System.out.println("pc = " + pc);
+        System.out.println("sp = " + sp);
+        System.out.println("halted = " + halted);
+        System.out.println("programEndAddress = " + programEndAddress);
+        System.out.println("========================================");
+
+        dumpStack();
+        System.out.println();
+
+        dumpHeap();
+        System.out.println();
+
+        dumpData();
+        System.out.println();
+
+        dumpLabels();
+        System.out.println("========================================");
+    }
+
+    private void dumpByteArrayInline(byte[] arr) {
+        if (arr == null) {
+            System.out.println("<null>");
+            return;
+        }
+
+        if (arr.length == 0) {
+            System.out.println("[]");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < arr.length; i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(String.format("0x%02X", arr[i] & 0xFF));
+        }
+        sb.append("]");
+
+        sb.append("  ascii=\"");
+        for (byte b : arr) {
+            int c = b & 0xFF;
+            if (c >= 32 && c <= 126) {
+                sb.append((char) c);
+            } else {
+                sb.append('.');
+            }
+        }
+        sb.append("\"");
+
+        System.out.println(sb);
     }
 
     private void parse() throws ParseException {
@@ -344,6 +475,11 @@ public class VM {
             case DNEG -> noOperand(parts, instrName, lineNumber, new DNegInstruction());
             case IINV -> noOperand(parts, instrName, lineNumber, new IInvInstruction());
 
+            case DUPB -> noOperand(parts, instrName, lineNumber, new DupByteInstruction());
+            case DUPC -> noOperand(parts, instrName, lineNumber, new DupCharInstruction());
+            case DUPI -> noOperand(parts, instrName, lineNumber, new DupIntInstruction());
+            case DUPD -> noOperand(parts, instrName, lineNumber, new DupDoubleInstruction());
+
             case JUMP -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
@@ -555,6 +691,11 @@ public class VM {
             case "DNEG" -> InstructionKind.DNEG;
             case "IINV" -> InstructionKind.IINV;
 
+            case "DUPB" -> InstructionKind.DUPB;
+            case "DUPC" -> InstructionKind.DUPC;
+            case "DUPI" -> InstructionKind.DUPI;
+            case "DUPD" -> InstructionKind.DUPD;
+
             case "JUMP" -> InstructionKind.JUMP;
             case "JUMPT" -> InstructionKind.JUMPT;
             case "JUMPF" -> InstructionKind.JUMPF;
@@ -571,6 +712,7 @@ public class VM {
 
     public void run() {
         while (!halted && code.containsKey(pc)) {
+            //dumpStackWindow(8);
             Instruction instruction = code.get(pc);
             instruction.execute(this);
             pc++;
@@ -657,7 +799,7 @@ public class VM {
     private double popDouble() {
         ensureStackAvailable(8, "double");
         long bits = 0;
-        for (int i = 0; i < 8; i++) {
+        for (int i = 7; i >= 0; i--) {
             bits |= ((long) (stack[--sp] & 0xFF)) << (8 * i);
         }
         return Double.longBitsToDouble(bits);
@@ -1300,6 +1442,42 @@ public class VM {
         }
     }
 
+    private static final class DupByteInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            byte value = vm.popByte();
+            vm.pushByte(value);
+            vm.pushByte(value);
+        }
+    }
+
+    private static final class DupCharInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            char value = vm.popChar();
+            vm.pushChar(value);
+            vm.pushChar(value);
+        }
+    }
+
+    private static final class DupIntInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            int value = vm.popInt();
+            vm.pushInt(value);
+            vm.pushInt(value);
+        }
+    }
+
+    private static final class DupDoubleInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            double value = vm.popDouble();
+            vm.pushDouble(value);
+            vm.pushDouble(value);
+        }
+    }
+
     private static final class JumpInstruction extends Instruction {
         private final String labelName;
 
@@ -1398,6 +1576,7 @@ public class VM {
         ISHL, ISHR,
         IAND, IOR, IXOR,
         INEG, DNEG, IINV,
+        DUPB, DUPC, DUPI, DUPD,
         JUMP, JUMPT, JUMPF,
         HALT, PRINTB, PRINTC, PRINTI, PRINTD
     }
@@ -1428,3 +1607,4 @@ public class VM {
         }
     }
 }
+
