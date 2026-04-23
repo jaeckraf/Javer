@@ -20,7 +20,7 @@ public class VM {
     private final Map<String, byte[]> dataMap = new HashMap<>();
     private final Map<String, Integer> labels = new HashMap<>();
     private final List<String> lines;
-    private final List<Integer> callStack = new ArrayList<>(); // Stack für Return-Adressen
+    private final List<CallFrame> callStack = new ArrayList<>();
 
     private int sp = 0;
     private int pc = 0;
@@ -606,14 +606,19 @@ public class VM {
             }
 
             case CALL -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
+                ensureOperandCount(parts, 3, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
-                // CALL muss auf _label gehen (Funktionslabel)
                 if (!label.startsWith("_")) {
                     throw new ParseException("Line " + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
                 }
+
+                int argBytes = parseIntOperand(parts[2], instrName, lineNumber);
+                if (argBytes < 0) {
+                    throw new ParseException("Line " + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
+                }
+
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
-                yield new CallInstruction(label);
+                yield new CallInstruction(label, argBytes);
             }
 
             case ENTER -> {
@@ -626,6 +631,10 @@ public class VM {
             }
 
             case RET -> noOperand(parts, instrName, lineNumber, new RetInstruction());
+            case RETB -> noOperand(parts, instrName, lineNumber, new RetByteInstruction());
+            case RETC -> noOperand(parts, instrName, lineNumber, new RetCharInstruction());
+            case RETI -> noOperand(parts, instrName, lineNumber, new RetIntInstruction());
+            case RETD -> noOperand(parts, instrName, lineNumber, new RetDoubleInstruction());
 
             case FLOAD1 -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
@@ -891,7 +900,12 @@ public class VM {
 
             case "CALL" -> InstructionKind.CALL;
             case "ENTER" -> InstructionKind.ENTER;
+
             case "RET" -> InstructionKind.RET;
+            case "RETB" -> InstructionKind.RETB;
+            case "RETC" -> InstructionKind.RETC;
+            case "RETI" -> InstructionKind.RETI;
+            case "RETD" -> InstructionKind.RETD;
 
             case "HALT" -> InstructionKind.HALT;
             case "PRINTB" -> InstructionKind.PRINTB;
@@ -904,16 +918,14 @@ public class VM {
     }
 
     public void run() {
-        // Implicitly call _main at startup
         if (labels.containsKey("_main")) {
-            callStack.add(-1); // Terminator: -1 means end of program
+            callStack.add(new CallFrame(-1, 0, 0, 0));
             pc = labels.get("_main");
         } else {
             throw new VMExecutionException("No _main function found");
         }
 
         while (!halted && code.containsKey(pc)) {
-            // dumpStackWindow(STACK_WINDOW);
             Instruction instruction = code.get(pc);
             instruction.execute(this);
             pc++;
@@ -1983,15 +1995,22 @@ public class VM {
 
     private static final class CallInstruction extends Instruction {
         private final String label;
+        private final int argBytes;
 
-        public CallInstruction(String label) {
+        public CallInstruction(String label, int argBytes) {
             this.label = label;
+            this.argBytes = argBytes;
         }
 
         @Override
         public void execute(VM vm) {
-            vm.callStack.add(vm.pc); // Save return address
-            vm.pc = vm.resolveLabel(label) - 1; // -1 because pc will be incremented after instruction
+            if (argBytes > vm.sp) {
+                throw new VMExecutionException("CALL: not enough bytes on stack for " + argBytes + " argument byte(s)");
+            }
+
+            int callerSp = vm.sp - argBytes;
+            vm.callStack.add(new CallFrame(vm.pc, vm.fp, callerSp, argBytes));
+            vm.pc = vm.resolveLabel(label) - 1;
         }
     }
 
@@ -2004,12 +2023,9 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            // Initialize frame pointer and allocate space for local variables
-            vm.fp = vm.sp; // fp points to start of local variables
-            vm.sp += size; // Allocate size bytes for local variables
-            if (vm.sp > VM.STACK_SIZE) {
-                throw new VMExecutionException("Stack overflow: cannot allocate " + size + " bytes for local variables");
-            }
+            vm.fp = vm.sp;
+            vm.ensureStackCapacity(size);
+            vm.sp += size;
         }
     }
 
@@ -2019,13 +2035,108 @@ public class VM {
             if (vm.callStack.isEmpty()) {
                 throw new VMExecutionException("RET: call stack is empty");
             }
-            int returnAddr = vm.callStack.remove(vm.callStack.size() - 1);
-            
-            // If return address is -1, it's the terminator (end of program)
-            if (returnAddr == -1) {
+
+            CallFrame frame = vm.callStack.removeLast();
+
+            vm.sp = frame.callerSp();
+            vm.fp = frame.previousFp();
+
+            if (frame.returnPc() == -1) {
                 vm.halted = true;
             } else {
-                vm.pc = returnAddr; // Return address is set to be incremented after this instruction
+                vm.pc = frame.returnPc() - 1;
+            }
+        }
+    }
+
+    private static final class RetByteInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            byte value = vm.popByte();
+
+            if (vm.callStack.isEmpty()) {
+                throw new VMExecutionException("RETB: call stack is empty");
+            }
+
+            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+
+            vm.sp = frame.callerSp();
+            vm.fp = frame.previousFp();
+            vm.pushByte(value);
+
+            if (frame.returnPc() == -1) {
+                vm.halted = true;
+            } else {
+                vm.pc = frame.returnPc() - 1;
+            }
+        }
+    }
+
+    private static final class RetCharInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            char value = vm.popChar();
+
+            if (vm.callStack.isEmpty()) {
+                throw new VMExecutionException("RETC: call stack is empty");
+            }
+
+            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+
+            vm.sp = frame.callerSp();
+            vm.fp = frame.previousFp();
+            vm.pushChar(value);
+
+            if (frame.returnPc() == -1) {
+                vm.halted = true;
+            } else {
+                vm.pc = frame.returnPc() - 1;
+            }
+        }
+    }
+
+    private static final class RetIntInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            int value = vm.popInt();
+
+            if (vm.callStack.isEmpty()) {
+                throw new VMExecutionException("RETI: call stack is empty");
+            }
+
+            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+
+            vm.sp = frame.callerSp();
+            vm.fp = frame.previousFp();
+            vm.pushInt(value);
+
+            if (frame.returnPc() == -1) {
+                vm.halted = true;
+            } else {
+                vm.pc = frame.returnPc() - 1;
+            }
+        }
+    }
+
+    private static final class RetDoubleInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            double value = vm.popDouble();
+
+            if (vm.callStack.isEmpty()) {
+                throw new VMExecutionException("RETD: call stack is empty");
+            }
+
+            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+
+            vm.sp = frame.callerSp();
+            vm.fp = frame.previousFp();
+            vm.pushDouble(value);
+
+            if (frame.returnPc() == -1) {
+                vm.halted = true;
+            } else {
+                vm.pc = frame.returnPc() - 1;
             }
         }
     }
@@ -2188,7 +2299,8 @@ public class VM {
         B2I, C2I, I2D, D2I, I2B, I2C,
         DUPB, DUPC, DUPI, DUPD,
         JUMP, JUMPT, JUMPF,
-        CALL, ENTER, RET,
+        CALL, ENTER,
+        RET, RETB, RETC, RETI, RETD,
         HALT, PRINTB, PRINTC, PRINTI, PRINTD
     }
 
@@ -2217,4 +2329,7 @@ public class VM {
             super(message);
         }
     }
+
+    private record CallFrame(int returnPc, int previousFp, int callerSp, int argBytes) { }
+
 }
