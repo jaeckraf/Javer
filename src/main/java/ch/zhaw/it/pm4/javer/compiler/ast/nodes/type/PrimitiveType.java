@@ -12,6 +12,8 @@ public final class PrimitiveType implements TypeAstNode {
         this.kind = kind;
     }
 
+    public PrimitiveTypeKind getKind() {return kind;};
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

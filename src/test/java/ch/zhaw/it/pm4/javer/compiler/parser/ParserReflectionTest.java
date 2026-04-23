@@ -1,9 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import org.junit.jupiter.api.*;
 
 import java.lang.reflect.Method;
@@ -446,6 +449,29 @@ class ParserReflectionTest {
             Optional<Object> parsedFunction = (Optional<Object>) invokePrivate(parser, "parseFunctionDeclaration");
 
             assertTrue(parsedFunction.isEmpty());
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SYMBOL_LEFT_PARENTHESIS, current.getTokenType());
+        }
+    }
+
+    // ----------------------------------------------------
+    // Tests fuer parsePrimitiveType()
+    // ----------------------------------------------------
+    @Nested
+    class ParsePrimitiveTypeTests {
+
+        @Test
+        void parsePrimitiveType_invalidToken_reportsDiagnosticAndReturnsInvalidType() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.SYMBOL_LEFT_PARENTHESIS),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            PrimitiveType parsedType = (PrimitiveType) invokePrivate(parser, "parsePrimitiveType");
+
+            assertEquals(PrimitiveTypeKind.INVALID, parsedType.getKind());
+            verify(diagnostics).add(any(SourceLocation.class), eq(Severity.ERROR), contains("Invalid primitive type."));
 
             Token current = (Token) invokePrivate(parser, "currentToken");
             assertEquals(TokenType.SYMBOL_LEFT_PARENTHESIS, current.getTokenType());

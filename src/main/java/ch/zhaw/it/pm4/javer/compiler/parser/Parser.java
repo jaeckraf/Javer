@@ -292,6 +292,10 @@ public class Parser {
 
     private PrimitiveType parsePrimitiveType() {
         PrimitiveType primitiveType = new PrimitiveType(toPrimitiveTypeKind(currentToken()));
+        if (primitiveType.getKind() == PrimitiveTypeKind.INVALID) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Invalid primitive type.");
+            return new PrimitiveType(PrimitiveTypeKind.INVALID);
+        }
         consumeToken();
         return primitiveType;
     }
