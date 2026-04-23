@@ -25,6 +25,7 @@ public enum OPCode {
     PUSH,
     POP,
     HALT,
+    RETURN,
     PRINT,
     NEW
 }

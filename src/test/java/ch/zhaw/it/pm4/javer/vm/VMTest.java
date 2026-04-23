@@ -37,6 +37,16 @@ class VMTest {
     }
 
     @Test
+    void runHandlesPushThenReturn() {
+        VM vm = createVmWithProgram(List.of(
+                new Instruction(OPCode.PUSH, new Operand<>(42)),
+                new Instruction(OPCode.RETURN)
+        ));
+
+        assertEquals("Successfully executed program", vm.run());
+    }
+
+    @Test
     void runReturnsErrorOnUnknownOpcode() {
         VM vm = createVmWithProgram(List.of(new Instruction(OPCode.ADD)));
 

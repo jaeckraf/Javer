@@ -38,7 +38,7 @@ public class VM {
                continue;
            }
 
-           if (instruction.getOperationCode() == OPCode.HALT) {
+            if (instruction.getOperationCode() == OPCode.HALT || instruction.getOperationCode() == OPCode.RETURN) {
                return "Successfully executed program";
            }
 

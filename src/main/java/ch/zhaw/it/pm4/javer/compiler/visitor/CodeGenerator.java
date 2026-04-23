@@ -30,9 +30,7 @@ public class CodeGenerator extends AstNodeVisitorBase<List<Instruction>> {
             declaration.accept(this);
         }
 
-        if (instructions.isEmpty()) {
-            instructions.add(new Instruction(OPCode.HALT));
-        }
+        instructions.add(new Instruction(OPCode.HALT));
         return instructions;
     }
 
@@ -48,19 +46,13 @@ public class CodeGenerator extends AstNodeVisitorBase<List<Instruction>> {
 
     @Override
     public List<Instruction> visit(FunctionDeclaration node) {
-        int sizeBeforeFunction = instructions.size();
         node.getBody().accept(this);
-
-        boolean functionHasHalt = false;
-        for (int i = sizeBeforeFunction; i < instructions.size(); i++) {
-            if (instructions.get(i).getOperationCode() == OPCode.HALT) {
-                functionHasHalt = true;
-                break;
-            }
+        
+        // Only add RETURN if the function doesn't already end with one
+        if (instructions.isEmpty() || instructions.get(instructions.size() - 1).getOperationCode() != OPCode.RETURN) {
+            instructions.add(new Instruction(OPCode.RETURN));
         }
-        if (!functionHasHalt) {
-            instructions.add(new Instruction(OPCode.HALT));
-        }
+        
         return instructions;
     }
 
@@ -132,7 +124,7 @@ public class CodeGenerator extends AstNodeVisitorBase<List<Instruction>> {
         if (node.getExpression() != null) {
             node.getExpression().accept(this);
         }
-        instructions.add(new Instruction(OPCode.HALT));
+        instructions.add(new Instruction(OPCode.RETURN));
         return instructions;
     }
 

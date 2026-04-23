@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CodeGeneratorTest {
 
     @Test
-    void functionWithLiteralReturn_generatesPushAndHalt() {
+    void functionWithLiteralReturn_generatesPushReturnAndHalt() {
         ReturnStatement returnStatement = ReturnStatement
                 .builder(new LiteralExpression<>(LiteralKind.INT, 42))
                 .build();
@@ -28,17 +28,29 @@ class CodeGeneratorTest {
 
         List<Instruction> instructions = new CodeGenerator().visit(unit);
 
-        assertEquals(2, instructions.size());
+        assertEquals(3, instructions.size());
         assertEquals(OPCode.PUSH, instructions.getFirst().getOperationCode());
         assertEquals(42, instructions.getFirst().getOperands().getFirst().getValue());
+        assertEquals(OPCode.RETURN, instructions.get(1).getOperationCode());
+        assertEquals(OPCode.HALT, instructions.get(2).getOperationCode());
+    }
+
+    @Test
+    void functionWithoutReturn_generatesImplicitReturnAndProgramHalt() {
+        BlockStatement body = new BlockStatement(List.of());
+        FunctionDeclaration function = new FunctionDeclaration(new VoidType(), "main", List.of(), body);
+        CompilationUnit unit = new CompilationUnit(List.of(function));
+
+        List<Instruction> instructions = new CodeGenerator().visit(unit);
+
+        assertEquals(2, instructions.size());
+        assertEquals(OPCode.RETURN, instructions.getFirst().getOperationCode());
         assertEquals(OPCode.HALT, instructions.get(1).getOperationCode());
     }
 
     @Test
-    void functionWithoutReturn_generatesImplicitHalt() {
-        BlockStatement body = new BlockStatement(List.of());
-        FunctionDeclaration function = new FunctionDeclaration(new VoidType(), "main", List.of(), body);
-        CompilationUnit unit = new CompilationUnit(List.of(function));
+    void emptyCompilationUnit_generatesProgramHalt() {
+        CompilationUnit unit = new CompilationUnit(List.of());
 
         List<Instruction> instructions = new CodeGenerator().visit(unit);
 
