@@ -14,7 +14,7 @@
         <module>Compiler</module>
         <module>VM</module>
         <module>Application</module>
-        <module>e2e</module>
+        <module>E2E</module>
     </modules>
 
     <properties>
