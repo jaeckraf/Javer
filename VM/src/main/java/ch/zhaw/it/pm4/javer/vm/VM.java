@@ -2009,7 +2009,7 @@ public class VM {
             }
 
             int callerSp = vm.sp - argBytes;
-            vm.callStack.add(new CallFrame(vm.pc, vm.fp, callerSp, argBytes));
+            vm.callStack.add(new CallFrame(vm.pc + 1, vm.fp, callerSp, argBytes));
             vm.pc = vm.resolveLabel(label) - 1;
         }
     }
@@ -2058,7 +2058,7 @@ public class VM {
                 throw new VMExecutionException("RETB: call stack is empty");
             }
 
-            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+            CallFrame frame = vm.callStack.removeLast();
 
             vm.sp = frame.callerSp();
             vm.fp = frame.previousFp();
@@ -2081,7 +2081,7 @@ public class VM {
                 throw new VMExecutionException("RETC: call stack is empty");
             }
 
-            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+            CallFrame frame = vm.callStack.removeLast();
 
             vm.sp = frame.callerSp();
             vm.fp = frame.previousFp();
@@ -2104,7 +2104,7 @@ public class VM {
                 throw new VMExecutionException("RETI: call stack is empty");
             }
 
-            CallFrame frame = vm.callStack.remove(vm.callStack.size() - 1);
+            CallFrame frame = vm.callStack.removeLast();
 
             vm.sp = frame.callerSp();
             vm.fp = frame.previousFp();
