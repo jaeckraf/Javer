@@ -47,10 +47,8 @@ public class VM {
      * Starts execution of the instructions loaded into the VM's code segment.
      * Execution continues until a HALT instruction is reached, or the program counter
      * runs past the end of the segment.
-     *
-     * @return A status message indicating execution has finished.
      */
-    public String run() {
+    public void run() {
         boolean halted = false;
 
         while (!halted && pc < segment.length) {
@@ -63,7 +61,6 @@ public class VM {
                 halted = true;
             }
         }
-        return "Execution finished.";
     }
 
     private void loadSegment(List<String> rawLines) {

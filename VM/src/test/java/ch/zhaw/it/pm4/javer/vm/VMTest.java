@@ -48,7 +48,7 @@ class VMTest {
                 HALT
                 """;
         VM vm = createVMWithCode(code);
-        assertEquals("Execution finished.", vm.run());
+        vm.run();
         assertEquals("15", getOutput());
     }
 
