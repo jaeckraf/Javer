@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.expression.LiteralKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralKind;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
