@@ -1,9 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import java.util.List;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
-
-import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ForStatement implements StatementAstNode {
@@ -52,6 +52,10 @@ public final class ForStatement implements StatementAstNode {
         public ForStatement build() {
             return new ForStatement(this);
         }
+    }
+
+    public StatementAstNode getBody() {
+        return body;
     }
 
     @Override

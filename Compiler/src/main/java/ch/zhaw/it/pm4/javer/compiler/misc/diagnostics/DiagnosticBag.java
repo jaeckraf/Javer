@@ -1,12 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.misc.diagnostics;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class DiagnosticBag {
@@ -48,7 +48,7 @@ public class DiagnosticBag {
      * @param diagnostic The diagnostic to add.
      */
     public void add(Diagnostic diagnostic) {
-        // TODO: Implement adding to list
+        diagnostics.add(diagnostic);
         // TODO: Implement error limit check (throw exception if exceeded)
     }
 
@@ -62,8 +62,7 @@ public class DiagnosticBag {
      * @return true if there are errors, false otherwise.
      */
     public boolean hasErrors() {
-        // TODO: Implement
-        return false;
+        return diagnostics.stream().anyMatch(d -> d.getSeverity() == Severity.ERROR || d.getSeverity() == Severity.SEVERE);
     }
 
     /**
@@ -73,8 +72,23 @@ public class DiagnosticBag {
      * @return The formatted report string.
      */
     public String dumpReport() {
-        // TODO: Implement
-        return "Error Report:\n";
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("=== Error Report ===\n");
+        sb.append("File: ").append(filePath).append("\n");
+        sb.append("Phase: ").append(phase).append("\n\n");
+
+        if (diagnostics.isEmpty()) {
+            sb.append("No diagnostics.\n");
+            return sb.toString();
+        }
+
+        for (Diagnostic d : diagnostics) {
+            sb.append(d.toString());
+            sb.append("\n");
+        }
+
+        return sb.toString();
     }
 
     /**

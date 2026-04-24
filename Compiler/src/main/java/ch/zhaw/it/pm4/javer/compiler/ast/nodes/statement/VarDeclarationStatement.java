@@ -41,6 +41,18 @@ public final class VarDeclarationStatement implements StatementAstNode {
         }
     }
 
+    public TypeAstNode getType() {
+        return type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ExpressionAstNode getInitializer() {
+        return initializer;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);
