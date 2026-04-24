@@ -69,10 +69,10 @@ public class Parser {
      * <p>
      * This method acts as the entry point for the compiler pipeline and matches
      * the root {@code compilationUnit} grammar rule. It iterates through the
-     * token stream and constructs the highest level of the syntax tree.
+     * token stream and constructs an abstract syntax tree.
      *
      * @return The root node ({@link CompilationUnit}) of the resulting
-     * Concrete Syntax Tree (CST).
+     * Abstract Syntax Tree (AST).
      */
     public CompilationUnit parse() {
         return parseCompilationUnit();
@@ -250,12 +250,31 @@ public class Parser {
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
+    private void synchronizeUntilFound(List<TokenType> tokenTypes) {
+        while (!matchAnyCurrentToken(tokenTypes) && !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            consumeToken();
+        }
+    }
+
     // ============================================================
     // Top-Level
     // ============================================================
 
     private CompilationUnit parseCompilationUnit() {
-        return new CompilationUnit(parseDeclarations());
+        List<TokenType> firstDeclarationTokens = List.of(
+                TokenType.TYPE_ENUM,
+                TokenType.TYPE_STRUCT,
+                TokenType.KEYWORD_FUNCTION);
+        List<DeclarationAstNode> declarations = new ArrayList<>();
+        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            if (matchAnyCurrentToken(firstDeclarationTokens)) {
+                declarations.add(parseDeclaration());
+            } else {
+                reportExpectedTokens(firstDeclarationTokens);
+                synchronizeUntilFound(firstDeclarationTokens);
+            }
+        }
+        return new CompilationUnit(declarations);
     }
 
     private DeclarationAstNode parseDeclaration() {
@@ -710,16 +729,6 @@ public class Parser {
     // ============================================================
     // Optional / Repetition Helpers
     // ============================================================
-
-    private List<DeclarationAstNode> parseDeclarations() {
-        List<DeclarationAstNode> declarations = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
-            int startPosition = currentPosition;
-            declarations.add(parseDeclaration());
-            if (currentPosition == startPosition) consumeToken();
-        }
-        return declarations;
-    }
 
     private List<EnumItem> parseEnumItems() {
         return new ArrayList<>();
