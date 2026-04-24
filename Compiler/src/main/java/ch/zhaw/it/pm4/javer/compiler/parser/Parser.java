@@ -16,7 +16,9 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A Recursive Descent Parser for the Javer programming language.
@@ -37,19 +39,128 @@ public class Parser {
     private final DiagnosticBag diagnosticBag;
     private int currentPosition = 0;
 
-    private final TokenType[] tokenTypesTypeHead = {
-            TokenType.TYPE_INTEGER, TokenType.TYPE_DOUBLE,
-            TokenType.TYPE_BOOLEAN, TokenType.TYPE_STRING, TokenType.TYPE_CHARACTER,
-            TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM
-    };
+    private static final Set<TokenType> EOF = EnumSet.of(
+            TokenType.SPECIAL_END_OF_FILE
+    );
 
-    private final TokenType[] tokenTypePrimitiveTypes = {
+    private static final Set<TokenType> FIRST_TOP_LEVEL = EnumSet.of(
+            TokenType.TYPE_ENUM,
+            TokenType.TYPE_STRUCT,
+            TokenType.KEYWORD_FUNCTION
+    );
+
+    private static final Set<TokenType> FOLLOW_TOP_LEVEL = EnumSet.of(
+            TokenType.TYPE_ENUM,
+            TokenType.TYPE_STRUCT,
+            TokenType.KEYWORD_FUNCTION,
+            TokenType.SPECIAL_END_OF_FILE
+    );
+
+    private static final Set<TokenType> FIRST_TYPE = EnumSet.of(
+            TokenType.TYPE_INTEGER,
+            TokenType.TYPE_DOUBLE,
+            TokenType.TYPE_BOOLEAN,
+            TokenType.TYPE_STRING,
+            TokenType.TYPE_CHARACTER,
+            TokenType.TYPE_STRUCT,
+            TokenType.TYPE_ENUM
+    );
+
+    private static final Set<TokenType> FIRST_PRIMITIVE_TYPE = EnumSet.of(
             TokenType.TYPE_INTEGER,
             TokenType.TYPE_DOUBLE,
             TokenType.TYPE_BOOLEAN,
             TokenType.TYPE_STRING,
             TokenType.TYPE_CHARACTER
-    };
+    );
+
+    private static final Set<TokenType> FIRST_RETURN_TYPE = EnumSet.copyOf(FIRST_TYPE);
+    static {
+        FIRST_RETURN_TYPE.add(TokenType.TYPE_VOID);
+    }
+
+    private static final Set<TokenType> FIRST_STATEMENT = EnumSet.of(
+            TokenType.SYMBOL_LEFT_BRACE,
+            TokenType.KEYWORD_IF,
+            TokenType.KEYWORD_WHILE,
+            TokenType.KEYWORD_DO,
+            TokenType.KEYWORD_FOR,
+            TokenType.KEYWORD_SWITCH,
+            TokenType.KEYWORD_BREAK,
+            TokenType.KEYWORD_CONTINUE,
+            TokenType.KEYWORD_RETURN,
+            TokenType.KEYWORD_LET,
+
+            TokenType.OPERATOR_MINUS,
+            TokenType.OPERATOR_DECREMENT,
+            TokenType.OPERATOR_LOGICAL_NOT,
+            TokenType.SYMBOL_LEFT_PARENTHESIS,
+            TokenType.OPERATOR_PLUS,
+            TokenType.OPERATOR_INCREMENT,
+            TokenType.OPERATOR_BITWISE_NOT,
+            TokenType.LITERAL_BOOLEAN,
+            TokenType.KEYWORD_CALL,
+            TokenType.LITERAL_CHAR,
+            TokenType.LITERAL_DOUBLE,
+            TokenType.ID_IDENTIFIER,
+            TokenType.LITERAL_INTEGER,
+            TokenType.KEYWORD_NEW,
+            TokenType.LITERAL_NULL,
+            TokenType.LITERAL_STRING
+    );
+
+    private static final Set<TokenType> FIRST_EXPRESSION = EnumSet.of(
+            TokenType.OPERATOR_MINUS,
+            TokenType.OPERATOR_DECREMENT,
+            TokenType.OPERATOR_LOGICAL_NOT,
+            TokenType.SYMBOL_LEFT_PARENTHESIS,
+            TokenType.OPERATOR_PLUS,
+            TokenType.OPERATOR_INCREMENT,
+            TokenType.OPERATOR_BITWISE_NOT,
+            TokenType.LITERAL_BOOLEAN,
+            TokenType.KEYWORD_CALL,
+            TokenType.LITERAL_CHAR,
+            TokenType.LITERAL_DOUBLE,
+            TokenType.ID_IDENTIFIER,
+            TokenType.LITERAL_INTEGER,
+            TokenType.KEYWORD_NEW,
+            TokenType.LITERAL_NULL,
+            TokenType.LITERAL_STRING
+    );
+
+    private static final Set<TokenType> FOLLOW_EXPRESSION = EnumSet.of(
+            TokenType.SYMBOL_COMMA,
+            TokenType.SYMBOL_SEMICOLON,
+            TokenType.SYMBOL_COLON,
+            TokenType.SYMBOL_RIGHT_PARENTHESIS,
+            TokenType.SYMBOL_RIGHT_BRACKET,
+            TokenType.SYMBOL_RIGHT_BRACE
+    );
+
+    private static final Set<TokenType> FOLLOW_BLOCK = EnumSet.copyOf(FIRST_STATEMENT);
+    static {
+        FOLLOW_BLOCK.add(TokenType.SYMBOL_RIGHT_BRACE);
+        FOLLOW_BLOCK.addAll(FIRST_TOP_LEVEL);
+        FOLLOW_BLOCK.add(TokenType.KEYWORD_ELSE);
+        FOLLOW_BLOCK.add(TokenType.KEYWORD_CASE);
+        FOLLOW_BLOCK.add(TokenType.KEYWORD_DEFAULT);
+        FOLLOW_BLOCK.add(TokenType.SPECIAL_END_OF_FILE);
+    }
+
+    private static final Set<TokenType> FOLLOW_PARAM = EnumSet.of(
+            TokenType.SYMBOL_COMMA,
+            TokenType.SYMBOL_RIGHT_PARENTHESIS
+    );
+
+    private static final Set<TokenType> FOLLOW_STRUCT_FIELD = EnumSet.copyOf(FIRST_TYPE);
+    static {
+        FOLLOW_STRUCT_FIELD.add(TokenType.SYMBOL_RIGHT_BRACE);
+    }
+
+    private static final Set<TokenType> FOLLOW_ENUM_ITEM = EnumSet.of(
+            TokenType.SYMBOL_COMMA,
+            TokenType.SYMBOL_RIGHT_BRACE
+    );
 
     /**
      * Constructs a new Parser instance.
@@ -121,46 +232,11 @@ public class Parser {
     }
 
     /**
-     * @param token      the token to be matched against
-     * @param tokenTypes the tokentypes to match
-     * @return true if the type of token matches with one of the given tokentypes, false otherwise (no match at all)
-     */
-    private boolean matchTokens(Token token, List<TokenType> tokenTypes) {
-        for (TokenType tokenType : tokenTypes) {
-            if (matchToken(token, tokenType)) return true;
-        }
-        return false;
-    }
-
-    /**
      * @param tokenType The token type to match against the next token (lookahead = 1).
      * @return true if the next token matches the specified token type, false otherwise.
      */
     private boolean matchNextToken(TokenType tokenType) {
         return lookahead().getTokenType() == tokenType;
-    }
-
-    /**
-     * @param tokenTypes The token types to match against the current token.
-     * @return true if the current token matches any of the specified token types, false otherwise
-     */
-    private boolean matchAnyCurrentToken(List<TokenType> tokenTypes) {
-        for (TokenType tokenType : tokenTypes) {
-            if (matchCurrentToken(tokenType)) return true;
-        }
-        return false;
-    }
-
-    /**
-     * @param tokenTypes The token types to match against the next token (lookahead = 1).
-     * @return true if the next token matches any of the specified token types, false otherwise
-     */
-    private boolean matchAnyNextToken(List<TokenType> tokenTypes) {
-        TokenType lookAheadTokenType = lookahead().getTokenType();
-        for (TokenType tokenType : tokenTypes) {
-            if (lookAheadTokenType == tokenType) return true;
-        }
-        return false;
     }
 
     /**
@@ -170,44 +246,25 @@ public class Parser {
         if (currentPosition < tokens.size()) currentPosition++;
     }
 
-    /**
-     * @param tokenType The token type that is expected at the current position.
-     * @return The current token if it matches the expected token type.
-     * If it does not match, a syntax error is reported and a dummy token of the expected type is returned to allow the parser to continue parsing.
-     * In either case, the current token is consumed and the parser advances to the next token in the stream.
-     */
-    private Token expectTokenType(TokenType tokenType) {
+    private Token expectTokenType(TokenType expected) {
         Token token = currentToken();
-        if (token.getTokenType() != tokenType) {
-            reportExpectedToken(tokenType);
-            token = new Token(tokenType, tokenType.toString(), currentToken().getPosition());
+        if (token.getTokenType() == expected) {
+            consumeToken();
+            return token;
         }
-        consumeToken();
-        return token;
+        reportExpectedToken(expected);
+        return new Token(expected, expected.toString(), token.getPosition());
     }
 
-    /**
-     * @param tokenTypes The token types that are expected at the current position.
-     * @return The current token if it matches any of the expected token type.
-     * If it does not match, a syntax error is reported and a dummy token of the expected type (the first of the list) is returned to allow the parser to continue parsing.
-     * In either case, the current token is consumed and the parser advances to the next token in the stream.
-     */
-    private Token expectTokenTypes(List<TokenType> tokenTypes) {
+    private Token expectTokenTypes(Set<TokenType> expected) {
         Token token = currentToken();
-        boolean found = false;
-        for (TokenType tokenType : tokenTypes) {
-            if (token.getTokenType() == tokenType) {
-                found = true;
-                break;
-            }
+        if (expected.contains(token.getTokenType())) {
+            consumeToken();
+            return token;
         }
-        if (!found) {
-            reportExpectedTokens(tokenTypes);
-            TokenType tempTokenType = tokenTypes.getFirst();
-            token = new Token(tempTokenType, tempTokenType.toString(), currentToken().getPosition());
-        }
-        consumeToken();
-        return token;
+        reportExpectedTokens(new ArrayList<>(expected));
+        TokenType dummyType = expected.iterator().next();
+        return new Token(dummyType, dummyType.toString(), token.getPosition());
     }
 
     /**
@@ -250,16 +307,55 @@ public class Parser {
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
+    private boolean isAtEnd() {
+        return matchCurrentToken(TokenType.SPECIAL_END_OF_FILE);
+    }
+
+    private boolean currentIs(Set<TokenType> tokenTypes) {
+        return tokenTypes.contains(currentToken().getTokenType());
+    }
+
+    private Set<TokenType> syncSet(Set<TokenType> first, Set<TokenType> follow) {
+        Set<TokenType> result = EnumSet.copyOf(first);
+        result.addAll(follow);
+        result.add(TokenType.SPECIAL_END_OF_FILE);
+        return result;
+    }
+
     /**
-     * @param tokenTypes The token types to synchronize on.
-     * This method consumes tokens until one of the tokens to synchronize to are matched.
-     * Default match to the EOF token.
-     * This method allows to skip tokens so that the parser can continue parsing on a more sensible positions when a wrong token is encountered.
+     * LL(1)-Recovery nach dem Muster:
+     *
+     * if lookahead in FIRST
+     *     return true
+     * else if EPSILON allowed and lookahead in FOLLOW
+     *     return true
+     * else
+     *     report error
+     *     skip until FIRST ∪ FOLLOW
+     *     if EPSILON allowed and lookahead in FOLLOW
+     *         return false
+     *     return true
+     *
+     * Return value:
+     * true  -> Regel soll/parst weiter
+     * false -> Regel soll als EPSILON/abgebrochen behandelt werden
      */
-    private void synchronizeUntilFound(List<TokenType> tokenTypes) {
-        while (!matchAnyCurrentToken(tokenTypes) && !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+    private boolean skipErrors(Set<TokenType> first, Set<TokenType> follow, boolean epsilonAllowed) {
+        if (currentIs(first)) {
+            return true;
+        }
+        if (epsilonAllowed && currentIs(follow)) {
+            return false;
+        }
+        reportExpectedTokens(new ArrayList<>(first));
+        Set<TokenType> sync = syncSet(first, follow);
+        while (!currentIs(sync) && !isAtEnd()) {
             consumeToken();
         }
+        if (epsilonAllowed && currentIs(follow)) {
+            return false;
+        }
+        return currentIs(first);
     }
 
     // ============================================================
@@ -267,19 +363,14 @@ public class Parser {
     // ============================================================
 
     private CompilationUnit parseCompilationUnit() {
-        List<TokenType> firstDeclarationTokens = List.of(
-                TokenType.TYPE_ENUM,
-                TokenType.TYPE_STRUCT,
-                TokenType.KEYWORD_FUNCTION);
         List<DeclarationAstNode> declarations = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
-            if (matchAnyCurrentToken(firstDeclarationTokens)) {
-                declarations.add(parseDeclaration());
-            } else {
-                reportExpectedTokens(firstDeclarationTokens);
-                synchronizeUntilFound(firstDeclarationTokens);
+        while (!isAtEnd()) {
+            if (!skipErrors(FIRST_TOP_LEVEL, EOF, true)) {
+                break;
             }
+            declarations.add(parseDeclaration());
         }
+        expectTokenType(TokenType.SPECIAL_END_OF_FILE);
         return new CompilationUnit(declarations);
     }
 
@@ -336,17 +427,17 @@ public class Parser {
     }
 
     private TypeAstNode parseReturnType() {
-        if (matchAnyCurrentToken(List.of(tokenTypesTypeHead))) return parseTypeHead();
+        if (currentIs(FIRST_TYPE)) return parseType();
         return parseVoidType();
     }
 
     private TypeAstNode parseTypeHead() {
-        if (matchAnyCurrentToken(List.of(tokenTypePrimitiveTypes))) return parsePrimitiveType();
+        if (currentIs(FIRST_PRIMITIVE_TYPE)) return parsePrimitiveType();
         return parseNamedType();
     }
 
     private PrimitiveType parsePrimitiveType() {
-        Token token = expectTokenTypes(List.of(tokenTypePrimitiveTypes));
+        Token token = expectTokenTypes(FIRST_PRIMITIVE_TYPE);
         return new PrimitiveType(toPrimitiveTypeKind(token));
     }
 
@@ -378,7 +469,11 @@ public class Parser {
     private BlockStatement parseBlock() {
         List<StatementAstNode> statements = new ArrayList<>();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE)) {
+        Set<TokenType> follow = EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE);
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && !isAtEnd()) {
+            if (!skipErrors(FIRST_STATEMENT, follow, true)) {
+                break;
+            }
             statements.add(parseStatement());
         }
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
