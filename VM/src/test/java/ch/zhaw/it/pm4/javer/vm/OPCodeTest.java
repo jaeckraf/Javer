@@ -11,6 +11,7 @@ class OPCodeTest {
     @Test
     void enumContainsExpectedOperationCodes() {
         assertNotNull(OPCode.valueOf("HALT"));
+        assertNotNull(OPCode.valueOf("RETURN"));
         assertNotNull(OPCode.valueOf("ADD"));
         assertNotNull(OPCode.valueOf("NEW"));
         assertTrue(OPCode.values().length >= 10);

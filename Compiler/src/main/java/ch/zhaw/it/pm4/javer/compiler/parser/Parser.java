@@ -23,10 +23,13 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpressionKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A Recursive Descent Parser for the Javer programming language.
@@ -159,11 +162,32 @@ public class Parser {
     }
 
     /**
+     * Expects the current token type and consumes it if the expectation matches.
+     *
+     * @param tokenType The token type to expect and consume.
+     * @return true if the current token matched and was consumed, false otherwise.
+     */
+    private boolean expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType tokenType) {
+        if (expectTokenType(tokenType)) {
+            consumeToken();
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * @param tokenType The token type that was expected but not found at the current position.
      * This method creates a syntax error diagnostic indicating that the expected token type was not found.
      * */
-    // TODO
     private void reportExpectedToken(TokenType tokenType) {
+        Token current = currentToken();
+        SourceLocation location = current.getPosition();
+        String message = String.format(
+                "Expected token %s but found %s.",
+                tokenType,
+                current.getTokenType()
+        );
+        diagnosticBag.add(location, Severity.ERROR, message);
     }
 
     // ============================================================
@@ -174,11 +198,13 @@ public class Parser {
         return new CompilationUnit(parseDeclarations());
     }
 
-    private DeclarationAstNode parseDeclaration() {
-        if(matchCurrentToken(TokenType.TYPE_ENUM)) return parseEnumDeclaration();
-        if(matchCurrentToken(TokenType.TYPE_STRUCT)) return parseStructDeclaration();
-        if(matchCurrentToken(TokenType.KEYWORD_FUNCTION)) return parseFunctionDeclaration();
-        return null;
+    private Optional<DeclarationAstNode> parseDeclaration() {
+        if (matchCurrentToken(TokenType.TYPE_ENUM)) return Optional.of(parseEnumDeclaration());
+        if (matchCurrentToken(TokenType.TYPE_STRUCT)) return Optional.of(parseStructDeclaration());
+        if (matchCurrentToken(TokenType.KEYWORD_FUNCTION)) {
+            return parseFunctionDeclaration().map(function -> (DeclarationAstNode) function);
+        }
+        return Optional.empty();
     }
 
     private EnumDeclaration parseEnumDeclaration() {
@@ -200,12 +226,49 @@ public class Parser {
         return new StructField(new PrimitiveType(PrimitiveTypeKind.BOOL), "dummy");
     }
 
-    private FunctionDeclaration parseFunctionDeclaration() {
-        return new FunctionDeclaration(new VoidType(), "dummy", new ArrayList<>(), new BlockStatement(new ArrayList<>()));
+    private Optional<FunctionDeclaration> parseFunctionDeclaration() {
+        if (!expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.KEYWORD_FUNCTION)) {
+            return Optional.empty();
+        }
+
+        Optional<TypeAstNode> returnType = parseReturnType();
+        if (returnType.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<String> functionName = parseIdentifierAndConsume();
+        if (functionName.isEmpty()) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Function declaration requires a valid function name.");
+            return Optional.empty();
+        }
+        List<FunctionParameter> parameters = parseFunctionParameters();
+        BlockStatement body = parseBlock();
+
+        return Optional.of(new FunctionDeclaration(returnType.get(), functionName.get(), parameters, body));
     }
 
-    private FunctionParameter parseFunctionParameter() {
-        return new FunctionParameter("dummy", new PrimitiveType(PrimitiveTypeKind.INT));
+    private Optional<FunctionParameter> parseFunctionParameter() {
+        Optional<TypeAstNode> parameterType = parseType();
+        if (parameterType.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<String> parameterName = parseIdentifierAndConsume();
+        if (parameterName.isEmpty()) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Function parameter declaration requires a valid parameter name.");
+            return Optional.empty();
+        }
+
+        return Optional.of(new FunctionParameter(parameterName.get(), parameterType.get()));
+    }
+
+    private Optional<String> parseIdentifierAndConsume() {
+        if (!expectTokenType(TokenType.ID_IDENTIFIER)) {
+            return Optional.empty();
+        }
+        String identifier = currentToken().getValue();
+        consumeToken();
+        return Optional.of(identifier);
     }
 
 
@@ -213,32 +276,70 @@ public class Parser {
     // Types
     // ============================================================
 
-    private TypeAstNode parseType() {
-        return new VoidType();
+    private Optional<TypeAstNode> parseType() {
+        Optional<TypeAstNode> baseType = parseTypeHead();
+        if (baseType.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(wrapArrayDimensions(baseType.get()));
     }
 
-    private TypeAstNode parseReturnType() {
-        return new VoidType();
+    private Optional<TypeAstNode> parseReturnType() {
+        if (matchCurrentToken(TokenType.TYPE_VOID)) return Optional.of(parseVoidType());
+        return parseType();
     }
 
-    private TypeAstNode parseTypeHead() {
-        return new PrimitiveType(PrimitiveTypeKind.INT);
+    private Optional<TypeAstNode> parseTypeHead() {
+        if (matchAnyCurrentToken(
+                TokenType.TYPE_INTEGER,
+                TokenType.TYPE_DOUBLE,
+                TokenType.TYPE_BOOLEAN,
+                TokenType.TYPE_STRING,
+                TokenType.TYPE_CHARACTER
+        )) {
+            return Optional.of(parsePrimitiveType());
+        }
+        return parseNamedType().map(type -> (TypeAstNode) type);
     }
 
     private PrimitiveType parsePrimitiveType() {
-        return new PrimitiveType(PrimitiveTypeKind.INT);
+        PrimitiveType primitiveType = new PrimitiveType(toPrimitiveTypeKind(currentToken()));
+        if (primitiveType.getKind() == PrimitiveTypeKind.INVALID) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Invalid primitive type.");
+            return new PrimitiveType(PrimitiveTypeKind.INVALID);
+        }
+        consumeToken();
+        return primitiveType;
     }
 
-    private NamedType parseNamedType() {
-        return new NamedType(NameTypeKind.ENUM, "dummy");
+    private Optional<NamedType> parseNamedType() {
+        NameTypeKind kind = NameTypeKind.INVALID;
+        if (matchAnyCurrentToken(TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM)) {
+            kind = toNameTypeKind(currentToken());
+            consumeToken();
+        }
+
+        Optional<String> name = parseIdentifierAndConsume();
+        if (name.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new NamedType(kind, name.get()));
     }
 
     private VoidType parseVoidType() {
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.TYPE_VOID);
         return new VoidType();
     }
 
-    private ArrayType wrapArrayDimensions(TypeAstNode baseType) {
-        return new ArrayType(baseType);
+    private TypeAstNode wrapArrayDimensions(TypeAstNode baseType) {
+        TypeAstNode wrappedType = baseType;
+        while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
+            consumeToken();
+            expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_BRACKET);
+            wrappedType = new ArrayType(wrappedType);
+        }
+        return wrappedType;
     }
 
     // ============================================================
@@ -246,7 +347,25 @@ public class Parser {
     // ============================================================
 
     private BlockStatement parseBlock() {
-        return new BlockStatement(new ArrayList<>());
+        List<StatementAstNode> statements = new ArrayList<>();
+        if (!matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) {
+            diagnosticBag.add(currentToken().getPosition(), Severity.ERROR, "Block statement must start with '{'.");
+            return new BlockStatement(statements);
+        }
+        consumeToken();
+
+        while (!matchAnyCurrentToken(TokenType.SYMBOL_RIGHT_BRACE, TokenType.SPECIAL_END_OF_FILE)) {
+            int startPosition = currentPosition;
+            statements.add(parseStatement());
+            // Recovery to avoid infinite loops when a statement parser does not consume tokens.
+            if (currentPosition == startPosition) {
+                consumeToken();
+            }
+        }
+
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_BRACE);
+
+        return new BlockStatement(statements);
     }
 
     private StatementAstNode parseStatement() {
@@ -258,6 +377,7 @@ public class Parser {
             case TokenType.KEYWORD_SWITCH -> parseSwitchStatement();
             case TokenType.KEYWORD_RETURN, TokenType.KEYWORD_BREAK, TokenType.KEYWORD_CONTINUE -> parseJumpStatement();
             case TokenType.KEYWORD_LET -> parseVarDeclarationStatement();
+            case TokenType.SYMBOL_LEFT_BRACE -> parseBlock();
             default -> parseExpressionStatement();
         };
     }
@@ -589,7 +709,21 @@ public class Parser {
     // ============================================================
 
     private List<DeclarationAstNode> parseDeclarations() {
-        return new ArrayList<>();
+        List<DeclarationAstNode> declarations = new ArrayList<>();
+
+        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            int startPosition = currentPosition;
+            Optional<DeclarationAstNode> declaration = parseDeclaration();
+            declaration.ifPresent(declarations::add);
+
+            // Recovery: bei unbekanntem Top-Level-Token oder fehlendem Fortschritt
+            // ein Token konsumieren, um Endlosschleifen zu vermeiden.
+            if (currentPosition == startPosition) {
+                consumeToken();
+            }
+        }
+
+        return declarations;
     }
 
     private List<EnumItem> parseEnumItems() {
@@ -601,7 +735,34 @@ public class Parser {
     }
 
     private List<FunctionParameter> parseFunctionParameters() {
-        return new ArrayList<>();
+        List<FunctionParameter> parameters = new ArrayList<>();
+
+        if (!expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_LEFT_PARENTHESIS)) {
+            return parameters;
+        }
+
+        if (expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS)) {
+            return parameters;
+        }
+
+        Optional<FunctionParameter> firstParameter = parseFunctionParameter();
+        if (firstParameter.isEmpty()) {
+            expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+            return parameters;
+        }
+        parameters.add(firstParameter.get());
+        while (matchCurrentToken(TokenType.SYMBOL_COMMA)) {
+            consumeToken();
+            Optional<FunctionParameter> parameter = parseFunctionParameter();
+            if (parameter.isEmpty()) {
+                break;
+            }
+            parameters.add(parameter.get());
+        }
+
+        expectTokenTypeAndConsumeCurrentTokenIfTrue(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+
+        return parameters;
     }
 
     private List<SwitchCase> parseSwitchCases() {

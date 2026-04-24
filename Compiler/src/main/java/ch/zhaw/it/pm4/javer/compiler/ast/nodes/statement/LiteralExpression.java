@@ -14,6 +14,14 @@ public final class LiteralExpression<V> implements ExpressionAstNode {
         this.value = value;
     }
 
+    public LiteralKind getKind() {
+        return kind;
+    }
+
+    public V getValue() {
+        return value;
+    }
+
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

@@ -15,5 +15,12 @@ class VMErrorTest {
         assertEquals(7, error.getProgramCounter());
         assertEquals(instruction, error.getInstruction());
     }
+
+    @Test
+    void toStringContainsCoreFields() {
+        VMError error = new VMError("Boom", 7, new Instruction(OPCode.HALT));
+
+        assertEquals("VMError{message='Boom', programCounter=7, instruction=HALT}", error.toString());
+    }
 }
 
