@@ -111,10 +111,20 @@ public class Parser {
         return currentToken().getTokenType() == tokenType;
     }
 
+    /**
+     * @param token     the token to be matched against
+     * @param tokenType the tokentype to match
+     * @return true if the type of token matches with the given tokentype, false otherwise
+     */
     private boolean matchToken(Token token, TokenType tokenType) {
         return token.getTokenType() == tokenType;
     }
 
+    /**
+     * @param token      the token to be matched against
+     * @param tokenTypes the tokentypes to match
+     * @return true if the type of token matches with one of the given tokentypes, false otherwise (no match at all)
+     */
     private boolean matchTokens(Token token, List<TokenType> tokenTypes) {
         for (TokenType tokenType : tokenTypes) {
             if (matchToken(token, tokenType)) return true;
@@ -161,10 +171,10 @@ public class Parser {
     }
 
     /**
-     * @param tokenType The token type to expect at the current position.
-     * @return true if the current token matches the expected one, false otherwise
-     * If the current token does not match the expected token type,
-     * this method reports a syntax error to the {@link DiagnosticBag} and returns false.
+     * @param tokenType The token type that is expected at the current position.
+     * @return The current token if it matches the expected token type.
+     * If it does not match, a syntax error is reported and a dummy token of the expected type is returned to allow the parser to continue parsing.
+     * In either case, the current token is consumed and the parser advances to the next token in the stream.
      */
     private Token expectTokenType(TokenType tokenType) {
         Token token = currentToken();
@@ -176,6 +186,12 @@ public class Parser {
         return token;
     }
 
+    /**
+     * @param tokenTypes The token types that are expected at the current position.
+     * @return The current token if it matches any of the expected token type.
+     * If it does not match, a syntax error is reported and a dummy token of the expected type (the first of the list) is returned to allow the parser to continue parsing.
+     * In either case, the current token is consumed and the parser advances to the next token in the stream.
+     */
     private Token expectTokenTypes(List<TokenType> tokenTypes) {
         Token token = currentToken();
         boolean found = false;
@@ -210,6 +226,10 @@ public class Parser {
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
+    /**
+     * @param tokenTypes The token types that were expected but not found at the current position.
+     *                   This method creates a syntax error diagnostic indicating that none of the expected token types were found.
+     */
     private void reportExpectedTokens(List<TokenType> tokenTypes) {
         Token current = currentToken();
         SourceLocation location = current.getPosition();
