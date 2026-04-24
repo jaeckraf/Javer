@@ -250,6 +250,12 @@ public class Parser {
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
+    /**
+     * @param tokenTypes The token types to synchronize on.
+     * This method consumes tokens until one of the tokens to synchronize to are matched.
+     * Default match to the EOF token.
+     * This method allows to skip tokens so that the parser can continue parsing on a more sensible positions when a wrong token is encountered.
+     */
     private void synchronizeUntilFound(List<TokenType> tokenTypes) {
         while (!matchAnyCurrentToken(tokenTypes) && !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
             consumeToken();
