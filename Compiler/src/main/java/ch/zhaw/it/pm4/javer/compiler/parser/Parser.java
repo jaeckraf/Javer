@@ -250,12 +250,31 @@ public class Parser {
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
+    private void synchronizeUntilFound(List<TokenType> tokenTypes) {
+        while (!matchAnyCurrentToken(tokenTypes) && !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            consumeToken();
+        }
+    }
+
     // ============================================================
     // Top-Level
     // ============================================================
 
     private CompilationUnit parseCompilationUnit() {
-        return new CompilationUnit(parseDeclarations());
+        List<TokenType> firstDeclarationTokens = List.of(
+                TokenType.TYPE_ENUM,
+                TokenType.TYPE_STRUCT,
+                TokenType.KEYWORD_FUNCTION);
+        List<DeclarationAstNode> declarations = new ArrayList<>();
+        while (!matchCurrentToken(TokenType.SPECIAL_END_OF_FILE)) {
+            if (matchAnyCurrentToken(firstDeclarationTokens)) {
+                declarations.add(parseDeclaration());
+            } else {
+                reportExpectedTokens(firstDeclarationTokens);
+                synchronizeUntilFound(firstDeclarationTokens);
+            }
+        }
+        return new CompilationUnit(declarations);
     }
 
     private DeclarationAstNode parseDeclaration() {
