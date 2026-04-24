@@ -83,22 +83,13 @@ public class Parser {
     private static final Set<TokenType> FOLLOW_PARAM = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_RIGHT_PARENTHESIS);
     private static final Set<TokenType> FOLLOW_STRUCT_FIELD = enumSet(FIRST_TYPE, TokenType.SYMBOL_RIGHT_BRACE);
     private static final Set<TokenType> FOLLOW_ENUM_ITEM = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_RIGHT_BRACE);
-    private static final Set<TokenType> FOLLOW_BLOCK = enumSet(FIRST_STATEMENT, TokenType.SYMBOL_RIGHT_BRACE, TokenType.KEYWORD_ELSE, TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SPECIAL_END_OF_FILE);
     private static final Set<TokenType> FOLLOW_STATEMENT = enumSet(FIRST_STATEMENT, TokenType.SYMBOL_RIGHT_BRACE, TokenType.KEYWORD_ELSE, TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SPECIAL_END_OF_FILE);
     private static final Set<TokenType> FOLLOW_EXPRESSION = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COLON, TokenType.SYMBOL_RIGHT_PARENTHESIS, TokenType.SYMBOL_RIGHT_BRACKET, TokenType.SYMBOL_RIGHT_BRACE);
-    private static final Set<TokenType> FOLLOW_CASE_LABEL = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_COLON);
     private static final Set<TokenType> FOLLOW_CASE = EnumSet.of(TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SYMBOL_RIGHT_BRACE);
-    private static final Set<TokenType> FOLLOW_ARRAY_INIT = enumSet(FOLLOW_EXPRESSION, TokenType.SYMBOL_COMMA);
 
     private static Set<TokenType> enumSet(Set<TokenType> base, TokenType... additional) {
         Set<TokenType> result = EnumSet.copyOf(base);
         for (TokenType tokenType : additional) result.add(tokenType);
-        return result;
-    }
-
-    private static Set<TokenType> enumSet(TokenType first, TokenType... rest) {
-        Set<TokenType> result = EnumSet.of(first);
-        for (TokenType tokenType : rest) result.add(tokenType);
         return result;
     }
 
@@ -150,6 +141,8 @@ public class Parser {
         return new Token(dummy, dummy.toString(), token.getPosition());
     }
 
+    // return true  => current token is in FIRST, caller should parse this rule
+    // return false => epsilon/recovery abort, caller should not parse this rule
     private boolean skipErrors(Set<TokenType> first, Set<TokenType> follow, boolean epsilonAllowed) {
         if (currentIs(first)) return true;
         if (epsilonAllowed && currentIs(follow)) return false;
@@ -171,10 +164,6 @@ public class Parser {
         String message = String.format("Expected token %s but found %s.", expected, current.getTokenType());
         JaverLogger.error(message);
         diagnosticBag.add(location, Severity.ERROR, message);
-    }
-
-    private void reportExpectedTokens(List<TokenType> expected) {
-        reportExpectedTokens(EnumSet.copyOf(expected));
     }
 
     private CompilationUnit parseCompilationUnit() {
