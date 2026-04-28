@@ -18,230 +18,198 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
-import ch.zhaw.it.pm4.javer.vm.Instruction;
-import ch.zhaw.it.pm4.javer.vm.OPCode;
-import ch.zhaw.it.pm4.javer.vm.Operand;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
-public class CodeGenerator extends AstNodeVisitorBase<List<Instruction>> {
+public class CodeGenerator extends AstNodeVisitorBase<Void> {
 
-    private final List<Instruction> instructions = new ArrayList<>();
 
-    public List<Instruction> generate(CompilationUnit rootNode) {
-        return visit(rootNode);
+    @Override
+    public Void visit(CompilationUnit node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(CompilationUnit node) {
-        instructions.clear();
-        for (DeclarationAstNode declaration : node.getDeclarations()) {
-            declaration.accept(this);
-        }
-
-        instructions.add(new Instruction(OPCode.HALT));
-        return instructions;
+    public Void visit(EnumDeclaration node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(EnumDeclaration node) {
-        return instructions;
+    public Void visit(EnumItem node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(EnumItem node) {
-        return instructions;
+    public Void visit(FunctionDeclaration node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(FunctionDeclaration node) {
-        node.getBody().accept(this);
-        
-        // Only add RETURN if the function doesn't already end with one
-        if (instructions.isEmpty() || instructions.get(instructions.size() - 1).getOperationCode() != OPCode.RETURN) {
-            instructions.add(new Instruction(OPCode.RETURN));
-        }
-        
-        return instructions;
+    public Void visit(FunctionParameter node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(FunctionParameter node) {
-        return instructions;
+    public Void visit(StructDeclaration node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(StructDeclaration node) {
-        return instructions;
+    public Void visit(StructField node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(StructField node) {
-        return instructions;
+    public Void visit(BlockStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(BlockStatement node) {
-        for (StatementAstNode statement : node.getStatements()) {
-            statement.accept(this);
-        }
-        return instructions;
+    public Void visit(IfStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(IfStatement node) {
-        return instructions;
+    public Void visit(WhileStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(WhileStatement node) {
-        return instructions;
+    public Void visit(DoWhileStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(DoWhileStatement node) {
-        return instructions;
+    public Void visit(ForStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ForStatement node) {
-        return instructions;
+    public Void visit(SwitchStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(SwitchStatement node) {
-        return instructions;
+    public Void visit(SwitchCase node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(SwitchCase node) {
-        return instructions;
+    public Void visit(BreakStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(BreakStatement node) {
-        return instructions;
+    public Void visit(ContinueStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ContinueStatement node) {
-        return instructions;
+    public Void visit(ReturnStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ReturnStatement node) {
-        if (node.getExpression() != null) {
-            node.getExpression().accept(this);
-        }
-        instructions.add(new Instruction(OPCode.RETURN));
-        return instructions;
+    public Void visit(VarDeclarationStatement node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(VarDeclarationStatement node) {
-        return instructions;
+    public Void visit(AssignExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(AssignExpression node) {
-        return instructions;
+    public Void visit(ConditionalExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ConditionalExpression node) {
-        return instructions;
+    public Void visit(BinaryExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(BinaryExpression node) {
-        return instructions;
+    public Void visit(UnaryExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(UnaryExpression node) {
-        return instructions;
+    public Void visit(PostfixExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(PostfixExpression node) {
-        return instructions;
+    public Void visit(CallExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(CallExpression node) {
-        return instructions;
+    public Void visit(IndexExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(IndexExpression node) {
-        return instructions;
+    public Void visit(MemberAccessExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(MemberAccessExpression node) {
-        return instructions;
+    public Void visit(NewExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(NewExpression node) {
-        return instructions;
+    public Void visit(ArrayInitExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ArrayInitExpression node) {
-        return instructions;
+    public Void visit(NameExpression node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(NameExpression node) {
-        return instructions;
+    public Void visit(LiteralExpression<?> node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(LiteralExpression<?> node) {
-        instructions.add(new Instruction(OPCode.PUSH, new Operand<>(node.getValue())));
-        return instructions;
+    public Void visit(LiteralCaseLabel node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(LiteralCaseLabel node) {
-        return instructions;
+    public Void visit(EnumCaseLabel node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(EnumCaseLabel node) {
-        return instructions;
+    public Void visit(ArrayType node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ArrayType node) {
-        return instructions;
+    public Void visit(NamedType node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(NamedType node) {
-        return instructions;
+    public Void visit(PrimitiveType node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(PrimitiveType node) {
-        return instructions;
+    public Void visit(VoidType node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(VoidType node) {
-        return instructions;
+    public Void visit(ForInitVarDeclaration node) {
+        return null;
     }
 
     @Override
-    public List<Instruction> visit(ForInitVarDeclaration node) {
-        return instructions;
-    }
-
-    @Override
-    public List<Instruction> visit(ForInitExpressionList node) {
-        return instructions;
+    public Void visit(ForInitExpressionList node) {
+        return null;
     }
 }

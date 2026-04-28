@@ -23,10 +23,6 @@ public final class CompilationUnit implements AstNode {
         return symbolTable;
     }
 
-    public List<DeclarationAstNode> getDeclarations() {
-        return declarations;
-    }
-
     @Override
     public <T> T accept(AstNodeVisitor<T> visitor) {
         return visitor.visit(this);

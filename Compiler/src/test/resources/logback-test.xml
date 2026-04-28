@@ -1,0 +1,24 @@
+<configuration>
+    <!-- Test configuration for JUnit tests -->
+    <!-- This configuration prevents debug logs from cluttering test output -->
+
+    <property name="PATTERN"
+              value="%d{HH:mm:ss} %-7level %-24.24logger{0} %msg%n"/>
+
+    <!-- Console appender for test runs -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Set root logger to INFO level to suppress DEBUG logs -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Optional: You can configure specific packages to DEBUG if needed -->
+    <!-- <logger name="ch.zhaw.it.pm4.javer.compiler" level="DEBUG"/> -->
+
+</configuration>
+

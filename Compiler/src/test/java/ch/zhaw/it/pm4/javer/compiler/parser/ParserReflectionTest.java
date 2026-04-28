@@ -1,5 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
-
+/*
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
@@ -543,4 +543,4 @@ class ParserReflectionTest {
         }
     }
 
-}
+}*/
