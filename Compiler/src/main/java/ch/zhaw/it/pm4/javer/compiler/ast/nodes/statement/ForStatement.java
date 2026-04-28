@@ -1,12 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class ForStatement implements StatementAstNode {
+public final class ForStatement extends AstNodeBase implements StatementAstNode {
 
     private final ForInit forInit;
     private final ExpressionAstNode condition;

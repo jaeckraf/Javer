@@ -1,10 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class IndexExpression implements ExpressionAstNode {
+public final class IndexExpression extends AstNodeBase implements ExpressionAstNode {
 
     private final ExpressionAstNode target;
     private final ExpressionAstNode index;

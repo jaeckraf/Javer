@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
@@ -8,7 +10,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class FunctionDeclaration implements DeclarationAstNode {
+public final class FunctionDeclaration extends AstNodeBase implements DeclarationAstNode {
 
     private final TypeAstNode returnType;
     private final String name;
