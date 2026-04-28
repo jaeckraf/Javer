@@ -1,8 +1,20 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
@@ -45,18 +57,35 @@ public class Compiler {
 
     public static void main(String[] args) {
         System.setProperty("MODULE", "compiler");
-        CompilerOptions options = CompilerOptions.create(args);
-        Compiler compiler = new Compiler(options);
-        System.out.println("test");
-        System.err.println("error test");
-        //System.out.println(compiler.compile()); // TOOO remove when DiagnosticBag returns string in error-stream
+        try {
+            CompilerOptions options = CompilerOptions.create(args);
+            configureLogging(options);
+            Compiler compiler = new Compiler(options);
+            System.out.println(compiler.compile());
+        } catch (IllegalArgumentException exception) {
+            System.err.println(exception.getMessage());
+            System.exit(2);
+        }
     }
 
     public String compile() {
+        StringBuilder output = new StringBuilder();
         phase = CompilationPhase.ARGUMENT_PARSING;
         PhaseResult<List<Token>> lexingResult = lex(context.getSourceCache().getSourceCode());
+        if (!isFailed(lexingResult) && options.isDumpLexer()) {
+            appendSection(output, "LEXER TOKENS", dumpTokens(lexingResult.getPayload()));
+        }
+
         PhaseResult<CompilationUnit> parsingResult = runPhase(lexingResult, this::parse);
+        if (!isFailed(parsingResult) && options.isDumpAst()) {
+            appendSection(output, "AST", dumpAst(parsingResult.getPayload()));
+        }
+
         PhaseResult<CompilationUnit> symbolTableResult = runPhase(parsingResult, this::createSymbolTable);
+        if (!isFailed(symbolTableResult) && options.isDumpAstSymbolTable()) {
+            appendSection(output, "AST SYMBOL TABLE", dumpSymbolTable(symbolTableResult.getPayload()));
+        }
+
         PhaseResult<CompilationUnit> nameResolutionResult = runPhase(symbolTableResult, this::resolveNames);
         PhaseResult<CompilationUnit> typeCheckingResult = runPhase(nameResolutionResult, this::typeCheck);
         PhaseResult<CompilationUnit> semanticAnalysisResult = runPhase(typeCheckingResult, this::semanticAnalysis);
@@ -65,7 +94,8 @@ public class Compiler {
         if (isFailed(assemblyResult)) {
             return context.getDiagnosticBag().dumpReport();
         }
-        return "Compilation Successful";
+        output.append("Compilation Successful");
+        return output.toString();
     }
 
     private <T, R> PhaseResult<R> runPhase(PhaseResult<T> previousResult,
@@ -128,6 +158,136 @@ public class Compiler {
         phase = CompilationPhase.ASSEMBLING;
         new Assembler().assemble(payload, options.getOutputFilePath());
         return new PhaseResult<>(true, true);
+    }
+
+    private static void configureLogging(CompilerOptions options) {
+        if (options.isLoggingEnabled()) {
+            return;
+        }
+
+        LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).setLevel(Level.OFF);
+    }
+
+    private static void appendSection(StringBuilder builder, String title, String content) {
+        builder.append("=== ")
+                .append(title)
+                .append(" ===")
+                .append(System.lineSeparator())
+                .append(content)
+                .append(System.lineSeparator());
+    }
+
+    private static String dumpTokens(List<Token> tokens) {
+        return tokens.stream()
+                .map(Token::toString)
+                .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private static String dumpAst(CompilationUnit rootNode) {
+        StringBuilder builder = new StringBuilder();
+        appendAstNode(builder, rootNode, 0, new IdentityHashMap<>());
+        return builder.toString();
+    }
+
+    private static void appendAstNode(
+            StringBuilder builder,
+            AstNode node,
+            int indent,
+            IdentityHashMap<AstNode, Boolean> visitedNodes) {
+
+        indent(builder, indent).append(node.getClass().getSimpleName()).append(System.lineSeparator());
+        if (visitedNodes.put(node, Boolean.TRUE) != null) {
+            indent(builder, indent + 1).append("<already visited>").append(System.lineSeparator());
+            return;
+        }
+
+        for (Method method : sortedGetterMethods(node.getClass())) {
+            Object value = invokeGetter(method, node);
+            if (value == null || value instanceof ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable) {
+                continue;
+            }
+
+            String name = propertyName(method);
+            appendAstValue(builder, name, value, indent + 1, visitedNodes);
+        }
+    }
+
+    private static void appendAstValue(
+            StringBuilder builder,
+            String name,
+            Object value,
+            int indent,
+            IdentityHashMap<AstNode, Boolean> visitedNodes) {
+
+        if (value instanceof AstNode childNode) {
+            indent(builder, indent).append(name).append(":").append(System.lineSeparator());
+            appendAstNode(builder, childNode, indent + 1, visitedNodes);
+            return;
+        }
+
+        if (value instanceof Collection<?> values) {
+            indent(builder, indent).append(name).append(":").append(System.lineSeparator());
+            for (Object item : values) {
+                if (item instanceof AstNode childNode) {
+                    appendAstNode(builder, childNode, indent + 1, visitedNodes);
+                } else {
+                    indent(builder, indent + 1).append(String.valueOf(item)).append(System.lineSeparator());
+                }
+            }
+            return;
+        }
+
+        if (isScalar(value)) {
+            indent(builder, indent).append(name).append(": ").append(value).append(System.lineSeparator());
+        }
+    }
+
+    private static String dumpSymbolTable(CompilationUnit rootNode) {
+        Map<String, SymbolTableEntry> entries = rootNode.getSymbolTable().getAllEntries();
+        if (entries.isEmpty()) {
+            return "<empty>";
+        }
+
+        return entries.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> entry.getKey() + ": " + entry.getValue().getClass().getSimpleName())
+                .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private static List<Method> sortedGetterMethods(Class<?> type) {
+        return java.util.Arrays.stream(type.getMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers()))
+                .filter(method -> method.getParameterCount() == 0)
+                .filter(method -> method.getName().startsWith("get"))
+                .filter(method -> method.getDeclaringClass() != Object.class)
+                .sorted(Comparator.comparing(Method::getName))
+                .toList();
+    }
+
+    private static Object invokeGetter(Method method, Object target) {
+        try {
+            return method.invoke(target);
+        } catch (IllegalAccessException | InvocationTargetException exception) {
+            return "<unavailable>";
+        }
+    }
+
+    private static String propertyName(Method method) {
+        String name = method.getName().substring("get".length());
+        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+    }
+
+    private static boolean isScalar(Object value) {
+        return value instanceof String
+                || value instanceof Number
+                || value instanceof Boolean
+                || value instanceof Character
+                || value.getClass().isEnum();
+    }
+
+    private static StringBuilder indent(StringBuilder builder, int indent) {
+        return builder.append("  ".repeat(indent));
     }
 
 }
