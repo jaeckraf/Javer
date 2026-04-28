@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
+import java.util.List;
+import java.util.function.Function;
+
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
@@ -7,10 +10,12 @@ import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
-import ch.zhaw.it.pm4.javer.compiler.visitor.*;
-
-import java.util.List;
-import java.util.function.Function;
+import ch.zhaw.it.pm4.javer.compiler.visitor.Assembler;
+import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
+import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableCreation;
+import ch.zhaw.it.pm4.javer.compiler.visitor.TypeChecker;
 
 public class Compiler {
 
@@ -76,7 +81,6 @@ public class Compiler {
         return result == null || !result.isSuccess();
     }
 
-
     private PhaseResult<List<Token>> lex(String sourceCode) {
         phase = CompilationPhase.LEXING;
         Lexer lexer = new Lexer(sourceCode, context.getDiagnosticBag());
@@ -90,8 +94,9 @@ public class Compiler {
     }
 
     private PhaseResult<CompilationUnit> createSymbolTable(CompilationUnit rootNode) {
-        new SymbolTableCreation().visit(rootNode);
-        return new PhaseResult<>(true, rootNode);
+        phase = CompilationPhase.SYMBOL_TABLE_CREATION;
+        new SymbolTableCreation(context.getDiagnosticBag()).visit(rootNode);
+        return new PhaseResult<>(!context.getDiagnosticBag().hasErrors(), rootNode);
     }
 
     private PhaseResult<CompilationUnit> resolveNames(CompilationUnit node) {

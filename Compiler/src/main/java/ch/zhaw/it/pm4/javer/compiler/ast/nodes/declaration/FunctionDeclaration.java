@@ -1,11 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
+import java.util.List;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
-
-import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class FunctionDeclaration implements DeclarationAstNode {
@@ -22,20 +22,20 @@ public final class FunctionDeclaration implements DeclarationAstNode {
         this.body = body;
     }
 
-    public TypeAstNode getReturnType() {
-        return returnType;
-    }
-
-    public String getName() {
-        return name;
+    public BlockStatement getBody() {
+        return body;
     }
 
     public List<FunctionParameter> getParameters() {
         return parameters;
     }
 
-    public BlockStatement getBody() {
-        return body;
+    public String getName() {
+        return name;
+    }
+
+    public TypeAstNode getReturnType() {
+        return returnType;
     }
 
     @Override

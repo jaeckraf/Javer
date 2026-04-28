@@ -1,12 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import org.junit.jupiter.api.Test;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 class CompilerTest {
 
@@ -22,4 +21,3 @@ class CompilerTest {
         Files.deleteIfExists(input);
     }
 }
-

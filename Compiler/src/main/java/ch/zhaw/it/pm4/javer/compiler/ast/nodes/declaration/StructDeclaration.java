@@ -1,8 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-
 import java.util.List;
+
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class StructDeclaration implements DeclarationAstNode {
@@ -13,6 +13,14 @@ public final class StructDeclaration implements DeclarationAstNode {
     public StructDeclaration(String name, List<StructField> fields) {
         this.name = name;
         this.fields = fields;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public List<StructField> getFields() {
+        return fields;
     }
 
     @Override
