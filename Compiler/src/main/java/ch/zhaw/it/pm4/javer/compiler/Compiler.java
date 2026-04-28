@@ -20,7 +20,6 @@ import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
-import ch.zhaw.it.pm4.javer.compiler.visitor.Assembler;
 import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
 import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
@@ -37,7 +36,7 @@ public class Compiler {
     // - stop or continue pipeline based on diagnostics
     //
     // Pipeline:
-    // args -> setup -> lexing -> parsing -> ast-checks -> code-generation -> assembling -> done
+    // args -> setup -> lexing -> parsing -> ast-checks -> code-generation -> done
 
     private final CompilerOptions options;
     private final CompilationContext context;
@@ -103,11 +102,7 @@ public class Compiler {
         if (stopOnErrors()) {
             return;
         }
-        Object generatedCode = generateCode(rootNode);
-        if (stopOnErrors()) {
-            return;
-        }
-        assemble(generatedCode);
+        generateCode(rootNode);
         if (stopOnErrors()) {
             return;
         }
@@ -158,15 +153,9 @@ public class Compiler {
         new SemanticChecker().visit(node);
     }
 
-    // TODO make code generator return a more specific type than Object
-    private Object generateCode(CompilationUnit node) {
+    private void generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        return new CodeGenerator().generate(node);
-    }
-
-    private void assemble(Object payload) {
-        enterPhase(CompilationPhase.ASSEMBLING);
-        new Assembler().assemble(payload, options.getOutputFilePath());
+        new CodeGenerator().generate(node, options.getOutputFilePath());
     }
 
     private static void configureLogging(CompilerOptions options) {
