@@ -8,7 +8,6 @@ import java.util.Comparator;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import ch.qos.logback.classic.Level;
@@ -18,7 +17,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
-import ch.zhaw.it.pm4.javer.compiler.misc.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
@@ -36,15 +34,13 @@ public class Compiler {
     // Responsibilities:
     // - initialize context
     // - execute phases in order
-    // - evaluate PhaseResults
-    // - stop or continue pipeline based on errors
+    // - stop or continue pipeline based on diagnostics
     //
     // Pipeline:
     // args -> setup -> lexing -> parsing -> ast-checks -> code-generation -> assembling -> done
 
     private final CompilerOptions options;
     private final CompilationContext context;
-    private CompilationPhase phase;
 
     public Compiler(CompilerOptions options) {
         this.options = options;
@@ -52,7 +48,7 @@ public class Compiler {
         this.context = new CompilationContext(options,
                 new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
                 sourceCache);
-        phase = CompilationPhase.ARGUMENT_PARSING;
+        enterPhase(CompilationPhase.ARGUMENT_PARSING);
     }
 
     public static void main(String[] args) {
@@ -61,103 +57,116 @@ public class Compiler {
             CompilerOptions options = CompilerOptions.create(args);
             configureLogging(options);
             Compiler compiler = new Compiler(options);
-            System.out.println(compiler.compile());
+            compiler.compile();
         } catch (IllegalArgumentException exception) {
             System.err.println(exception.getMessage());
             System.exit(2);
         }
     }
 
-    public String compile() {
-        StringBuilder output = new StringBuilder();
-        phase = CompilationPhase.ARGUMENT_PARSING;
-        PhaseResult<List<Token>> lexingResult = lex(context.getSourceCache().getSourceCode());
-        if (!isFailed(lexingResult) && options.isDumpLexer()) {
-            appendSection(output, "LEXER TOKENS", dumpTokens(lexingResult.getPayload()));
+    public void compile() {
+        enterPhase(CompilationPhase.ARGUMENT_PARSING);
+
+        List<Token> tokens = lex(context.getSourceCache().getSourceCode());
+        if (stopOnErrors()) {
+            return;
+        }
+        if (options.isDumpLexer()) {
+            printSection("LEXER TOKENS", dumpTokens(tokens));
         }
 
-        PhaseResult<CompilationUnit> parsingResult = runPhase(lexingResult, this::parse);
-        if (!isFailed(parsingResult) && options.isDumpAst()) {
-            appendSection(output, "AST", dumpAst(parsingResult.getPayload()));
+        CompilationUnit rootNode = parse(tokens);
+        if (stopOnErrors()) {
+            return;
+        }
+        if (options.isDumpAst()) {
+            printSection("AST", dumpAst(rootNode));
         }
 
-        PhaseResult<CompilationUnit> symbolTableResult = runPhase(parsingResult, this::createSymbolTable);
-        if (!isFailed(symbolTableResult) && options.isDumpAstSymbolTable()) {
-            appendSection(output, "AST SYMBOL TABLE", dumpSymbolTable(symbolTableResult.getPayload()));
+        createSymbolTable(rootNode);
+        if (stopOnErrors()) {
+            return;
+        }
+        if (options.isDumpAstSymbolTable()) {
+            printSection("AST SYMBOL TABLE", dumpSymbolTable(rootNode));
         }
 
-        PhaseResult<CompilationUnit> nameResolutionResult = runPhase(symbolTableResult, this::resolveNames);
-        PhaseResult<CompilationUnit> typeCheckingResult = runPhase(nameResolutionResult, this::typeCheck);
-        PhaseResult<CompilationUnit> semanticAnalysisResult = runPhase(typeCheckingResult, this::semanticAnalysis);
-        PhaseResult<Object> codeGenerationResult = runPhase(semanticAnalysisResult, this::generateCode);
-        PhaseResult<Boolean> assemblyResult = runPhase(codeGenerationResult, this::assemble);
-        if (isFailed(assemblyResult)) {
-            return context.getDiagnosticBag().dumpReport();
+        resolveNames(rootNode);
+        if (stopOnErrors()) {
+            return;
         }
-        output.append("Compilation Successful");
-        return output.toString();
+        typeCheck(rootNode);
+        if (stopOnErrors()) {
+            return;
+        }
+        semanticAnalysis(rootNode);
+        if (stopOnErrors()) {
+            return;
+        }
+        Object generatedCode = generateCode(rootNode);
+        if (stopOnErrors()) {
+            return;
+        }
+        assemble(generatedCode);
+        if (stopOnErrors()) {
+            return;
+        }
+        System.out.println("Compilation Successful");
     }
 
-    private <T, R> PhaseResult<R> runPhase(PhaseResult<T> previousResult,
-                                           Function<T, PhaseResult<R>> phaseRunner) {
-        if (isFailed(previousResult)) {
-            return PhaseResult.failure();
+    private boolean stopOnErrors() {
+        if (!context.getDiagnosticBag().hasErrors()) {
+            return false;
         }
 
-        return phaseRunner.apply(previousResult.getPayload());
+        System.err.print(context.getDiagnosticBag().dumpReport());
+        return true;
     }
 
-    private boolean isFailed(PhaseResult<?> result) {
-        return result == null || !result.isSuccess();
+    private void enterPhase(CompilationPhase nextPhase) {
+        context.getDiagnosticBag().setPhase(nextPhase);
     }
 
-    private PhaseResult<List<Token>> lex(String sourceCode) {
-        phase = CompilationPhase.LEXING;
+    private List<Token> lex(String sourceCode) {
+        enterPhase(CompilationPhase.LEXING);
         Lexer lexer = new Lexer(sourceCode, context.getDiagnosticBag());
-        List<Token> tokens = lexer.lexSourcecode();
-        return new PhaseResult<>(true, tokens);
+        return lexer.lexSourcecode();
     }
 
-    private PhaseResult<CompilationUnit> parse(List<Token> tokens) {
-        CompilationUnit node = new Parser(tokens, context.getDiagnosticBag()).parse();
-        return new PhaseResult<>(true, node);
+    private CompilationUnit parse(List<Token> tokens) {
+        enterPhase(CompilationPhase.PARSING);
+        return new Parser(tokens, context.getDiagnosticBag()).parse();
     }
 
-    private PhaseResult<CompilationUnit> createSymbolTable(CompilationUnit rootNode) {
-        phase = CompilationPhase.SYMBOL_TABLE_CREATION;
+    private void createSymbolTable(CompilationUnit rootNode) {
+        enterPhase(CompilationPhase.SYMBOL_TABLE_CREATION);
         new SymbolTableCreation(context.getDiagnosticBag()).visit(rootNode);
-        return new PhaseResult<>(!context.getDiagnosticBag().hasErrors(), rootNode);
     }
 
-    private PhaseResult<CompilationUnit> resolveNames(CompilationUnit node) {
-        phase = CompilationPhase.NAME_RESOLUTION;
+    private void resolveNames(CompilationUnit node) {
+        enterPhase(CompilationPhase.NAME_RESOLUTION);
         new NameResoluter().visit(node);
-        return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<CompilationUnit> typeCheck(CompilationUnit node) {
-        phase = CompilationPhase.TYPE_CHECKING;
+    private void typeCheck(CompilationUnit node) {
+        enterPhase(CompilationPhase.TYPE_CHECKING);
         new TypeChecker().visit(node);
-        return new PhaseResult<>(true, node);
     }
 
-    private PhaseResult<CompilationUnit> semanticAnalysis(CompilationUnit node) {
-        phase = CompilationPhase.SEMANTIC_ANALYSIS;
+    private void semanticAnalysis(CompilationUnit node) {
+        enterPhase(CompilationPhase.SEMANTIC_ANALYSIS);
         new SemanticChecker().visit(node);
-        return new PhaseResult<>(true, node);
     }
 
     // TODO make code generator return a more specific type than Object
-    private PhaseResult<Object> generateCode(CompilationUnit node) {
-        phase = CompilationPhase.CODE_GENERATION;
-        Object generatedCode = new CodeGenerator().visit(node);
-        return new PhaseResult<>(true, generatedCode);
+    private Object generateCode(CompilationUnit node) {
+        enterPhase(CompilationPhase.CODE_GENERATION);
+        return new CodeGenerator().generate(node);
     }
 
-    private PhaseResult<Boolean> assemble(Object payload) {
-        phase = CompilationPhase.ASSEMBLING;
+    private void assemble(Object payload) {
+        enterPhase(CompilationPhase.ASSEMBLING);
         new Assembler().assemble(payload, options.getOutputFilePath());
-        return new PhaseResult<>(true, true);
     }
 
     private static void configureLogging(CompilerOptions options) {
@@ -169,13 +178,9 @@ public class Compiler {
         loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).setLevel(Level.OFF);
     }
 
-    private static void appendSection(StringBuilder builder, String title, String content) {
-        builder.append("=== ")
-                .append(title)
-                .append(" ===")
-                .append(System.lineSeparator())
-                .append(content)
-                .append(System.lineSeparator());
+    private static void printSection(String title, String content) {
+        System.out.println("=== " + title + " ===");
+        System.out.println(content);
     }
 
     private static String dumpTokens(List<Token> tokens) {

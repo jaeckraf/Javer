@@ -42,6 +42,10 @@ public class DiagnosticBag {
         // TODO: Implement
     }
 
+    public void setPhase(CompilationPhase phase) {
+        this.phase = phase;
+    }
+
     /**
      * Adds a newly created diagnostic to the bag and enforces the error limit.
      *

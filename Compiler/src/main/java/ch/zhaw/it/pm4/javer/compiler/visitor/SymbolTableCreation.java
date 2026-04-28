@@ -6,14 +6,12 @@ import ch.zhaw.it.pm4.javer.compiler.ast.StructSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
-public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
+public class SymbolTableCreation extends VoidAstNodeVisitor {
 
     private SymbolTable symbolTable;
     private final DiagnosticBag diagnosticBag;
@@ -29,7 +27,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -43,7 +41,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         for (EnumItem item : node.getItems()) {
             item.accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -54,7 +52,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -72,7 +70,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         if (node.getBody() != null) {
             node.getBody().accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -84,7 +82,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
 
         symbolTable.addEntry(entry, diagnosticBag);
 
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -99,7 +97,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
             field.accept(this);
         }
 
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -110,7 +108,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -118,7 +116,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         for (StatementAstNode statement : node.getStatements()) {
             statement.accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -127,25 +125,25 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         if (node.getElseBranch() != null) {
             node.getElseBranch().accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
     public Void visit(WhileStatement node) {
         node.getBody().accept(this);
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
     public Void visit(DoWhileStatement node) {
         node.getBody().accept(this);
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
     public Void visit(ForStatement node) {
         node.getBody().accept(this);
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -153,7 +151,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         for (SwitchCase switchCase : node.getCases()) {
             switchCase.accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -161,22 +159,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
         if (node.getStatement() != null) {
             node.getStatement().accept(this);
         }
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(BreakStatement node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ContinueStatement node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ReturnStatement node) {
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 
     @Override
@@ -187,106 +170,6 @@ public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
             .initializer(node.getInitializer()) // or omit entirely if optional
             .build();
         symbolTable.addEntry(entry, diagnosticBag);
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(AssignExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ConditionalExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(BinaryExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(UnaryExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(PostfixExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(CallExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(IndexExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(MemberAccessExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(NewExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ArrayInitExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(NameExpression node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(LiteralExpression<?> node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(LiteralCaseLabel node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(EnumCaseLabel node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ArrayType node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(NamedType node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(PrimitiveType node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(VoidType node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ForInitVarDeclaration node) {
-        return null; // visitor has side effects only (symbol table creation)
-    }
-
-    @Override
-    public Void visit(ForInitExpressionList node) {
-        return null; // visitor has side effects only (symbol table creation)
+        return null;
     }
 }
