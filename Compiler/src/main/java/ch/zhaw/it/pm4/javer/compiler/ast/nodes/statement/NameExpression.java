@@ -13,7 +13,7 @@ public final class NameExpression implements ExpressionAstNode {
     }
 
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }

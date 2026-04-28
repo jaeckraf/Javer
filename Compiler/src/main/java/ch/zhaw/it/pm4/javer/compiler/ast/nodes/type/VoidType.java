@@ -7,7 +7,7 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 public final class VoidType implements TypeAstNode {
 
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }

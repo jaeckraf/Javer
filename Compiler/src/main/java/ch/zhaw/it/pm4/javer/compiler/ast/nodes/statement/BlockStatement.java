@@ -19,7 +19,7 @@ public final class BlockStatement implements StatementAstNode {
     }
 
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }

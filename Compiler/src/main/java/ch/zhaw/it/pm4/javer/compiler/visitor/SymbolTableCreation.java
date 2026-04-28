@@ -11,7 +11,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
-public class SymbolTableCreation extends VoidAstNodeVisitor {
+public class SymbolTableCreation extends AstNodeVisitorBase {
 
     private SymbolTable symbolTable;
     private final DiagnosticBag diagnosticBag;
@@ -21,17 +21,16 @@ public class SymbolTableCreation extends VoidAstNodeVisitor {
     }
 
     @Override
-    public Void visit(CompilationUnit node) {
+    public void visit(CompilationUnit node) {
         symbolTable = node.getSymbolTable();
 
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(EnumDeclaration node) {
+    public void visit(EnumDeclaration node) {
         EnumSymbolTableEntry entry = EnumSymbolTableEntry.builder()
             .name(node.getName())
             .build();
@@ -41,22 +40,20 @@ public class SymbolTableCreation extends VoidAstNodeVisitor {
         for (EnumItem item : node.getItems()) {
             item.accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(EnumItem node) {
+    public void visit(EnumItem node) {
         VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
             .name(node.getName())
             .type(new NamedType(NameTypeKind.ENUM, node.getName())) // or enum type if you model it
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
-        return null;
     }
 
     @Override
-    public Void visit(FunctionDeclaration node) {
+    public void visit(FunctionDeclaration node) {
         FunctionSymbolTableEntry entry = FunctionSymbolTableEntry.builder()
             .name(node.getName())
             .returnType(node.getReturnType())
@@ -70,23 +67,20 @@ public class SymbolTableCreation extends VoidAstNodeVisitor {
         if (node.getBody() != null) {
             node.getBody().accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(FunctionParameter node) {
+    public void visit(FunctionParameter node) {
         VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
             .name(node.getName())
             .type(node.getType())
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
-
-        return null;
     }
 
     @Override
-    public Void visit(StructDeclaration node) {
+    public void visit(StructDeclaration node) {
         StructSymbolTableEntry entry = StructSymbolTableEntry.builder()
             .name(node.getName())
             .build();
@@ -96,80 +90,69 @@ public class SymbolTableCreation extends VoidAstNodeVisitor {
         for (StructField field : node.getFields()) {
             field.accept(this);
         }
-
-        return null;
     }
 
     @Override
-    public Void visit(StructField node) {
+    public void visit(StructField node) {
         VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
             .name(node.getName())
             .type(node.getType())
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
-        return null;
     }
 
     @Override
-    public Void visit(BlockStatement node) {
+    public void visit(BlockStatement node) {
         for (StatementAstNode statement : node.getStatements()) {
             statement.accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(IfStatement node) {
+    public void visit(IfStatement node) {
         node.getThenBranch().accept(this);
         if (node.getElseBranch() != null) {
             node.getElseBranch().accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(WhileStatement node) {
+    public void visit(WhileStatement node) {
         node.getBody().accept(this);
-        return null;
     }
 
     @Override
-    public Void visit(DoWhileStatement node) {
+    public void visit(DoWhileStatement node) {
         node.getBody().accept(this);
-        return null;
     }
 
     @Override
-    public Void visit(ForStatement node) {
+    public void visit(ForStatement node) {
         node.getBody().accept(this);
-        return null;
     }
 
     @Override
-    public Void visit(SwitchStatement node) {
+    public void visit(SwitchStatement node) {
         for (SwitchCase switchCase : node.getCases()) {
             switchCase.accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(SwitchCase node) {
+    public void visit(SwitchCase node) {
         if (node.getStatement() != null) {
             node.getStatement().accept(this);
         }
-        return null;
     }
 
     @Override
-    public Void visit(VarDeclarationStatement node) {
+    public void visit(VarDeclarationStatement node) {
         VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
             .name(node.getName())
             .type(node.getType())
             .initializer(node.getInitializer()) // or omit entirely if optional
             .build();
         symbolTable.addEntry(entry, diagnosticBag);
-        return null;
     }
 }
