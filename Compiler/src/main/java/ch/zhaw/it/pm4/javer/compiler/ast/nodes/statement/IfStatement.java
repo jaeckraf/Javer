@@ -1,10 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class IfStatement implements StatementAstNode {
+public final class IfStatement extends AstNodeBase implements StatementAstNode {
 
     private final ExpressionAstNode condition;
     private final StatementAstNode thenBranch;

@@ -1,11 +1,13 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class LiteralCaseLabel implements CaseLabelAstNode {
+public final class LiteralCaseLabel extends AstNodeBase implements CaseLabelAstNode {
 
     private final LiteralExpression<?> literal;
 

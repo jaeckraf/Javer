@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
@@ -11,6 +12,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
+import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.misc.JaverLogger;
@@ -101,6 +103,7 @@ public class Parser {
 
     private Token currentToken() { return peek(0); }
     private Token lookahead() { return peek(1); }
+    private Token previousToken() { return peek(currentPosition > 0 ? -1 : 0); }
 
     private Token peek(int offset) {
         int index = currentPosition + offset;
@@ -115,6 +118,16 @@ public class Parser {
 
     private void consumeToken() {
         if (currentPosition < tokens.size()) currentPosition++;
+    }
+
+    private <T extends AstNode> T located(T node, Token startToken) {
+        node.setSourceRange(new SourceRange(startToken.getPosition(), previousToken().getPosition()));
+        return node;
+    }
+
+    private <T extends AstNode> T located(T node, SourceLocation startLocation) {
+        node.setSourceRange(new SourceRange(startLocation, previousToken().getPosition()));
+        return node;
     }
 
     private Token expectTokenType(TokenType expected) {
@@ -164,32 +177,34 @@ public class Parser {
     }
 
     private CompilationUnit parseCompilationUnit() {
+        Token startToken = currentToken();
         List<DeclarationAstNode> declarations = new ArrayList<>();
         while (isNotAtEnd()) {
             if (!skipErrors(FIRST_TOP_LEVEL, EOF, true)) break;
             declarations.add(parseDeclaration());
         }
         expectTokenType(TokenType.SPECIAL_END_OF_FILE);
-        return new CompilationUnit(declarations);
+        return located(new CompilationUnit(declarations), startToken);
     }
 
     private DeclarationAstNode parseDeclaration() {
-        if (!skipErrors(FIRST_TOP_LEVEL, FOLLOW_DECLARATION, false)) return new StructDeclaration("<error>", List.of());
+        Token startToken = currentToken();
+        if (!skipErrors(FIRST_TOP_LEVEL, FOLLOW_DECLARATION, false)) return located(new StructDeclaration("<error>", List.of()), startToken);
         return switch (currentToken().getTokenType()) {
             case TYPE_ENUM -> parseEnumDeclaration();
             case KEYWORD_FUNCTION -> parseFunctionDeclaration();
             case TYPE_STRUCT -> parseStructDeclaration();
-            default -> new StructDeclaration("<error>", List.of());
+            default -> located(new StructDeclaration("<error>", List.of()), startToken);
         };
     }
 
     private EnumDeclaration parseEnumDeclaration() {
-        expectTokenType(TokenType.TYPE_ENUM);
+        Token startToken = expectTokenType(TokenType.TYPE_ENUM);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         List<EnumItem> items = parseEnumItems();
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
-        return new EnumDeclaration(name, items);
+        return located(new EnumDeclaration(name, items), startToken);
     }
 
     private List<EnumItem> parseEnumItems() {
@@ -214,16 +229,16 @@ public class Parser {
             builder.value(parseInteger(value));
         }
         skipErrors(FOLLOW_ENUM_ITEM, FOLLOW_ENUM_ITEM, true);
-        return builder.build();
+        return located(builder.build(), name);
     }
 
     private StructDeclaration parseStructDeclaration() {
-        expectTokenType(TokenType.TYPE_STRUCT);
+        Token startToken = expectTokenType(TokenType.TYPE_STRUCT);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         List<StructField> fields = parseStructFields();
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
-        return new StructDeclaration(name, fields);
+        return located(new StructDeclaration(name, fields), startToken);
     }
 
     private List<StructField> parseStructFields() {
@@ -236,22 +251,23 @@ public class Parser {
     }
 
     private StructField parseStructField() {
+        Token startToken = currentToken();
         TypeAstNode type = parseType();
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         expectTokenType(TokenType.SYMBOL_SEMICOLON);
         skipErrors(FOLLOW_STRUCT_FIELD, FOLLOW_STRUCT_FIELD, true);
-        return new StructField(type, name);
+        return located(new StructField(type, name), startToken);
     }
 
     private FunctionDeclaration parseFunctionDeclaration() {
-        expectTokenType(TokenType.KEYWORD_FUNCTION);
+        Token startToken = expectTokenType(TokenType.KEYWORD_FUNCTION);
         TypeAstNode returnType = parseReturnType();
         String functionName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
         List<FunctionParameter> parameters = parseFunctionParameters();
         expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         BlockStatement block = parseBlock();
-        return new FunctionDeclaration(returnType, functionName, parameters, block);
+        return located(new FunctionDeclaration(returnType, functionName, parameters, block), startToken);
     }
 
     private List<FunctionParameter> parseFunctionParameters() {
@@ -267,25 +283,28 @@ public class Parser {
     }
 
     private FunctionParameter parseFunctionParameter() {
+        Token startToken = currentToken();
         TypeAstNode type = parseType();
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         skipErrors(FOLLOW_PARAM, FOLLOW_PARAM, true);
-        return new FunctionParameter(name, type);
+        return located(new FunctionParameter(name, type), startToken);
     }
 
     private TypeAstNode parseReturnType() {
-        if (!skipErrors(FIRST_RETURN_TYPE, FOLLOW_RETURN_TYPE, false)) return new VoidType();
+        Token startToken = currentToken();
+        if (!skipErrors(FIRST_RETURN_TYPE, FOLLOW_RETURN_TYPE, false)) return located(new VoidType(), startToken);
         if (matchCurrentToken(TokenType.TYPE_VOID)) return parseVoidType();
         return parseType();
     }
 
     private TypeAstNode parseType() {
-        if (!skipErrors(FIRST_TYPE, FOLLOW_TYPE, false)) return new PrimitiveType(PrimitiveTypeKind.INVALID);
+        Token startToken = currentToken();
+        if (!skipErrors(FIRST_TYPE, FOLLOW_TYPE, false)) return located(new PrimitiveType(PrimitiveTypeKind.INVALID), startToken);
         TypeAstNode type = parseTypeHead();
         while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
             consumeToken();
             expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
-            type = new ArrayType(type);
+            type = located(new ArrayType(type), startToken);
         }
         return type;
     }
@@ -297,21 +316,22 @@ public class Parser {
 
     private PrimitiveType parsePrimitiveType() {
         Token token = expectTokenTypes(FIRST_PRIMITIVE_TYPE);
-        return new PrimitiveType(toPrimitiveTypeKind(token));
+        return located(new PrimitiveType(toPrimitiveTypeKind(token)), token);
     }
 
     private NamedType parseNamedType() {
         Token typeToken = expectTokenTypes(EnumSet.of(TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM));
         Token nameToken = expectTokenType(TokenType.ID_IDENTIFIER);
-        return new NamedType(toNameTypeKind(typeToken), nameToken.getValue());
+        return located(new NamedType(toNameTypeKind(typeToken), nameToken.getValue()), typeToken);
     }
 
     private VoidType parseVoidType() {
-        expectTokenType(TokenType.TYPE_VOID);
-        return new VoidType();
+        Token startToken = expectTokenType(TokenType.TYPE_VOID);
+        return located(new VoidType(), startToken);
     }
 
     private BlockStatement parseBlock() {
+        Token startToken = currentToken();
         List<StatementAstNode> statements = new ArrayList<>();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
@@ -319,11 +339,12 @@ public class Parser {
             statements.add(parseStatement());
         }
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
-        return new BlockStatement(statements);
+        return located(new BlockStatement(statements), startToken);
     }
 
     private StatementAstNode parseStatement() {
-        if (!skipErrors(FIRST_STATEMENT, FOLLOW_STATEMENT, false)) return new BlockStatement(List.of());
+        Token startToken = currentToken();
+        if (!skipErrors(FIRST_STATEMENT, FOLLOW_STATEMENT, false)) return located(new BlockStatement(List.of()), startToken);
         return switch (currentToken().getTokenType()) {
             case SYMBOL_LEFT_BRACE -> parseBlock();
             case KEYWORD_IF -> parseIfStatement();
@@ -345,7 +366,7 @@ public class Parser {
     }
 
     private IfStatement parseIfStatement() {
-        expectTokenType(TokenType.KEYWORD_IF);
+        Token startToken = expectTokenType(TokenType.KEYWORD_IF);
         ExpressionAstNode condition = parseCheck();
         StatementAstNode thenBranch = parseStatement();
         IfStatement.Builder builder = IfStatement.builder(condition, thenBranch);
@@ -353,29 +374,29 @@ public class Parser {
             consumeToken();
             builder.elseBranch(parseStatement());
         }
-        return builder.build();
+        return located(builder.build(), startToken);
     }
 
     private WhileStatement parseWhileStatement() {
-        expectTokenType(TokenType.KEYWORD_WHILE);
+        Token startToken = expectTokenType(TokenType.KEYWORD_WHILE);
         ExpressionAstNode condition = parseCheck();
         StatementAstNode body = parseStatement();
-        return new WhileStatement(condition, body);
+        return located(new WhileStatement(condition, body), startToken);
     }
 
     private DoWhileStatement parseDoWhileStatement() {
-        expectTokenType(TokenType.KEYWORD_DO);
+        Token startToken = expectTokenType(TokenType.KEYWORD_DO);
         BlockStatement block = parseBlock();
         expectTokenType(TokenType.KEYWORD_WHILE);
         expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
         ExpressionAstNode condition = parseExpression();
         expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         expectTokenType(TokenType.SYMBOL_SEMICOLON);
-        return new DoWhileStatement(condition, block);
+        return located(new DoWhileStatement(condition, block), startToken);
     }
 
     private ForStatement parseForStatement() {
-        expectTokenType(TokenType.KEYWORD_FOR);
+        Token startToken = expectTokenType(TokenType.KEYWORD_FOR);
         expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
         ForInit init = null;
         if (!matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) init = parseForInit();
@@ -387,21 +408,22 @@ public class Parser {
         if (!matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) update = parseExpressionList();
         expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         StatementAstNode body = parseStatement();
-        return ForStatement.builder(body).forInit(init).condition(condition).update(update).build();
+        return located(ForStatement.builder(body).forInit(init).condition(condition).update(update).build(), startToken);
     }
 
     private ForInit parseForInit() {
-        if (matchCurrentToken(TokenType.KEYWORD_LET)) return new ForInitVarDeclaration(parseVarDeclarationStatement(false));
-        return new ForInitExpressionList(parseExpressionList());
+        Token startToken = currentToken();
+        if (matchCurrentToken(TokenType.KEYWORD_LET)) return located(new ForInitVarDeclaration(parseVarDeclarationStatement(false)), startToken);
+        return located(new ForInitExpressionList(parseExpressionList()), startToken);
     }
 
     private SwitchStatement parseSwitchStatement() {
-        expectTokenType(TokenType.KEYWORD_SWITCH);
+        Token startToken = expectTokenType(TokenType.KEYWORD_SWITCH);
         ExpressionAstNode condition = parseCheck();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         List<SwitchCase> cases = parseSwitchCases();
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
-        return new SwitchStatement(condition, cases);
+        return located(new SwitchStatement(condition, cases), startToken);
     }
 
     private List<SwitchCase> parseSwitchCases() {
@@ -415,16 +437,17 @@ public class Parser {
 
     private SwitchCase parseSwitchCase() {
         if (matchCurrentToken(TokenType.KEYWORD_DEFAULT)) {
+            Token startToken = currentToken();
             consumeToken();
             expectTokenType(TokenType.SYMBOL_COLON);
-            return new SwitchCase(true, new ArrayList<>(), parseStatement());
+            return located(new SwitchCase(true, new ArrayList<>(), parseStatement()), startToken);
         }
-        expectTokenType(TokenType.KEYWORD_CASE);
+        Token startToken = expectTokenType(TokenType.KEYWORD_CASE);
         List<CaseLabelAstNode> labels = parseCaseLabels();
         expectTokenType(TokenType.SYMBOL_COLON);
         StatementAstNode statement = parseStatement();
         skipErrors(FOLLOW_CASE, FOLLOW_CASE, true);
-        return new SwitchCase(false, labels, statement);
+        return located(new SwitchCase(false, labels, statement), startToken);
     }
 
     private List<CaseLabelAstNode> parseCaseLabels() {
@@ -444,14 +467,16 @@ public class Parser {
     }
 
     private LiteralCaseLabel parseLiteralCaseLabel() {
-        return new LiteralCaseLabel(parseLiteralExpression());
+        Token startToken = currentToken();
+        return located(new LiteralCaseLabel(parseLiteralExpression()), startToken);
     }
 
     private EnumCaseLabel parseEnumCaseLabel() {
+        Token startToken = currentToken();
         String enumName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         expectTokenType(TokenType.SYMBOL_DOT);
         String valueName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        return new EnumCaseLabel(enumName, valueName);
+        return located(new EnumCaseLabel(enumName, valueName), startToken);
     }
 
     private StatementAstNode parseJumpStatement() {
@@ -461,26 +486,26 @@ public class Parser {
     }
 
     private BreakStatement parseBreakStatement() {
-        expectTokenType(TokenType.KEYWORD_BREAK);
+        Token startToken = expectTokenType(TokenType.KEYWORD_BREAK);
         expectTokenType(TokenType.SYMBOL_SEMICOLON);
-        return new BreakStatement();
+        return located(new BreakStatement(), startToken);
     }
 
     private ContinueStatement parseContinueStatement() {
-        expectTokenType(TokenType.KEYWORD_CONTINUE);
+        Token startToken = expectTokenType(TokenType.KEYWORD_CONTINUE);
         expectTokenType(TokenType.SYMBOL_SEMICOLON);
-        return new ContinueStatement();
+        return located(new ContinueStatement(), startToken);
     }
 
     private ReturnStatement parseReturnStatement() {
-        expectTokenType(TokenType.KEYWORD_RETURN);
+        Token startToken = expectTokenType(TokenType.KEYWORD_RETURN);
         if (matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) {
             consumeToken();
-            return ReturnStatement.builder().build();
+            return located(ReturnStatement.builder().build(), startToken);
         }
         ExpressionAstNode expression = parseExpression();
         expectTokenType(TokenType.SYMBOL_SEMICOLON);
-        return ReturnStatement.builder(expression).build();
+        return located(ReturnStatement.builder(expression).build(), startToken);
     }
 
     private VarDeclarationStatement parseVarDeclarationStatement() {
@@ -488,7 +513,7 @@ public class Parser {
     }
 
     private VarDeclarationStatement parseVarDeclarationStatement(boolean expectSemicolon) {
-        expectTokenType(TokenType.KEYWORD_LET);
+        Token startToken = expectTokenType(TokenType.KEYWORD_LET);
         TypeAstNode type = parseType();
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         VarDeclarationStatement.Builder builder = VarDeclarationStatement.builder(type, name);
@@ -497,7 +522,7 @@ public class Parser {
             builder.initializer(parseVarInitializer());
         }
         if (expectSemicolon) expectTokenType(TokenType.SYMBOL_SEMICOLON);
-        return builder.build();
+        return located(builder.build(), startToken);
     }
 
     private StatementAstNode parseExpressionStatement() {
@@ -513,7 +538,7 @@ public class Parser {
     }
 
     private ArrayInitExpression parseArrayInitExpression() {
-        expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+        Token startToken = expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         List<ExpressionAstNode> elements = new ArrayList<>();
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
@@ -522,7 +547,7 @@ public class Parser {
             consumeToken();
         }
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
-        return new ArrayInitExpression(elements);
+        return located(new ArrayInitExpression(elements), startToken);
     }
 
     private List<ExpressionAstNode> parseExpressionList() {
@@ -550,7 +575,7 @@ public class Parser {
         if (currentIs(FIRST_ASSIGN_OPERATOR)) {
             AssignOperator operator = parseAssignOperator();
             ExpressionAstNode value = parseAssignment();
-            return AssignExpression.builder(left).operator(operator).value(value).build();
+            return located(AssignExpression.builder(left).operator(operator).value(value).build(), left.getSourceRange().start());
         }
         return left;
     }
@@ -567,7 +592,7 @@ public class Parser {
             ExpressionAstNode whenTrue = parseExpression();
             expectTokenType(TokenType.SYMBOL_COLON);
             ExpressionAstNode whenFalse = parseConditional();
-            return ConditionalExpression.builder(condition).whenTrue(whenTrue).whenFalse(whenFalse).build();
+            return located(ConditionalExpression.builder(condition).whenTrue(whenTrue).whenFalse(whenFalse).build(), condition.getSourceRange().start());
         }
         return condition;
     }
@@ -589,7 +614,7 @@ public class Parser {
             Token operator = currentToken();
             consumeToken();
             ExpressionAstNode right = operandParser.parse();
-            left = new BinaryExpression(toBinaryExpressionKind(operator), left, right);
+            left = located(new BinaryExpression(toBinaryExpressionKind(operator), left, right), left.getSourceRange().start());
         }
         return left;
     }
@@ -606,7 +631,7 @@ public class Parser {
         if (currentIs(preOps)) {
             Token operator = currentToken();
             consumeToken();
-            return new UnaryExpression(toUnaryExpressionKind(operator), parseUnaryExpression());
+            return located(new UnaryExpression(toUnaryExpressionKind(operator), parseUnaryExpression()), operator);
         }
         return parsePostfixExpression();
     }
@@ -625,7 +650,7 @@ public class Parser {
         if (matchCurrentToken(TokenType.OPERATOR_INCREMENT) || matchCurrentToken(TokenType.OPERATOR_DECREMENT)) {
             Token operator = currentToken();
             consumeToken();
-            expression = new PostfixExpression(expression, toPostfixOperationKind(operator));
+            expression = located(new PostfixExpression(expression, toPostfixOperationKind(operator)), expression.getSourceRange().start());
         }
         return expression;
     }
@@ -647,38 +672,41 @@ public class Parser {
     }
 
     private ExpressionAstNode parseCallExpression() {
-        expectTokenType(TokenType.KEYWORD_CALL);
+        Token startToken = expectTokenType(TokenType.KEYWORD_CALL);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
         List<ExpressionAstNode> arguments = parseOptionalExpressionList();
         expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
-        return new CallExpression(name, arguments);
+        return located(new CallExpression(name, arguments), startToken);
     }
 
     private ExpressionAstNode parseNameExpression() {
-        return new NameExpression(expectTokenType(TokenType.ID_IDENTIFIER).getValue());
+        Token startToken = expectTokenType(TokenType.ID_IDENTIFIER);
+        return located(new NameExpression(startToken.getValue()), startToken);
     }
 
     private IndexExpression parseIndexExpression(ExpressionAstNode target) {
+        SourceLocation startLocation = target.getSourceRange().start();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACKET);
         ExpressionAstNode index = parseExpression();
         expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
-        return new IndexExpression(target, index);
+        return located(new IndexExpression(target, index), startLocation);
     }
 
     private MemberAccessExpression parseMemberAccessExpression(ExpressionAstNode target) {
+        SourceLocation startLocation = target.getSourceRange().start();
         expectTokenType(TokenType.SYMBOL_DOT);
         String memberName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        return new MemberAccessExpression(target, memberName);
+        return located(new MemberAccessExpression(target, memberName), startLocation);
     }
 
     private NewExpression parseNewExpression() {
-        expectTokenType(TokenType.KEYWORD_NEW);
+        Token startToken = expectTokenType(TokenType.KEYWORD_NEW);
         TypeAstNode type = parseTypeHead();
         List<ExpressionAstNode> dimensions = parseNewArrayDimensions();
         NewExpression.Builder builder = NewExpression.builder(type).dimensions(dimensions);
         if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) builder.arrayInit(parseArrayInitExpression());
-        return builder.build();
+        return located(builder.build(), startToken);
     }
 
     private List<ExpressionAstNode> parseNewArrayDimensions() {
@@ -708,35 +736,35 @@ public class Parser {
     private LiteralExpression<?> parseNumberLiteral() {
         if (matchCurrentToken(TokenType.LITERAL_DOUBLE)) {
             Token token = expectTokenType(TokenType.LITERAL_DOUBLE);
-            return new LiteralExpression<>(LiteralKind.DOUBLE, parseDouble(token));
+            return located(new LiteralExpression<>(LiteralKind.DOUBLE, parseDouble(token)), token);
         }
         Token token = expectTokenType(TokenType.LITERAL_INTEGER);
-        return new LiteralExpression<>(LiteralKind.INT, parseInteger(token));
+        return located(new LiteralExpression<>(LiteralKind.INT, parseInteger(token)), token);
     }
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_BOOLEAN);
-        return new LiteralExpression<>(LiteralKind.BOOLEAN, Boolean.parseBoolean(token.getValue()));
+        return located(new LiteralExpression<>(LiteralKind.BOOLEAN, Boolean.parseBoolean(token.getValue())), token);
     }
 
     private LiteralExpression<String> parseStringLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_STRING);
-        return new LiteralExpression<>(LiteralKind.STRING, stripQuotes(token.getValue()));
+        return located(new LiteralExpression<>(LiteralKind.STRING, stripQuotes(token.getValue())), token);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_CHAR);
         String value = stripQuotes(token.getValue());
-        return new LiteralExpression<>(LiteralKind.CHAR, value.isEmpty() ? '\0' : value.charAt(0));
+        return located(new LiteralExpression<>(LiteralKind.CHAR, value.isEmpty() ? '\0' : value.charAt(0)), token);
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
-        expectTokenType(TokenType.LITERAL_NULL);
-        return new LiteralExpression<>(LiteralKind.NULL, null);
+        Token token = expectTokenType(TokenType.LITERAL_NULL);
+        return located(new LiteralExpression<>(LiteralKind.NULL, null), token);
     }
 
     private LiteralExpression<Integer> errorExpression() {
-        return new LiteralExpression<>(LiteralKind.INT, 0);
+        return located(new LiteralExpression<>(LiteralKind.INT, 0), currentToken());
     }
 
     private int parseInteger(Token token) {
