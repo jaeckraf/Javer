@@ -14,6 +14,10 @@ public final class DoWhileStatement implements StatementAstNode {
         this.block = block;
     }
 
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
     public BlockStatement getBody() {
         return block;
     }

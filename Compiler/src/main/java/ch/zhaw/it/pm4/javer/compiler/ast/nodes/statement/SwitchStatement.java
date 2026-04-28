@@ -16,6 +16,10 @@ public final class SwitchStatement implements StatementAstNode {
         this.cases = cases;
     }
 
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
     public List<SwitchCase> getCases() {
         return cases;
     }

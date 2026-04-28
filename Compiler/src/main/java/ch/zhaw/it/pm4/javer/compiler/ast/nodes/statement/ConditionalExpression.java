@@ -44,6 +44,18 @@ public final class ConditionalExpression implements ExpressionAstNode {
         }
     }
 
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public ExpressionAstNode getTrueExpression() {
+        return trueExpression;
+    }
+
+    public ExpressionAstNode getFalseExpression() {
+        return falseExpression;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

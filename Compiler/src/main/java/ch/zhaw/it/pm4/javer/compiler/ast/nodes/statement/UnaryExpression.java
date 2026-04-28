@@ -14,6 +14,14 @@ public final class UnaryExpression implements ExpressionAstNode {
         this.operand = operand;
     }
 
+    public UnaryExpressionKind getKind() {
+        return kind;
+    }
+
+    public ExpressionAstNode getOperand() {
+        return operand;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

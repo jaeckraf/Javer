@@ -14,6 +14,14 @@ public final class PostfixExpression implements ExpressionAstNode {
         this.kind = kind;
     }
 
+    public ExpressionAstNode getOperand() {
+        return operand;
+    }
+
+    public PostfixOperationKind getKind() {
+        return kind;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

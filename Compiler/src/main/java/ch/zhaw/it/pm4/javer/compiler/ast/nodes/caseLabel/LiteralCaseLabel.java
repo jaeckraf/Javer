@@ -13,6 +13,10 @@ public final class LiteralCaseLabel implements CaseLabelAstNode {
         this.literal = literal;
     }
 
+    public LiteralExpression<?> getLiteral() {
+        return literal;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

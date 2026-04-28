@@ -12,6 +12,10 @@ public final class ForInitVarDeclaration implements ForInit {
         this.varDeclaration = varDeclaration;
     }
 
+    public VarDeclarationStatement getVarDeclaration() {
+        return varDeclaration;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

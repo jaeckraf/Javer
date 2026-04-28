@@ -44,6 +44,18 @@ public final class AssignExpression implements ExpressionAstNode {
         }
     }
 
+    public ExpressionAstNode getTarget() {
+        return target;
+    }
+
+    public AssignOperator getOperator() {
+        return operator;
+    }
+
+    public ExpressionAstNode getValue() {
+        return value;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

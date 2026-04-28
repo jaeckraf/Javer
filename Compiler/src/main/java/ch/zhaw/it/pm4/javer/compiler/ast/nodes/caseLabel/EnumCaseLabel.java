@@ -14,6 +14,14 @@ public final class EnumCaseLabel implements CaseLabelAstNode {
         this.enumValueName = enumValueName;
     }
 
+    public String getEnumTypeName() {
+        return enumTypeName;
+    }
+
+    public String getEnumValueName() {
+        return enumValueName;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

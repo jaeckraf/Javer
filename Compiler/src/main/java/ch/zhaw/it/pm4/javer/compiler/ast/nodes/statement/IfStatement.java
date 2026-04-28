@@ -44,6 +44,10 @@ public final class IfStatement implements StatementAstNode {
         return thenBranch;
     }
 
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
     public StatementAstNode getElseBranch() {
         return elseBranch;
     }

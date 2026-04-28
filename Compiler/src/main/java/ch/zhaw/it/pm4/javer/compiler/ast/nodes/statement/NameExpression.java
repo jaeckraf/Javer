@@ -12,6 +12,10 @@ public final class NameExpression implements ExpressionAstNode {
         this.name = name;
     }
 
+    public String getName() {
+        return name;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

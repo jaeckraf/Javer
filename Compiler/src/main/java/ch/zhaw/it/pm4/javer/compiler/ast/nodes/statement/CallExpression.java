@@ -16,6 +16,14 @@ public final class CallExpression implements ExpressionAstNode {
         this.arguments = arguments;
     }
 
+    public String getFunctionName() {
+        return functionName;
+    }
+
+    public List<ExpressionAstNode> getArguments() {
+        return arguments;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

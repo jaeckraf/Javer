@@ -14,6 +14,14 @@ public final class MemberAccessExpression implements ExpressionAstNode {
         this.memberName = memberName;
     }
 
+    public ExpressionAstNode getTarget() {
+        return target;
+    }
+
+    public String getMemberName() {
+        return memberName;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

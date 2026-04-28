@@ -14,6 +14,10 @@ public final class WhileStatement implements StatementAstNode {
         this.statement = statement;
     }
 
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
     public StatementAstNode getBody() {
         return statement;
     }

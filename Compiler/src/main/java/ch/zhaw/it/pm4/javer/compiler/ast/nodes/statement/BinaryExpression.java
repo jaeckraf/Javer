@@ -16,6 +16,18 @@ public final class BinaryExpression implements ExpressionAstNode {
         this.right = right;
     }
 
+    public BinaryExpressionKind getOperator() {
+        return operator;
+    }
+
+    public ExpressionAstNode getLeft() {
+        return left;
+    }
+
+    public ExpressionAstNode getRight() {
+        return right;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

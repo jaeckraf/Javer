@@ -14,6 +14,10 @@ public final class ForInitExpressionList implements ForInit {
         this.expressions = expressions;
     }
 
+    public List<ExpressionAstNode> getExpressions() {
+        return expressions;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

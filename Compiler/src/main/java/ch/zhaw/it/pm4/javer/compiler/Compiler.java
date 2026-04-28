@@ -1,25 +1,17 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
+import ch.zhaw.it.pm4.javer.compiler.visitor.AstPrinter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
 import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
@@ -87,7 +79,7 @@ public class Compiler {
             return;
         }
         if (options.isDumpAstSymbolTable()) {
-            printSection("AST SYMBOL TABLE", dumpSymbolTable(rootNode));
+            printSection("AST SYMBOL TABLE", dumpAst(rootNode));
         }
 
         resolveNames(rootNode);
@@ -179,109 +171,7 @@ public class Compiler {
     }
 
     private static String dumpAst(CompilationUnit rootNode) {
-        StringBuilder builder = new StringBuilder();
-        appendAstNode(builder, rootNode, 0, new IdentityHashMap<>());
-        return builder.toString();
-    }
-
-    private static void appendAstNode(
-            StringBuilder builder,
-            AstNode node,
-            int indent,
-            IdentityHashMap<AstNode, Boolean> visitedNodes) {
-
-        indent(builder, indent).append(node.getClass().getSimpleName()).append(System.lineSeparator());
-        if (visitedNodes.put(node, Boolean.TRUE) != null) {
-            indent(builder, indent + 1).append("<already visited>").append(System.lineSeparator());
-            return;
-        }
-
-        for (Method method : sortedGetterMethods(node.getClass())) {
-            Object value = invokeGetter(method, node);
-            if (value == null || value instanceof ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable) {
-                continue;
-            }
-
-            String name = propertyName(method);
-            appendAstValue(builder, name, value, indent + 1, visitedNodes);
-        }
-    }
-
-    private static void appendAstValue(
-            StringBuilder builder,
-            String name,
-            Object value,
-            int indent,
-            IdentityHashMap<AstNode, Boolean> visitedNodes) {
-
-        if (value instanceof AstNode childNode) {
-            indent(builder, indent).append(name).append(":").append(System.lineSeparator());
-            appendAstNode(builder, childNode, indent + 1, visitedNodes);
-            return;
-        }
-
-        if (value instanceof Collection<?> values) {
-            indent(builder, indent).append(name).append(":").append(System.lineSeparator());
-            for (Object item : values) {
-                if (item instanceof AstNode childNode) {
-                    appendAstNode(builder, childNode, indent + 1, visitedNodes);
-                } else {
-                    indent(builder, indent + 1).append(String.valueOf(item)).append(System.lineSeparator());
-                }
-            }
-            return;
-        }
-
-        if (isScalar(value)) {
-            indent(builder, indent).append(name).append(": ").append(value).append(System.lineSeparator());
-        }
-    }
-
-    private static String dumpSymbolTable(CompilationUnit rootNode) {
-        Map<String, SymbolTableEntry> entries = rootNode.getSymbolTable().getAllEntries();
-        if (entries.isEmpty()) {
-            return "<empty>";
-        }
-
-        return entries.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> entry.getKey() + ": " + entry.getValue().getClass().getSimpleName())
-                .collect(Collectors.joining(System.lineSeparator()));
-    }
-
-    private static List<Method> sortedGetterMethods(Class<?> type) {
-        return java.util.Arrays.stream(type.getMethods())
-                .filter(method -> Modifier.isPublic(method.getModifiers()))
-                .filter(method -> method.getParameterCount() == 0)
-                .filter(method -> method.getName().startsWith("get"))
-                .filter(method -> method.getDeclaringClass() != Object.class)
-                .sorted(Comparator.comparing(Method::getName))
-                .toList();
-    }
-
-    private static Object invokeGetter(Method method, Object target) {
-        try {
-            return method.invoke(target);
-        } catch (IllegalAccessException | InvocationTargetException exception) {
-            return "<unavailable>";
-        }
-    }
-
-    private static String propertyName(Method method) {
-        String name = method.getName().substring("get".length());
-        return Character.toLowerCase(name.charAt(0)) + name.substring(1);
-    }
-
-    private static boolean isScalar(Object value) {
-        return value instanceof String
-                || value instanceof Number
-                || value instanceof Boolean
-                || value instanceof Character
-                || value.getClass().isEnum();
-    }
-
-    private static StringBuilder indent(StringBuilder builder, int indent) {
-        return builder.append("  ".repeat(indent));
+        return new AstPrinter().printToString(rootNode);
     }
 
 }

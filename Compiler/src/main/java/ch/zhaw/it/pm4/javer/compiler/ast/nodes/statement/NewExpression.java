@@ -47,6 +47,18 @@ public final class NewExpression implements ExpressionAstNode {
         }
     }
 
+    public TypeAstNode getType() {
+        return type;
+    }
+
+    public List<ExpressionAstNode> getDimensions() {
+        return dimensions;
+    }
+
+    public ArrayInitExpression getArrayInit() {
+        return arrayInit;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

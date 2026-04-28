@@ -14,6 +14,14 @@ public final class NamedType implements TypeAstNode {
         this.name = name;
     }
 
+    public NameTypeKind getKind() {
+        return kind;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

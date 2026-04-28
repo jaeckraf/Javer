@@ -12,6 +12,10 @@ public final class ArrayType implements TypeAstNode {
         this.baseType = baseType;
     }
 
+    public TypeAstNode getBaseType() {
+        return baseType;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

@@ -33,6 +33,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
     public void visit(EnumDeclaration node) {
         EnumSymbolTableEntry entry = EnumSymbolTableEntry.builder()
             .name(node.getName())
+            .items(node.getItems())
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
@@ -57,6 +58,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         FunctionSymbolTableEntry entry = FunctionSymbolTableEntry.builder()
             .name(node.getName())
             .returnType(node.getReturnType())
+            .parameters(node.getParameters())
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);
@@ -83,6 +85,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
     public void visit(StructDeclaration node) {
         StructSymbolTableEntry entry = StructSymbolTableEntry.builder()
             .name(node.getName())
+            .fields(node.getFields())
             .build();
 
         symbolTable.addEntry(entry, diagnosticBag);

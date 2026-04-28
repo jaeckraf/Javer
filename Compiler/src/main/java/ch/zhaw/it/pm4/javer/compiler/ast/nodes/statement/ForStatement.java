@@ -58,6 +58,18 @@ public final class ForStatement implements StatementAstNode {
         return body;
     }
 
+    public ForInit getForInit() {
+        return forInit;
+    }
+
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public List<ExpressionAstNode> getUpdate() {
+        return update;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

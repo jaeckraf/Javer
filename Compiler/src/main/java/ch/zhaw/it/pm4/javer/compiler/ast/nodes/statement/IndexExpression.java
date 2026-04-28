@@ -14,6 +14,14 @@ public final class IndexExpression implements ExpressionAstNode {
         this.index = index;
     }
 
+    public ExpressionAstNode getTarget() {
+        return target;
+    }
+
+    public ExpressionAstNode getIndex() {
+        return index;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

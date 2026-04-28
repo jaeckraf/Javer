@@ -14,6 +14,10 @@ public final class ArrayInitExpression implements ExpressionAstNode {
         this.elements = elements;
     }
 
+    public List<ExpressionAstNode> getElements() {
+        return elements;
+    }
+
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);

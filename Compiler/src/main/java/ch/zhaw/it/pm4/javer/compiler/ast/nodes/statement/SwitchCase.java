@@ -20,6 +20,14 @@ public final class SwitchCase implements AstNode {
         this.statement = statement;
     }
 
+    public boolean isDefault() {
+        return isDefault;
+    }
+
+    public List<CaseLabelAstNode> getCaseLabels() {
+        return caseLabels;
+    }
+
     public StatementAstNode getStatement() {
         return statement;
     }
