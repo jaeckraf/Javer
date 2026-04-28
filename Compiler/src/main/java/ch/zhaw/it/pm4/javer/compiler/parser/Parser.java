@@ -15,10 +15,7 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class Parser {
@@ -89,7 +86,7 @@ public class Parser {
 
     private static Set<TokenType> enumSet(Set<TokenType> base, TokenType... additional) {
         Set<TokenType> result = EnumSet.copyOf(base);
-        for (TokenType tokenType : additional) result.add(tokenType);
+        result.addAll(Arrays.asList(additional));
         return result;
     }
 
@@ -114,7 +111,7 @@ public class Parser {
     private boolean matchCurrentToken(TokenType tokenType) { return currentToken().getTokenType() == tokenType; }
     private boolean matchNextToken(TokenType tokenType) { return lookahead().getTokenType() == tokenType; }
     private boolean currentIs(Set<TokenType> tokenTypes) { return tokenTypes.contains(currentToken().getTokenType()); }
-    private boolean isAtEnd() { return matchCurrentToken(TokenType.SPECIAL_END_OF_FILE); }
+    private boolean isNotAtEnd() { return !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE); }
 
     private void consumeToken() {
         if (currentPosition < tokens.size()) currentPosition++;
@@ -149,7 +146,7 @@ public class Parser {
         reportExpectedTokens(first);
         Set<TokenType> sync = enumSet(first, TokenType.SPECIAL_END_OF_FILE);
         sync.addAll(follow);
-        while (!currentIs(sync) && !isAtEnd()) consumeToken();
+        while (!currentIs(sync) && isNotAtEnd()) consumeToken();
         if (epsilonAllowed && currentIs(follow)) return false;
         return currentIs(first);
     }
@@ -168,7 +165,7 @@ public class Parser {
 
     private CompilationUnit parseCompilationUnit() {
         List<DeclarationAstNode> declarations = new ArrayList<>();
-        while (!isAtEnd()) {
+        while (isNotAtEnd()) {
             if (!skipErrors(FIRST_TOP_LEVEL, EOF, true)) break;
             declarations.add(parseDeclaration());
         }
@@ -198,7 +195,7 @@ public class Parser {
     private List<EnumItem> parseEnumItems() {
         List<EnumItem> items = new ArrayList<>();
         Set<TokenType> first = EnumSet.of(TokenType.ID_IDENTIFIER);
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(first, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             items.add(parseEnumItem());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
@@ -231,7 +228,7 @@ public class Parser {
 
     private List<StructField> parseStructFields() {
         List<StructField> fields = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             fields.add(parseStructField());
         }
@@ -259,7 +256,7 @@ public class Parser {
 
     private List<FunctionParameter> parseFunctionParameters() {
         List<FunctionParameter> parameters = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS) && isNotAtEnd()) {
             if (!skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_PARENTHESIS), true)) break;
             parameters.add(parseFunctionParameter());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
@@ -317,7 +314,7 @@ public class Parser {
     private BlockStatement parseBlock() {
         List<StatementAstNode> statements = new ArrayList<>();
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(FIRST_STATEMENT, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             statements.add(parseStatement());
         }
@@ -409,7 +406,7 @@ public class Parser {
 
     private List<SwitchCase> parseSwitchCases() {
         List<SwitchCase> cases = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(FIRST_CASE, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             cases.add(parseSwitchCase());
         }
@@ -432,7 +429,7 @@ public class Parser {
 
     private List<CaseLabelAstNode> parseCaseLabels() {
         List<CaseLabelAstNode> labels = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SYMBOL_COLON) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_COLON) && isNotAtEnd()) {
             if (!skipErrors(FIRST_CASE_LABEL, EnumSet.of(TokenType.SYMBOL_COLON), true)) break;
             labels.add(parseCaseLabel());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
@@ -518,7 +515,7 @@ public class Parser {
     private ArrayInitExpression parseArrayInitExpression() {
         expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         List<ExpressionAstNode> elements = new ArrayList<>();
-        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && !isAtEnd()) {
+        while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             elements.add(parseVarInitializer());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
