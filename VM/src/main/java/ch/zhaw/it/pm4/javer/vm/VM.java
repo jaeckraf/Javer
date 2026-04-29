@@ -675,6 +675,13 @@ public class VM {
             case PRINTC -> noOperand(parts, instrName, lineNumber, new PrintCharInstruction());
             case PRINTI -> noOperand(parts, instrName, lineNumber, new PrintIntInstruction());
             case PRINTD -> noOperand(parts, instrName, lineNumber, new PrintDoubleInstruction());
+            case DPRINTS -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new PrintDataStringInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
+            case HPRINTS -> noOperand(parts, instrName, lineNumber, new PrintHeapStringInstruction());
         };
     }
 
@@ -912,6 +919,8 @@ public class VM {
             case "PRINTC" -> InstructionKind.PRINTC;
             case "PRINTI" -> InstructionKind.PRINTI;
             case "PRINTD" -> InstructionKind.PRINTD;
+            case "DPRINTS" -> InstructionKind.DPRINTS;
+            case "HPRINTS" -> InstructionKind.HPRINTS;
 
             default -> null;
         };
@@ -1993,6 +2002,46 @@ public class VM {
         }
     }
 
+    private static final class PrintDataStringInstruction extends Instruction {
+        private final String name;
+
+        public PrintDataStringInstruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            byte[] data = vm.getDataObject(name);
+            vm.printNullTerminatedCharString(data, "DPRINTS " + name);
+        }
+    }
+
+    private static final class PrintHeapStringInstruction extends Instruction {
+        @Override
+        public void execute(VM vm) {
+            int ref = vm.popInt();
+            byte[] obj = vm.getHeapObject(ref);
+            vm.printNullTerminatedCharString(obj, "HPRINTS");
+        }
+    }
+
+    private void printNullTerminatedCharString(byte[] bytes, String sourceName) {
+        for (int offset = 0; offset + 1 < bytes.length; offset += 2) {
+            byte low = bytes[offset];
+            byte high = bytes[offset + 1];
+
+            char c = (char) (((high & 0xFF) << 8) | (low & 0xFF));
+
+            if (c == '\0') {
+                return;
+            }
+
+            System.out.print(c);
+        }
+
+        throw new VMExecutionException(sourceName + ": string is not null-terminated");
+    }
+
     private static final class CallInstruction extends Instruction {
         private final String label;
         private final int argBytes;
@@ -2301,7 +2350,7 @@ public class VM {
         JUMP, JUMPT, JUMPF,
         CALL, ENTER,
         RET, RETB, RETC, RETI, RETD,
-        HALT, PRINTB, PRINTC, PRINTI, PRINTD
+        HALT, PRINTB, PRINTC, PRINTI, PRINTD, DPRINTS, HPRINTS
     }
 
     private record PendingJumpCheck(String labelName, int lineNumber) { }
