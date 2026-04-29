@@ -57,7 +57,7 @@ public class DiagnosticBag {
     }
 
     public void add(SourceLocation location, Severity severity, String message) {
-
+        diagnostics.add(new Diagnostic(location, severity, message));
     }
 
     /**

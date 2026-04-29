@@ -86,6 +86,20 @@ public class Parser {
     private static final Set<TokenType> FOLLOW_EXPRESSION = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COLON, TokenType.SYMBOL_RIGHT_PARENTHESIS, TokenType.SYMBOL_RIGHT_BRACKET, TokenType.SYMBOL_RIGHT_BRACE);
     private static final Set<TokenType> FOLLOW_CASE = EnumSet.of(TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SYMBOL_RIGHT_BRACE);
 
+    /**
+     * Synchronisation, wenn ein Pflicht-Token am Statement-Ende fehlt.
+     * FIRST_STATEMENT ist hier absichtlich nicht enthalten, sonst wird z.B. ein String-Literal
+     * innerhalb eines kaputten Statements direkt als neues Statement akzeptiert.
+     */
+    private static final Set<TokenType> FOLLOW_STATEMENT_END = EnumSet.of(
+            TokenType.SYMBOL_SEMICOLON,
+            TokenType.SYMBOL_RIGHT_BRACE,
+            TokenType.KEYWORD_ELSE,
+            TokenType.KEYWORD_CASE,
+            TokenType.KEYWORD_DEFAULT,
+            TokenType.SPECIAL_END_OF_FILE
+    );
+
     private static Set<TokenType> enumSet(Set<TokenType> base, TokenType... additional) {
         Set<TokenType> result = EnumSet.copyOf(base);
         result.addAll(Arrays.asList(additional));
@@ -97,9 +111,7 @@ public class Parser {
         this.diagnosticBag = diagnosticBag;
     }
 
-    public CompilationUnit parse() {
-        return parseCompilationUnit();
-    }
+    public CompilationUnit parse() { return parseCompilationUnit(); }
 
     private Token currentToken() { return peek(0); }
     private Token lookahead() { return peek(1); }
@@ -116,9 +128,7 @@ public class Parser {
     private boolean currentIs(Set<TokenType> tokenTypes) { return tokenTypes.contains(currentToken().getTokenType()); }
     private boolean isNotAtEnd() { return !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE); }
 
-    private void consumeToken() {
-        if (currentPosition < tokens.size()) currentPosition++;
-    }
+    private void consumeToken() { if (currentPosition < tokens.size()) currentPosition++; }
 
     private <T extends AstNode> T located(T node, Token startToken) {
         node.setSourceRange(new SourceRange(startToken.getPosition(), previousToken().getPosition()));
@@ -130,6 +140,18 @@ public class Parser {
         return node;
     }
 
+    /** Terminal-match nach Folienlogik: Fehler melden und falsches Terminal konsumieren. */
+    private boolean match(TokenType expected) {
+        if (matchCurrentToken(expected)) {
+            consumeToken();
+            return true;
+        }
+        reportExpectedToken(expected);
+        if (isNotAtEnd()) consumeToken();
+        return false;
+    }
+
+    /** Wie match(...), aber gibt echten oder synthetischen Token für AST-Werte zurück. */
     private Token expectTokenType(TokenType expected) {
         Token token = currentToken();
         if (token.getTokenType() == expected) {
@@ -137,6 +159,7 @@ public class Parser {
             return token;
         }
         reportExpectedToken(expected);
+        if (isNotAtEnd()) consumeToken();
         return new Token(expected, expected.toString(), token.getPosition());
     }
 
@@ -147,12 +170,11 @@ public class Parser {
             return token;
         }
         reportExpectedTokens(expected);
+        if (isNotAtEnd()) consumeToken();
         TokenType dummy = expected.iterator().next();
         return new Token(dummy, dummy.toString(), token.getPosition());
     }
 
-    // return true  => current token is in FIRST, caller should parse this rule
-    // return false => epsilon/recovery abort, caller should not parse this rule
     private boolean skipErrors(Set<TokenType> first, Set<TokenType> follow, boolean epsilonAllowed) {
         if (currentIs(first)) return true;
         if (epsilonAllowed && currentIs(follow)) return false;
@@ -164,9 +186,26 @@ public class Parser {
         return currentIs(first);
     }
 
-    private void reportExpectedToken(TokenType expected) {
-        reportExpectedTokens(EnumSet.of(expected));
+    private void synchronize(Set<TokenType> sync) {
+        while (!currentIs(sync) && isNotAtEnd()) consumeToken();
     }
+
+    private boolean matchStatementSemicolon() {
+        if (matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) {
+            consumeToken();
+            return true;
+        }
+        reportExpectedToken(TokenType.SYMBOL_SEMICOLON);
+        synchronize(FOLLOW_STATEMENT_END);
+        if (matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) consumeToken();
+        return false;
+    }
+
+    private StatementAstNode dummyStatement(Token startToken) {
+        return located(new BlockStatement(List.of()), startToken);
+    }
+
+    private void reportExpectedToken(TokenType expected) { reportExpectedTokens(EnumSet.of(expected)); }
 
     private void reportExpectedTokens(Set<TokenType> expected) {
         Token current = currentToken();
@@ -183,7 +222,7 @@ public class Parser {
             if (!skipErrors(FIRST_TOP_LEVEL, EOF, true)) break;
             declarations.add(parseDeclaration());
         }
-        expectTokenType(TokenType.SPECIAL_END_OF_FILE);
+        match(TokenType.SPECIAL_END_OF_FILE);
         return located(new CompilationUnit(declarations), startToken);
     }
 
@@ -201,9 +240,9 @@ public class Parser {
     private EnumDeclaration parseEnumDeclaration() {
         Token startToken = expectTokenType(TokenType.TYPE_ENUM);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+        match(TokenType.SYMBOL_LEFT_BRACE);
         List<EnumItem> items = parseEnumItems();
-        expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
+        match(TokenType.SYMBOL_RIGHT_BRACE);
         return located(new EnumDeclaration(name, items), startToken);
     }
 
@@ -214,7 +253,7 @@ public class Parser {
             if (!skipErrors(first, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             items.add(parseEnumItem());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
-            consumeToken();
+            match(TokenType.SYMBOL_COMMA);
             if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE)) break;
         }
         return items;
@@ -224,7 +263,7 @@ public class Parser {
         Token name = expectTokenType(TokenType.ID_IDENTIFIER);
         EnumItem.Builder builder = EnumItem.builder(name.getValue());
         if (matchCurrentToken(TokenType.OPERATOR_ASSIGN)) {
-            consumeToken();
+            match(TokenType.OPERATOR_ASSIGN);
             Token value = expectTokenType(TokenType.LITERAL_INTEGER);
             builder.value(parseInteger(value));
         }
@@ -235,9 +274,9 @@ public class Parser {
     private StructDeclaration parseStructDeclaration() {
         Token startToken = expectTokenType(TokenType.TYPE_STRUCT);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+        match(TokenType.SYMBOL_LEFT_BRACE);
         List<StructField> fields = parseStructFields();
-        expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
+        match(TokenType.SYMBOL_RIGHT_BRACE);
         return located(new StructDeclaration(name, fields), startToken);
     }
 
@@ -254,7 +293,7 @@ public class Parser {
         Token startToken = currentToken();
         TypeAstNode type = parseType();
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        matchStatementSemicolon();
         skipErrors(FOLLOW_STRUCT_FIELD, FOLLOW_STRUCT_FIELD, true);
         return located(new StructField(type, name), startToken);
     }
@@ -263,9 +302,9 @@ public class Parser {
         Token startToken = expectTokenType(TokenType.KEYWORD_FUNCTION);
         TypeAstNode returnType = parseReturnType();
         String functionName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        match(TokenType.SYMBOL_LEFT_PARENTHESIS);
         List<FunctionParameter> parameters = parseFunctionParameters();
-        expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         BlockStatement block = parseBlock();
         return located(new FunctionDeclaration(returnType, functionName, parameters, block), startToken);
     }
@@ -276,7 +315,7 @@ public class Parser {
             if (!skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_PARENTHESIS), true)) break;
             parameters.add(parseFunctionParameter());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
-            consumeToken();
+            match(TokenType.SYMBOL_COMMA);
             if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) break;
         }
         return parameters;
@@ -302,8 +341,8 @@ public class Parser {
         if (!skipErrors(FIRST_TYPE, FOLLOW_TYPE, false)) return located(new PrimitiveType(PrimitiveTypeKind.INVALID), startToken);
         TypeAstNode type = parseTypeHead();
         while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
-            consumeToken();
-            expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
+            match(TokenType.SYMBOL_LEFT_BRACKET);
+            match(TokenType.SYMBOL_RIGHT_BRACKET);
             type = located(new ArrayType(type), startToken);
         }
         return type;
@@ -333,18 +372,18 @@ public class Parser {
     private BlockStatement parseBlock() {
         Token startToken = currentToken();
         List<StatementAstNode> statements = new ArrayList<>();
-        expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+        match(TokenType.SYMBOL_LEFT_BRACE);
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
             if (!skipErrors(FIRST_STATEMENT, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             statements.add(parseStatement());
         }
-        expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
+        match(TokenType.SYMBOL_RIGHT_BRACE);
         return located(new BlockStatement(statements), startToken);
     }
 
     private StatementAstNode parseStatement() {
         Token startToken = currentToken();
-        if (!skipErrors(FIRST_STATEMENT, FOLLOW_STATEMENT, false)) return located(new BlockStatement(List.of()), startToken);
+        if (!skipErrors(FIRST_STATEMENT, FOLLOW_STATEMENT, false)) return dummyStatement(startToken);
         return switch (currentToken().getTokenType()) {
             case SYMBOL_LEFT_BRACE -> parseBlock();
             case KEYWORD_IF -> parseIfStatement();
@@ -359,9 +398,9 @@ public class Parser {
     }
 
     private ExpressionAstNode parseCheck() {
-        expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        match(TokenType.SYMBOL_LEFT_PARENTHESIS);
         ExpressionAstNode expression = parseExpression();
-        expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         return expression;
     }
 
@@ -371,7 +410,7 @@ public class Parser {
         StatementAstNode thenBranch = parseStatement();
         IfStatement.Builder builder = IfStatement.builder(condition, thenBranch);
         if (matchCurrentToken(TokenType.KEYWORD_ELSE)) {
-            consumeToken();
+            match(TokenType.KEYWORD_ELSE);
             builder.elseBranch(parseStatement());
         }
         return located(builder.build(), startToken);
@@ -387,26 +426,26 @@ public class Parser {
     private DoWhileStatement parseDoWhileStatement() {
         Token startToken = expectTokenType(TokenType.KEYWORD_DO);
         BlockStatement block = parseBlock();
-        expectTokenType(TokenType.KEYWORD_WHILE);
-        expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        match(TokenType.KEYWORD_WHILE);
+        match(TokenType.SYMBOL_LEFT_PARENTHESIS);
         ExpressionAstNode condition = parseExpression();
-        expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        matchStatementSemicolon();
         return located(new DoWhileStatement(condition, block), startToken);
     }
 
     private ForStatement parseForStatement() {
         Token startToken = expectTokenType(TokenType.KEYWORD_FOR);
-        expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        match(TokenType.SYMBOL_LEFT_PARENTHESIS);
         ForInit init = null;
         if (!matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) init = parseForInit();
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        match(TokenType.SYMBOL_SEMICOLON);
         ExpressionAstNode condition = null;
         if (!matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) condition = parseExpression();
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        match(TokenType.SYMBOL_SEMICOLON);
         List<ExpressionAstNode> update = new ArrayList<>();
         if (!matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) update = parseExpressionList();
-        expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         StatementAstNode body = parseStatement();
         return located(ForStatement.builder(body).forInit(init).condition(condition).update(update).build(), startToken);
     }
@@ -420,9 +459,9 @@ public class Parser {
     private SwitchStatement parseSwitchStatement() {
         Token startToken = expectTokenType(TokenType.KEYWORD_SWITCH);
         ExpressionAstNode condition = parseCheck();
-        expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
+        match(TokenType.SYMBOL_LEFT_BRACE);
         List<SwitchCase> cases = parseSwitchCases();
-        expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
+        match(TokenType.SYMBOL_RIGHT_BRACE);
         return located(new SwitchStatement(condition, cases), startToken);
     }
 
@@ -438,13 +477,13 @@ public class Parser {
     private SwitchCase parseSwitchCase() {
         if (matchCurrentToken(TokenType.KEYWORD_DEFAULT)) {
             Token startToken = currentToken();
-            consumeToken();
-            expectTokenType(TokenType.SYMBOL_COLON);
+            match(TokenType.KEYWORD_DEFAULT);
+            match(TokenType.SYMBOL_COLON);
             return located(new SwitchCase(true, new ArrayList<>(), parseStatement()), startToken);
         }
         Token startToken = expectTokenType(TokenType.KEYWORD_CASE);
         List<CaseLabelAstNode> labels = parseCaseLabels();
-        expectTokenType(TokenType.SYMBOL_COLON);
+        match(TokenType.SYMBOL_COLON);
         StatementAstNode statement = parseStatement();
         skipErrors(FOLLOW_CASE, FOLLOW_CASE, true);
         return located(new SwitchCase(false, labels, statement), startToken);
@@ -456,7 +495,7 @@ public class Parser {
             if (!skipErrors(FIRST_CASE_LABEL, EnumSet.of(TokenType.SYMBOL_COLON), true)) break;
             labels.add(parseCaseLabel());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
-            consumeToken();
+            match(TokenType.SYMBOL_COMMA);
         }
         return labels;
     }
@@ -474,7 +513,7 @@ public class Parser {
     private EnumCaseLabel parseEnumCaseLabel() {
         Token startToken = currentToken();
         String enumName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        expectTokenType(TokenType.SYMBOL_DOT);
+        match(TokenType.SYMBOL_DOT);
         String valueName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         return located(new EnumCaseLabel(enumName, valueName), startToken);
     }
@@ -487,13 +526,13 @@ public class Parser {
 
     private BreakStatement parseBreakStatement() {
         Token startToken = expectTokenType(TokenType.KEYWORD_BREAK);
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        matchStatementSemicolon();
         return located(new BreakStatement(), startToken);
     }
 
     private ContinueStatement parseContinueStatement() {
         Token startToken = expectTokenType(TokenType.KEYWORD_CONTINUE);
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        matchStatementSemicolon();
         return located(new ContinueStatement(), startToken);
     }
 
@@ -504,13 +543,11 @@ public class Parser {
             return located(ReturnStatement.builder().build(), startToken);
         }
         ExpressionAstNode expression = parseExpression();
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        matchStatementSemicolon();
         return located(ReturnStatement.builder(expression).build(), startToken);
     }
 
-    private VarDeclarationStatement parseVarDeclarationStatement() {
-        return parseVarDeclarationStatement(true);
-    }
+    private VarDeclarationStatement parseVarDeclarationStatement() { return parseVarDeclarationStatement(true); }
 
     private VarDeclarationStatement parseVarDeclarationStatement(boolean expectSemicolon) {
         Token startToken = expectTokenType(TokenType.KEYWORD_LET);
@@ -518,16 +555,17 @@ public class Parser {
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         VarDeclarationStatement.Builder builder = VarDeclarationStatement.builder(type, name);
         if (matchCurrentToken(TokenType.OPERATOR_ASSIGN)) {
-            consumeToken();
+            match(TokenType.OPERATOR_ASSIGN);
             builder.initializer(parseVarInitializer());
         }
-        if (expectSemicolon) expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        if (expectSemicolon) matchStatementSemicolon();
         return located(builder.build(), startToken);
     }
 
     private StatementAstNode parseExpressionStatement() {
+        Token startToken = currentToken();
         ExpressionAstNode expression = parseExpression();
-        expectTokenType(TokenType.SYMBOL_SEMICOLON);
+        if (!matchStatementSemicolon()) return dummyStatement(startToken);
         return expression;
     }
 
@@ -544,9 +582,9 @@ public class Parser {
             if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
             elements.add(parseVarInitializer());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
-            consumeToken();
+            match(TokenType.SYMBOL_COMMA);
         }
-        expectTokenType(TokenType.SYMBOL_RIGHT_BRACE);
+        match(TokenType.SYMBOL_RIGHT_BRACE);
         return located(new ArrayInitExpression(elements), startToken);
     }
 
@@ -554,7 +592,7 @@ public class Parser {
         List<ExpressionAstNode> expressions = new ArrayList<>();
         expressions.add(parseExpression());
         while (matchCurrentToken(TokenType.SYMBOL_COMMA)) {
-            consumeToken();
+            match(TokenType.SYMBOL_COMMA);
             expressions.add(parseExpression());
         }
         return expressions;
@@ -588,9 +626,9 @@ public class Parser {
     private ExpressionAstNode parseConditional() {
         ExpressionAstNode condition = parseLogicalOr();
         if (matchCurrentToken(TokenType.SYMBOL_QUESTION_MARK)) {
-            consumeToken();
+            match(TokenType.SYMBOL_QUESTION_MARK);
             ExpressionAstNode whenTrue = parseExpression();
-            expectTokenType(TokenType.SYMBOL_COLON);
+            match(TokenType.SYMBOL_COLON);
             ExpressionAstNode whenFalse = parseConditional();
             return located(ConditionalExpression.builder(condition).whenTrue(whenTrue).whenFalse(whenFalse).build(), condition.getSourceRange().start());
         }
@@ -639,13 +677,9 @@ public class Parser {
     private ExpressionAstNode parsePostfixExpression() {
         ExpressionAstNode expression = parsePrimaryExpression();
         while (true) {
-            if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
-                expression = parseIndexExpression(expression);
-            } else if (matchCurrentToken(TokenType.SYMBOL_DOT)) {
-                expression = parseMemberAccessExpression(expression);
-            } else {
-                break;
-            }
+            if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) expression = parseIndexExpression(expression);
+            else if (matchCurrentToken(TokenType.SYMBOL_DOT)) expression = parseMemberAccessExpression(expression);
+            else break;
         }
         if (matchCurrentToken(TokenType.OPERATOR_INCREMENT) || matchCurrentToken(TokenType.OPERATOR_DECREMENT)) {
             Token operator = currentToken();
@@ -659,9 +693,9 @@ public class Parser {
         if (!skipErrors(EnumSet.of(TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.KEYWORD_CALL, TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING), FOLLOW_EXPRESSION, false)) return errorExpression();
         return switch (currentToken().getTokenType()) {
             case SYMBOL_LEFT_PARENTHESIS -> {
-                consumeToken();
+                match(TokenType.SYMBOL_LEFT_PARENTHESIS);
                 ExpressionAstNode expression = parseExpression();
-                expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+                match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
                 yield expression;
             }
             case KEYWORD_CALL -> parseCallExpression();
@@ -674,9 +708,9 @@ public class Parser {
     private ExpressionAstNode parseCallExpression() {
         Token startToken = expectTokenType(TokenType.KEYWORD_CALL);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
-        expectTokenType(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        match(TokenType.SYMBOL_LEFT_PARENTHESIS);
         List<ExpressionAstNode> arguments = parseOptionalExpressionList();
-        expectTokenType(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
         return located(new CallExpression(name, arguments), startToken);
     }
 
@@ -687,15 +721,15 @@ public class Parser {
 
     private IndexExpression parseIndexExpression(ExpressionAstNode target) {
         SourceLocation startLocation = target.getSourceRange().start();
-        expectTokenType(TokenType.SYMBOL_LEFT_BRACKET);
+        match(TokenType.SYMBOL_LEFT_BRACKET);
         ExpressionAstNode index = parseExpression();
-        expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
+        match(TokenType.SYMBOL_RIGHT_BRACKET);
         return located(new IndexExpression(target, index), startLocation);
     }
 
     private MemberAccessExpression parseMemberAccessExpression(ExpressionAstNode target) {
         SourceLocation startLocation = target.getSourceRange().start();
-        expectTokenType(TokenType.SYMBOL_DOT);
+        match(TokenType.SYMBOL_DOT);
         String memberName = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         return located(new MemberAccessExpression(target, memberName), startLocation);
     }
@@ -712,9 +746,9 @@ public class Parser {
     private List<ExpressionAstNode> parseNewArrayDimensions() {
         List<ExpressionAstNode> dimensions = new ArrayList<>();
         while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
-            consumeToken();
+            match(TokenType.SYMBOL_LEFT_BRACKET);
             dimensions.add(parseExpression());
-            expectTokenType(TokenType.SYMBOL_RIGHT_BRACKET);
+            match(TokenType.SYMBOL_RIGHT_BRACKET);
         }
         return dimensions;
     }
