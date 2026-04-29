@@ -1,11 +1,4 @@
-fn void f() {
-	call printf("Hello world\n");
-}
-
-fn void printf(string s, int size) {
-	
-	for(let int i = 0; i < size; i++){
-		call printc();
-	}
-	
+fn void main() {
+	call prints("Hello world");
+	return;
 }

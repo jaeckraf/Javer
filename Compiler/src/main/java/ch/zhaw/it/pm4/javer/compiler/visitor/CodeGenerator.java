@@ -19,11 +19,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
+    private final List<DataSection> dataSections = new ArrayList<>();
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -74,7 +77,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
-        super.visit(node);
+        writeLine(".code");
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            declaration.accept(this);
+        }
+        writeLine("");
+        writeLine(".data");
+        dataSections.forEach(dataSection -> writeLine(dataSection.toString()));
     }
 
     @Override
@@ -89,7 +98,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(FunctionDeclaration node) {
-        super.visit(node);
+        writeLine("_" + node.getName() + ":");
+        writeLine("ENTER, 0");
+        node.getBody().accept(this);
     }
 
     @Override
@@ -109,7 +120,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BlockStatement node) {
-        super.visit(node);
+        node.getStatements().forEach(statement -> statement.accept(this));
     }
 
     @Override
@@ -154,7 +165,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(ReturnStatement node) {
-        super.visit(node);
+        writeLine("RET");
     }
 
     @Override
@@ -189,7 +200,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CallExpression node) {
-        super.visit(node);
+        if(node.getFunctionName().equalsIgnoreCase("prints")) {
+            node.getArguments().getFirst().accept(this);
+            writeLine("DPRINTS, " + "msg");
+        }
     }
 
     @Override
@@ -219,7 +233,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(LiteralExpression<?> node) {
-        super.visit(node);
+        if(node.getKind() == LiteralKind.STRING) {
+            List<String> values = new ArrayList<>();
+            String value = (String) node.getValue();
+            for(char c : value.toCharArray()) {
+                values.add(String.format("%04X", (int) c));
+            }
+            values.add(String.format("%04X", 0));
+            dataSections.add(new DataSection("msg", "2", values));
+        }
     }
 
     @Override
@@ -261,5 +283,29 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(ForInitExpressionList node) {
         super.visit(node);
     }
+
+    private static final class DataSection {
+        private final String name;
+        private final String size;
+        private final List<String> values;
+
+        public DataSection(String name, String size, List<String> values) {
+            this.name = name;
+            this.size = size;
+            this.values = values;
+
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder builder = new StringBuilder();
+            for (String value : values) {
+                builder.append(value).append(',');
+            }
+            if (values.size() == 1) builder.deleteCharAt(builder.length() - 1);
+            return String.format("%s %s %s", name, size, builder);
+        }
+    }
+
 
 }
