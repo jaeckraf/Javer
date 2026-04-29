@@ -1,11 +1,13 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class VarDeclarationStatement implements StatementAstNode {
+public final class VarDeclarationStatement extends AstNodeBase implements StatementAstNode {
 
     private final TypeAstNode type;
     private final String name;
@@ -41,8 +43,20 @@ public final class VarDeclarationStatement implements StatementAstNode {
         }
     }
 
+    public TypeAstNode getType() {
+        return type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public ExpressionAstNode getInitializer() {
+        return initializer;
+    }
+
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }

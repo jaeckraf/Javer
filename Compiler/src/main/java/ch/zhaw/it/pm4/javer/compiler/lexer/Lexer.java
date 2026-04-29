@@ -47,6 +47,7 @@ public class Lexer {
             Map.entry("default", TokenType.KEYWORD_DEFAULT),
             Map.entry("let", TokenType.KEYWORD_LET),
             Map.entry("call", TokenType.KEYWORD_CALL),
+            Map.entry("new", TokenType.KEYWORD_NEW),
             // Types
             Map.entry("struct", TokenType.TYPE_STRUCT),
             Map.entry("int", TokenType.TYPE_INTEGER),

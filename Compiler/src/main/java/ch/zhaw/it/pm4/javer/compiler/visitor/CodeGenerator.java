@@ -1,214 +1,306 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
-/* TODO change generic/return type */
-public class CodeGenerator extends AstNodeVisitorBase<Void> {
-    @Override
-    public Void visit(CompilationUnit node) {
-        return null;
+public class CodeGenerator extends AstNodeVisitorBase {
+
+    private BufferedWriter writer;
+    private final List<DataSection> dataSections = new ArrayList<>();
+
+    public void generate(CompilationUnit node, String outputFilePath) {
+        Path outputFile = Path.of(outputFilePath);
+        prepareOutputDirectory(outputFile);
+
+        try (BufferedWriter outputWriter = Files.newBufferedWriter(
+                outputFile,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.WRITE)) {
+
+            writer = outputWriter;
+            node.accept(this);
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Could not write generated code to " + outputFile, exception);
+        } finally {
+            writer = null;
+        }
+    }
+
+    protected void writeLine(String line) {
+        try {
+            writer.write(line);
+            writer.newLine();
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Could not write generated code.", exception);
+        }
+    }
+
+    private void prepareOutputDirectory(Path outputFile) {
+        Path parent = outputFile.toAbsolutePath().getParent();
+        if (parent == null) {
+            return;
+        }
+
+        try {
+            Files.createDirectories(parent);
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Could not create output directory " + parent, exception);
+        }
     }
 
     @Override
-    public Void visit(EnumDeclaration node) {
-        return null;
+    protected void visitDefault(AstNode node) {
+        super.visitDefault(node);
     }
 
     @Override
-    public Void visit(EnumItem node) {
-        return null;
+    public void visit(CompilationUnit node) {
+        writeLine(".code");
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            declaration.accept(this);
+        }
+        writeLine("");
+        writeLine(".data");
+        dataSections.forEach(dataSection -> writeLine(dataSection.toString()));
     }
 
     @Override
-    public Void visit(FunctionDeclaration node) {
-        return null;
+    public void visit(EnumDeclaration node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(FunctionParameter node) {
-        return null;
+    public void visit(EnumItem node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(StructDeclaration node) {
-        return null;
+    public void visit(FunctionDeclaration node) {
+        writeLine("_" + node.getName() + ":");
+        writeLine("ENTER, 0");
+        node.getBody().accept(this);
     }
 
     @Override
-    public Void visit(StructField node) {
-        return null;
+    public void visit(FunctionParameter node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(BlockStatement node) {
-        return null;
+    public void visit(StructDeclaration node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(IfStatement node) {
-        return null;
+    public void visit(StructField node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(WhileStatement node) {
-        return null;
+    public void visit(BlockStatement node) {
+        node.getStatements().forEach(statement -> statement.accept(this));
     }
 
     @Override
-    public Void visit(DoWhileStatement node) {
-        return null;
+    public void visit(IfStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(ForStatement node) {
-        return null;
+    public void visit(WhileStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(SwitchStatement node) {
-        return null;
+    public void visit(DoWhileStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(SwitchCase node) {
-        return null;
+    public void visit(ForStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(BreakStatement node) {
-        return null;
+    public void visit(SwitchStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(ContinueStatement node) {
-        return null;
+    public void visit(SwitchCase node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(ReturnStatement node) {
-        return null;
+    public void visit(BreakStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(VarDeclarationStatement node) {
-        return null;
+    public void visit(ContinueStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(AssignExpression node) {
-        return null;
+    public void visit(ReturnStatement node) {
+        writeLine("RET");
     }
 
     @Override
-    public Void visit(ConditionalExpression node) {
-        return null;
+    public void visit(VarDeclarationStatement node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(BinaryExpression node) {
-        return null;
+    public void visit(AssignExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(UnaryExpression node) {
-        return null;
+    public void visit(ConditionalExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(PostfixExpression node) {
-        return null;
+    public void visit(BinaryExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(CallExpression node) {
-        return null;
+    public void visit(UnaryExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(IndexExpression node) {
-        return null;
+    public void visit(PostfixExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(MemberAccessExpression node) {
-        return null;
+    public void visit(CallExpression node) {
+        if(node.getFunctionName().equalsIgnoreCase("prints")) {
+            node.getArguments().getFirst().accept(this);
+            writeLine("DPRINTS, " + "msg");
+        }
     }
 
     @Override
-    public Void visit(NewExpression node) {
-        return null;
+    public void visit(IndexExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(ArrayInitExpression node) {
-        return null;
+    public void visit(MemberAccessExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(NameExpression node) {
-        return null;
+    public void visit(NewExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(LiteralExpression<?> node) {
-        return null;
+    public void visit(ArrayInitExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(LiteralCaseLabel node) {
-        return null;
+    public void visit(NameExpression node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(EnumCaseLabel node) {
-        return null;
+    public void visit(LiteralExpression<?> node) {
+        if(node.getKind() == LiteralKind.STRING) {
+            List<String> values = new ArrayList<>();
+            String value = (String) node.getValue();
+            for(char c : value.toCharArray()) {
+                values.add(String.format("%04X", (int) c));
+            }
+            values.add(String.format("%04X", 0));
+            dataSections.add(new DataSection("msg", "2", values));
+        }
     }
 
     @Override
-    public Void visit(ArrayType node) {
-        return null;
+    public void visit(LiteralCaseLabel node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(NamedType node) {
-        return null;
+    public void visit(EnumCaseLabel node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(PrimitiveType node) {
-        return null;
+    public void visit(ArrayType node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(VoidType node) {
-        return null;
+    public void visit(NamedType node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(ForInitVarDeclaration node) {
-        return null;
+    public void visit(PrimitiveType node) {
+        super.visit(node);
     }
 
     @Override
-    public Void visit(ForInitExpressionList node) {
-        return null;
+    public void visit(VoidType node) {
+        super.visit(node);
     }
+
+    @Override
+    public void visit(ForInitVarDeclaration node) {
+        super.visit(node);
+    }
+
+    @Override
+    public void visit(ForInitExpressionList node) {
+        super.visit(node);
+    }
+
+    private static final class DataSection {
+        private final String name;
+        private final String size;
+        private final List<String> values;
+
+        public DataSection(String name, String size, List<String> values) {
+            this.name = name;
+            this.size = size;
+            this.values = values;
+
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s %s %s", name, size, String.join(",", values));
+        }
+    }
+
+
 }

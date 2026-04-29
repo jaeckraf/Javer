@@ -1,10 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class MemberAccessExpression implements ExpressionAstNode {
+public final class MemberAccessExpression extends AstNodeBase implements ExpressionAstNode {
 
     private final ExpressionAstNode target;
     private final String memberName;
@@ -14,8 +16,16 @@ public final class MemberAccessExpression implements ExpressionAstNode {
         this.memberName = memberName;
     }
 
+    public ExpressionAstNode getTarget() {
+        return target;
+    }
+
+    public String getMemberName() {
+        return memberName;
+    }
+
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }

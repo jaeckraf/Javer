@@ -1,12 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
 import java.util.List;
 
+import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class ForStatement implements StatementAstNode {
+public final class ForStatement extends AstNodeBase implements StatementAstNode {
 
     private final ForInit forInit;
     private final ExpressionAstNode condition;
@@ -54,8 +56,24 @@ public final class ForStatement implements StatementAstNode {
         }
     }
 
+    public StatementAstNode getBody() {
+        return body;
+    }
+
+    public ForInit getForInit() {
+        return forInit;
+    }
+
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public List<ExpressionAstNode> getUpdate() {
+        return update;
+    }
+
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }

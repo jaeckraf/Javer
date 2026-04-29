@@ -1,146 +1,205 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 
-import java.util.Optional;
+public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
-@JacocoGenerated("Dummy class, remove when implemented.")
-public abstract class AstNodeVisitorBase<T> implements AstNodeVisitor<T> {
-
-    protected Optional<T> visitDefault(AstNode node) {
-        return Optional.empty();
+    protected void visitDefault(AstNode node) {
     }
 
     @Override
-    abstract public T visit(CompilationUnit node);
+    public void visit(CompilationUnit node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(EnumDeclaration node);
+    public void visit(EnumDeclaration node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(EnumItem node);
+    public void visit(EnumItem node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(FunctionDeclaration node);
+    public void visit(FunctionDeclaration node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(FunctionParameter node);
+    public void visit(FunctionParameter node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(StructDeclaration node);
+    public void visit(StructDeclaration node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(StructField node);
+    public void visit(StructField node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(BlockStatement node);
+    public void visit(BlockStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(IfStatement node);
+    public void visit(IfStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(WhileStatement node);
+    public void visit(WhileStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(DoWhileStatement node);
+    public void visit(DoWhileStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ForStatement node);
+    public void visit(ForStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(SwitchStatement node);
+    public void visit(SwitchStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(SwitchCase node);
+    public void visit(SwitchCase node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(BreakStatement node);
+    public void visit(BreakStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ContinueStatement node);
+    public void visit(ContinueStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ReturnStatement node);
+    public void visit(ReturnStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(VarDeclarationStatement node);
+    public void visit(VarDeclarationStatement node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(AssignExpression node);
+    public void visit(AssignExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ConditionalExpression node);
+    public void visit(ConditionalExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(BinaryExpression node);
+    public void visit(BinaryExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(UnaryExpression node);
+    public void visit(UnaryExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(PostfixExpression node);
+    public void visit(PostfixExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(CallExpression node);
+    public void visit(CallExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(IndexExpression node);
+    public void visit(IndexExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(MemberAccessExpression node);
+    public void visit(MemberAccessExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(NewExpression node);
+    public void visit(NewExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ArrayInitExpression node);
+    public void visit(ArrayInitExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(NameExpression node);
+    public void visit(NameExpression node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(LiteralExpression<?> node);
+    public void visit(LiteralExpression<?> node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(LiteralCaseLabel node);
+    public void visit(LiteralCaseLabel node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(EnumCaseLabel node);
+    public void visit(EnumCaseLabel node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ArrayType node);
+    public void visit(ArrayType node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(NamedType node);
+    public void visit(NamedType node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(PrimitiveType node);
+    public void visit(PrimitiveType node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(VoidType node);
+    public void visit(VoidType node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ForInitVarDeclaration node);
+    public void visit(ForInitVarDeclaration node) {
+        visitDefault(node);
+    }
 
     @Override
-    abstract public T visit(ForInitExpressionList node);
+    public void visit(ForInitExpressionList node) {
+        visitDefault(node);
+    }
 }

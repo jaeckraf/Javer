@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
@@ -8,7 +10,7 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class SwitchCase implements AstNode {
+public final class SwitchCase extends AstNodeBase implements AstNode {
 
     private final boolean isDefault;
     private final List<CaseLabelAstNode> caseLabels;
@@ -20,8 +22,20 @@ public final class SwitchCase implements AstNode {
         this.statement = statement;
     }
 
+    public boolean isDefault() {
+        return isDefault;
+    }
+
+    public List<CaseLabelAstNode> getCaseLabels() {
+        return caseLabels;
+    }
+
+    public StatementAstNode getStatement() {
+        return statement;
+    }
+
     @Override
-    public <T> T accept(AstNodeVisitor<T> visitor) {
-        return visitor.visit(this);
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 }
