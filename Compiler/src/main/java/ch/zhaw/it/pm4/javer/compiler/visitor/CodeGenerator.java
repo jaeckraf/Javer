@@ -298,12 +298,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
         @Override
         public String toString() {
-            StringBuilder builder = new StringBuilder();
-            for (String value : values) {
-                builder.append(value).append(',');
-            }
-            if (values.size() == 1) builder.deleteCharAt(builder.length() - 1);
-            return String.format("%s %s %s", name, size, builder);
+            return String.format("%s %s %s", name, size, String.join(",", values));
         }
     }
 

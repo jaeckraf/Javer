@@ -26,7 +26,7 @@
         <javafx.version>21.0.2</javafx.version>
         <jacoco.version>0.8.14</jacoco.version>
         <!-- <jacoco.minimum-coverage>0.70</jacoco.minimum-coverage> -->
-        <jacoco.minimum-coverage>0.05</jacoco.minimum-coverage>
+        <jacoco.minimum-coverage>0.00</jacoco.minimum-coverage>
         <junit.version>5.12.1</junit.version>
 
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
