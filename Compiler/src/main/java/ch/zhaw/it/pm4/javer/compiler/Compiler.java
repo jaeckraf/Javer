@@ -47,8 +47,7 @@ public class Compiler {
         try {
             CompilerOptions options = CompilerOptions.create(args);
             configureLogging(options);
-            Compiler compiler = new Compiler(options);
-            compiler.compile();
+            new Compiler(options).compile();
         } catch (IllegalArgumentException exception) {
             System.err.println(exception.getMessage());
             System.exit(2);
