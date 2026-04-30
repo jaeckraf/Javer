@@ -471,6 +471,19 @@ class LexerTest {
     }
 
     @Test
+    @DisplayName("Simple function declaration with return type lexes into the expected token sequence")
+    void simpleFunctionDeclaration() {
+        assertTypes("fn void main() {}",
+                TokenType.KEYWORD_FUNCTION,
+                TokenType.TYPE_VOID,
+                TokenType.ID_IDENTIFIER,
+                TokenType.SYMBOL_LEFT_PARENTHESIS,
+                TokenType.SYMBOL_RIGHT_PARENTHESIS,
+                TokenType.SYMBOL_LEFT_BRACE,
+                TokenType.SYMBOL_RIGHT_BRACE);
+    }
+
+    @Test
     @DisplayName("SourceLocation uses 1-indexed, inclusive start/end columns on a single line")
     void sourceLocationColumnsAreInclusiveAndOneBased() {
         // "ab cd" -> "ab" at columns 1..2, space at 3, "cd" at columns 4..5

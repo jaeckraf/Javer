@@ -1,0 +1,4 @@
+fn void main() {
+	call prints("Hello world");
+	return;
+}

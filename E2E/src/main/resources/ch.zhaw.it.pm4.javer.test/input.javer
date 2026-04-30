@@ -1,0 +1,88 @@
+// Example Javer code
+
+// Enum declaration
+enum Color {
+    RED = 1,
+    GREEN,
+    BLUE
+}
+
+// Struct declaration
+struct Point {
+    int x;
+    int y;
+}
+
+// Function declaration with return type
+fn add(int a, int b) int {
+    return a + b;
+}
+
+// Function declaration with void return type
+fn printMessage(string message) void {
+    call println(message);
+}
+
+// Main function
+fn main() void {
+    // Variable declarations
+    let int a = 10;
+    let int b = 20;
+    let int result = add(a, b);
+
+    // Struct initialization
+    let struct Point p = new Point;
+    p.x = 5;
+    p.y = 10;
+
+    // Enum usage
+    let enum Color favoriteColor = Color.RED;
+
+    // If-else statement
+    if (result > 15) {
+        call println("Result is greater than 15");
+    } else {
+        call println("Result is 15 or less");
+    }
+
+    // While loop
+    let int counter = 0;
+    while (counter < 5) {
+        call println(counter);
+        counter++;
+    }
+
+    // Do-while loop
+    do {
+        call println("This will run at least once");
+    } while (false);
+
+    // For loop
+    for (let int i = 0; i < 3; i++) {
+        call println(i);
+    }
+
+    // Switch statement
+    switch (favoriteColor) {
+        case Color.RED:
+            call println("Favorite color is red");
+            break;
+        case Color.GREEN:
+            call println("Favorite color is green");
+            break;
+        default:
+            call println("Favorite color is unknown");
+    }
+
+    // Array initialization
+    let int[] numbers = {1, 2, 3, 4, 5};
+
+    // Accessing array elements
+    let int firstNumber = numbers[0];
+
+    // Logical operations
+    let bool isEven = (firstNumber % 2 == 0) and true;
+
+    // Function call
+    printMessage("End of program");
+}

@@ -34,6 +34,7 @@ public enum TokenType {
     KEYWORD_DEFAULT,
     KEYWORD_LET,
     KEYWORD_CALL,
+    KEYWORD_NEW,
 
     //Types and Return types
     TYPE_STRUCT,
