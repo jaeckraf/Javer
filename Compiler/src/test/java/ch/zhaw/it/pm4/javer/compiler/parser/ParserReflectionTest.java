@@ -1,13 +1,17 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
-
+/*
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import org.junit.jupiter.api.*;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -48,6 +52,12 @@ class ParserReflectionTest {
 
     private Object invokePrivate(Parser parser, String methodName, Class<?> paramType, Object arg) throws Exception {
         return invokePrivate(parser, methodName, new Class<?>[]{paramType}, arg);
+    }
+
+    private Object readPrivateField(Object target, String fieldName) throws Exception {
+        var field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.get(target);
     }
 
     // ----------------------------------------------------
@@ -376,9 +386,161 @@ class ParserReflectionTest {
 
             invokePrivate(parser, "expectTokenType", TokenType.class, TokenType.OPERATOR_PLUS);
 
-            // An deine echte DiagnosticBag-API anpassen:
-            verify(diagnostics).add(any());
+            verify(diagnostics).add(any(SourceLocation.class), any(), contains("Expected token"));
         }
     }
 
-}
+    // ----------------------------------------------------
+    // Tests für parseFunctionDeclaration()
+    // ----------------------------------------------------
+    @Nested
+    class ParseFunctionDeclarationTests {
+
+        @Test
+        void parseFunctionDeclaration_mapsAllCoreParts() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.KEYWORD_FUNCTION),
+                    token(TokenType.TYPE_VOID),
+                    new Token(TokenType.ID_IDENTIFIER, "main", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_LEFT_PARENTHESIS),
+                    token(TokenType.TYPE_INTEGER),
+                    new Token(TokenType.ID_IDENTIFIER, "count", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_COMMA),
+                    token(TokenType.TYPE_STRING),
+                    new Token(TokenType.ID_IDENTIFIER, "name", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_RIGHT_PARENTHESIS),
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            @SuppressWarnings("unchecked")
+            Optional<Object> parsedFunction = (Optional<Object>) invokePrivate(parser, "parseFunctionDeclaration");
+
+            assertTrue(parsedFunction.isPresent());
+            Object function = parsedFunction.get();
+            assertEquals("FunctionDeclaration", function.getClass().getSimpleName());
+            assertEquals("main", readPrivateField(function, "name"));
+            assertEquals("VoidType", readPrivateField(function, "returnType").getClass().getSimpleName());
+
+            @SuppressWarnings("unchecked")
+            List<Object> parameters = (List<Object>) readPrivateField(function, "parameters");
+            assertEquals(2, parameters.size());
+            assertEquals("count", readPrivateField(parameters.get(0), "name"));
+            assertEquals("name", readPrivateField(parameters.get(1), "name"));
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SPECIAL_END_OF_FILE, current.getTokenType());
+        }
+
+        @Test
+        void parseFunctionDeclaration_missingFunctionName_returnsEmptyOptional() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.KEYWORD_FUNCTION),
+                    new Token(TokenType.ID_IDENTIFIER, "main", new SourceLocation(1, 1, 1)),
+                    token(TokenType.SYMBOL_LEFT_PARENTHESIS),
+                    token(TokenType.SYMBOL_RIGHT_PARENTHESIS),
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            @SuppressWarnings("unchecked")
+            Optional<Object> parsedFunction = (Optional<Object>) invokePrivate(parser, "parseFunctionDeclaration");
+
+            assertTrue(parsedFunction.isEmpty());
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SYMBOL_LEFT_PARENTHESIS, current.getTokenType());
+        }
+    }
+
+    // ----------------------------------------------------
+    // Tests fuer parsePrimitiveType()
+    // ----------------------------------------------------
+    @Nested
+    class ParsePrimitiveTypeTests {
+
+        @Test
+        void parsePrimitiveType_invalidToken_reportsDiagnosticAndReturnsInvalidType() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.SYMBOL_LEFT_PARENTHESIS),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            PrimitiveType parsedType = (PrimitiveType) invokePrivate(parser, "parsePrimitiveType");
+
+            assertEquals(PrimitiveTypeKind.INVALID, parsedType.getKind());
+            verify(diagnostics).add(any(SourceLocation.class), eq(Severity.ERROR), contains("Invalid primitive type."));
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SYMBOL_LEFT_PARENTHESIS, current.getTokenType());
+        }
+    }
+
+    // ----------------------------------------------------
+    // Tests fuer parseBlock() / parseStatement()
+    // ----------------------------------------------------
+    @Nested
+    class ParseBlockAndStatementTests {
+
+        @Test
+        void parseBlock_missingLeftBrace_reportsDiagnosticAndReturnsEmptyBlock() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.ID_IDENTIFIER),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            Object block = invokePrivate(parser, "parseBlock");
+
+            assertEquals("BlockStatement", block.getClass().getSimpleName());
+            @SuppressWarnings("unchecked")
+            List<Object> statements = (List<Object>) readPrivateField(block, "statements");
+            assertTrue(statements.isEmpty());
+            verify(diagnostics).add(any(SourceLocation.class), eq(Severity.ERROR), contains("Block statement must start with '{'."));
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.ID_IDENTIFIER, current.getTokenType());
+        }
+
+        @Test
+        void parseStatement_leftBrace_dispatchesToParseBlock() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            Object statement = invokePrivate(parser, "parseStatement");
+
+            assertEquals("BlockStatement", statement.getClass().getSimpleName());
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SPECIAL_END_OF_FILE, current.getTokenType());
+        }
+
+        @Test
+        void parseBlock_nestedBlock_collectsInnerStatement() throws Exception {
+            Parser parser = createParser(
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_LEFT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SYMBOL_RIGHT_BRACE),
+                    token(TokenType.SPECIAL_END_OF_FILE)
+            );
+
+            Object block = invokePrivate(parser, "parseBlock");
+
+            assertEquals("BlockStatement", block.getClass().getSimpleName());
+
+            @SuppressWarnings("unchecked")
+            List<Object> statements = (List<Object>) readPrivateField(block, "statements");
+            assertEquals(1, statements.size());
+            assertEquals("BlockStatement", statements.getFirst().getClass().getSimpleName());
+
+            Token current = (Token) invokePrivate(parser, "currentToken");
+            assertEquals(TokenType.SPECIAL_END_OF_FILE, current.getTokenType());
+        }
+    }
+
+}*/

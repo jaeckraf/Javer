@@ -16,12 +16,16 @@ import java.util.List;
 
 public class GuiController {
 
-    private static final Path CONSOLE_INPUT_FILE = Path.of("console-input.txt");
-    private static final Path VM_INPUT_FILE = Path.of("vm-input.txt");
+    private static final String CONSOLE_INPUT_FILE_NAME = "console-input.javer";
+    private static final String VM_INPUT_FILE_NAME = "vm-input.jbc";
 
     // Packaged release layout inside Application app image
     private static final Path RELEASE_COMPILER_EXE = Path.of("app", "tools", "Compiler", "javer-compiler.exe");
     private static final Path RELEASE_VM_EXE = Path.of("app", "tools", "VM", "javer-vm.exe");
+
+    private final Path runtimeDirectory = resolveRuntimeDirectory();
+    private final Path consoleInputFile = runtimeDirectory.resolve(CONSOLE_INPUT_FILE_NAME);
+    private final Path vmInputFile = runtimeDirectory.resolve(VM_INPUT_FILE_NAME);
 
     private ManagedProcessRunner compilerRunner;
     private ManagedProcessRunner vmRunner;
@@ -59,6 +63,7 @@ public class GuiController {
 
         JaverLogger.info("GUI initialized");
         JaverLogger.info("Working directory: " + Path.of("").toAbsolutePath().normalize());
+        JaverLogger.info("Runtime file directory: " + runtimeDirectory);
 
         compilerRunner = new ManagedProcessRunner(
                 "Compiler",
@@ -87,7 +92,7 @@ public class GuiController {
         compilerOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        createOrClearFile(VM_INPUT_FILE, "VM input file");
+        createOrClearFile(vmInputFile, "VM input file");
 
         List<String> command = buildCompilerCommand(inputPath);
         if (command == null) {
@@ -110,7 +115,6 @@ public class GuiController {
         }
 
         virtualMachineOutput.clear();
-        createOrClearFile(VM_INPUT_FILE, "VM input file");
 
         List<String> command = buildVmCommand();
         if (command == null) {
@@ -147,7 +151,7 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        createOrClearFile(VM_INPUT_FILE, "VM input file");
+        createOrClearFile(vmInputFile, "VM input file");
 
         List<String> compilerCommand = buildCompilerCommand(inputPath);
         List<String> vmCommand = buildVmCommand();
@@ -187,7 +191,7 @@ public class GuiController {
             return List.of(
                     compilerExe.toString(),
                     inputPath,
-                    VM_INPUT_FILE.toAbsolutePath().toString()
+                    vmInputFile.toAbsolutePath().toString()
             );
         }
 
@@ -202,7 +206,7 @@ public class GuiController {
                 "-jar",
                 compilerJar.toString(),
                 inputPath,
-                VM_INPUT_FILE.toAbsolutePath().toString()
+                vmInputFile.toAbsolutePath().toString()
         );
     }
 
@@ -211,7 +215,7 @@ public class GuiController {
         if (vmExe != null) {
             return List.of(
                     vmExe.toString(),
-                    VM_INPUT_FILE.toAbsolutePath().toString()
+                    vmInputFile.toAbsolutePath().toString()
             );
         }
 
@@ -225,7 +229,7 @@ public class GuiController {
                 "java",
                 "-jar",
                 vmJar.toString(),
-                VM_INPUT_FILE.toAbsolutePath().toString()
+                vmInputFile.toAbsolutePath().toString()
         );
     }
 
@@ -246,22 +250,26 @@ public class GuiController {
 
         try {
             Files.writeString(
-                    CONSOLE_INPUT_FILE,
+                    consoleInputFile,
                     content,
                     StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
-            JaverLogger.error("Created source input file: " + CONSOLE_INPUT_FILE.toAbsolutePath() + "\n");
+            JaverLogger.error("Created source input file: " + consoleInputFile.toAbsolutePath() + "\n");
         } catch (IOException exception) {
             JaverLogger.error("Failed to write source input file: " + exception.getMessage() + "\n");
         }
 
-        return CONSOLE_INPUT_FILE.toAbsolutePath().toString();
+        return consoleInputFile.toAbsolutePath().toString();
     }
 
     private void createOrClearFile(Path path, String label) {
         try {
+            Path parent = path.toAbsolutePath().getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
             Files.writeString(
                     path,
                     "",
@@ -276,7 +284,7 @@ public class GuiController {
     }
 
     private Path resolveReleaseExecutable(Path relativePath, String label) {
-        Path path = relativePath.toAbsolutePath().normalize();
+        Path path = runtimeDirectory.resolve(relativePath).toAbsolutePath().normalize();
 
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
             JaverLogger.info(label + " packaged executable not found at: " + path);
@@ -285,6 +293,66 @@ public class GuiController {
 
         JaverLogger.error("Resolved " + label + " executable to: " + path + "\n");
         return path;
+    }
+
+    private static Path resolveRuntimeDirectory() {
+        Path workingDirectory = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        Path codeLocation = getCodeLocation();
+        Path packagedRoot = findPackagedAppRoot(codeLocation);
+        if (packagedRoot != null) {
+            return packagedRoot;
+        }
+
+        Path projectRoot = findProjectRoot(workingDirectory);
+        if (projectRoot != null) {
+            return projectRoot;
+        }
+
+        projectRoot = findProjectRoot(codeLocation);
+        if (projectRoot != null) {
+            return projectRoot;
+        }
+
+        return workingDirectory;
+    }
+
+    private static Path getCodeLocation() {
+        try {
+            return Path.of(GuiController.class.getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI()).toAbsolutePath().normalize();
+        } catch (Exception exception) {
+            return Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        }
+    }
+
+    private static Path findPackagedAppRoot(Path start) {
+        Path path = Files.isRegularFile(start) ? start.getParent() : start;
+        while (path != null) {
+            Path fileName = path.getFileName();
+            if (fileName != null
+                    && "app".equalsIgnoreCase(fileName.toString())
+                    && Files.isDirectory(path.resolve("tools"))) {
+                return path.getParent();
+            }
+            path = path.getParent();
+        }
+        return null;
+    }
+
+    private static Path findProjectRoot(Path start) {
+        Path path = Files.isRegularFile(start) ? start.getParent() : start;
+        while (path != null) {
+            if (Files.isRegularFile(path.resolve("pom.xml"))
+                    && Files.isDirectory(path.resolve("Application"))
+                    && Files.isDirectory(path.resolve("Compiler"))
+                    && Files.isDirectory(path.resolve("VM"))) {
+                return path;
+            }
+            path = path.getParent();
+        }
+        return null;
     }
 
     private Path resolveJarFromProperty(String propertyName) {

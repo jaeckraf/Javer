@@ -1,213 +1,161 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.EnumSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.FunctionSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.StructSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
-@JacocoGenerated("jacoco-ignore")
-public class SymbolTableCreation extends AstNodeVisitorBase<Void> {
-    @Override
-    public Void visit(CompilationUnit node) {
-        return null;
+public class SymbolTableCreation extends AstNodeVisitorBase {
+
+    private SymbolTable symbolTable;
+    private final DiagnosticBag diagnosticBag;
+
+    public SymbolTableCreation(DiagnosticBag diagnosticBag) {
+        this.diagnosticBag = diagnosticBag;
     }
 
     @Override
-    public Void visit(EnumDeclaration node) {
-        return null;
+    public void visit(CompilationUnit node) {
+        symbolTable = node.getSymbolTable();
+
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            declaration.accept(this);
+        }
     }
 
     @Override
-    public Void visit(EnumItem node) {
-        return null;
+    public void visit(EnumDeclaration node) {
+        EnumSymbolTableEntry entry = EnumSymbolTableEntry.builder()
+            .name(node.getName())
+            .items(node.getItems())
+            .build();
+
+        symbolTable.addEntry(entry, diagnosticBag);
+
+        for (EnumItem item : node.getItems()) {
+            item.accept(this);
+        }
     }
 
     @Override
-    public Void visit(FunctionDeclaration node) {
-        return null;
+    public void visit(EnumItem node) {
+        VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
+            .name(node.getName())
+            .type(new NamedType(NameTypeKind.ENUM, node.getName())) // or enum type if you model it
+            .build();
+
+        symbolTable.addEntry(entry, diagnosticBag);
     }
 
     @Override
-    public Void visit(FunctionParameter node) {
-        return null;
+    public void visit(FunctionDeclaration node) {
+        FunctionSymbolTableEntry entry = FunctionSymbolTableEntry.builder()
+            .name(node.getName())
+            .returnType(node.getReturnType())
+            .parameters(node.getParameters())
+            .build();
+
+        symbolTable.addEntry(entry, diagnosticBag);
+
+        for (FunctionParameter param : node.getParameters()) {
+            param.accept(this);
+        }
+        if (node.getBody() != null) {
+            node.getBody().accept(this);
+        }
     }
 
     @Override
-    public Void visit(StructDeclaration node) {
-        return null;
+    public void visit(FunctionParameter node) {
+        VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
+            .name(node.getName())
+            .type(node.getType())
+            .build();
+
+        symbolTable.addEntry(entry, diagnosticBag);
     }
 
     @Override
-    public Void visit(StructField node) {
-        return null;
+    public void visit(StructDeclaration node) {
+        StructSymbolTableEntry entry = StructSymbolTableEntry.builder()
+            .name(node.getName())
+            .fields(node.getFields())
+            .build();
+
+        symbolTable.addEntry(entry, diagnosticBag);
+
+        for (StructField field : node.getFields()) {
+            field.accept(this);
+        }
     }
 
     @Override
-    public Void visit(BlockStatement node) {
-        return null;
+    public void visit(StructField node) {
+        VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
+            .name(node.getName())
+            .type(node.getType())
+            .build();
+
+        symbolTable.addEntry(entry, diagnosticBag);
     }
 
     @Override
-    public Void visit(IfStatement node) {
-        return null;
+    public void visit(BlockStatement node) {
+        for (StatementAstNode statement : node.getStatements()) {
+            statement.accept(this);
+        }
     }
 
     @Override
-    public Void visit(WhileStatement node) {
-        return null;
+    public void visit(IfStatement node) {
+        node.getThenBranch().accept(this);
+        if (node.getElseBranch() != null) {
+            node.getElseBranch().accept(this);
+        }
     }
 
     @Override
-    public Void visit(DoWhileStatement node) {
-        return null;
+    public void visit(WhileStatement node) {
+        node.getBody().accept(this);
     }
 
     @Override
-    public Void visit(ForStatement node) {
-        return null;
+    public void visit(DoWhileStatement node) {
+        node.getBody().accept(this);
     }
 
     @Override
-    public Void visit(SwitchStatement node) {
-        return null;
+    public void visit(ForStatement node) {
+        node.getBody().accept(this);
     }
 
     @Override
-    public Void visit(SwitchCase node) {
-        return null;
+    public void visit(SwitchStatement node) {
+        for (SwitchCase switchCase : node.getCases()) {
+            switchCase.accept(this);
+        }
     }
 
     @Override
-    public Void visit(BreakStatement node) {
-        return null;
+    public void visit(SwitchCase node) {
+        if (node.getStatement() != null) {
+            node.getStatement().accept(this);
+        }
     }
 
     @Override
-    public Void visit(ContinueStatement node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(ReturnStatement node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(VarDeclarationStatement node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(AssignExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(ConditionalExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(BinaryExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(UnaryExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(PostfixExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(CallExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(IndexExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(MemberAccessExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(NewExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(ArrayInitExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(NameExpression node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(LiteralExpression<?> node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(LiteralCaseLabel node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(EnumCaseLabel node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(ArrayType node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(NamedType node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(PrimitiveType node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(VoidType node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(ForInitVarDeclaration node) {
-        return null;
-    }
-
-    @Override
-    public Void visit(ForInitExpressionList node) {
-        return null;
+    public void visit(VarDeclarationStatement node) {
+        VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
+            .name(node.getName())
+            .type(node.getType())
+            .initializer(node.getInitializer()) // or omit entirely if optional
+            .build();
+        symbolTable.addEntry(entry, diagnosticBag);
     }
 }

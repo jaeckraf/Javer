@@ -15,5 +15,6 @@ fn void main(int a, double b, boolean c, string s, char d, struct e, enum f) {
     x /= 2; x %= 2;
     arr[0].field;
     x ? y : d;
+    new int a;
     false;
 }

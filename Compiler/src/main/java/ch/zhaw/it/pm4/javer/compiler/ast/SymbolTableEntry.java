@@ -1,7 +1,13 @@
 package ch.zhaw.it.pm4.javer.compiler.ast;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public abstract class SymbolTableEntry {
+    protected final String name;
+
+    protected SymbolTableEntry(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
 }
