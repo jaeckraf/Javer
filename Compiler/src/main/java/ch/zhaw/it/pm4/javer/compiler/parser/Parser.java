@@ -57,7 +57,8 @@ public class Parser {
             TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.OPERATOR_PLUS, TokenType.OPERATOR_INCREMENT,
             TokenType.OPERATOR_BITWISE_NOT, TokenType.LITERAL_BOOLEAN, TokenType.KEYWORD_CALL,
             TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER,
-            TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING
+            TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING,
+            TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
     );
 
     private static final Set<TokenType> FIRST_INITIALIZER = enumSet(FIRST_EXPRESSION, TokenType.SYMBOL_LEFT_BRACE);
@@ -72,7 +73,8 @@ public class Parser {
 
     private static final Set<TokenType> FIRST_CASE_LABEL = EnumSet.of(
             TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE,
-            TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING
+            TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING,
+            TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
     );
 
     private static final Set<TokenType> FOLLOW_TOP_LEVEL = enumSet(FIRST_TOP_LEVEL, TokenType.SPECIAL_END_OF_FILE);
@@ -690,7 +692,7 @@ public class Parser {
     }
 
     private ExpressionAstNode parsePrimaryExpression() {
-        if (!skipErrors(EnumSet.of(TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.KEYWORD_CALL, TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING), FOLLOW_EXPRESSION, false)) return errorExpression();
+        if (!skipErrors(EnumSet.of(TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.KEYWORD_CALL, TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING, TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL), FOLLOW_EXPRESSION, false)) return errorExpression();
         return switch (currentToken().getTokenType()) {
             case SYMBOL_LEFT_PARENTHESIS -> {
                 match(TokenType.SYMBOL_LEFT_PARENTHESIS);
@@ -755,7 +757,7 @@ public class Parser {
 
     private LiteralExpression<?> parseLiteralExpression() {
         return switch (currentToken().getTokenType()) {
-            case LITERAL_INTEGER, LITERAL_DOUBLE -> parseNumberLiteral();
+            case LITERAL_INTEGER, LITERAL_DOUBLE, LITERAL_HEX, LITERAL_BINARY, LITERAL_OCTAL -> parseNumberLiteral();
             case LITERAL_BOOLEAN -> parseBooleanLiteral();
             case LITERAL_STRING -> parseStringLiteral();
             case LITERAL_CHAR -> parseCharLiteral();
@@ -771,6 +773,36 @@ public class Parser {
         if (matchCurrentToken(TokenType.LITERAL_DOUBLE)) {
             Token token = expectTokenType(TokenType.LITERAL_DOUBLE);
             return located(new LiteralExpression<>(LiteralKind.DOUBLE, parseDouble(token)), token);
+        }
+        if (matchCurrentToken(TokenType.LITERAL_HEX)) {
+            Token token = expectTokenType(TokenType.LITERAL_HEX);
+            String v = token.getValue();
+            try {
+                int parsed = Integer.parseInt(v.startsWith("0x") || v.startsWith("0X") ? v.substring(2) : v, 16);
+                return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
+            } catch (NumberFormatException ex) {
+                return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
+            }
+        }
+        if (matchCurrentToken(TokenType.LITERAL_BINARY)) {
+            Token token = expectTokenType(TokenType.LITERAL_BINARY);
+            String v = token.getValue();
+            try {
+                int parsed = Integer.parseInt(v.startsWith("0b") || v.startsWith("0B") ? v.substring(2) : v, 2);
+                return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
+            } catch (NumberFormatException ex) {
+                return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
+            }
+        }
+        if (matchCurrentToken(TokenType.LITERAL_OCTAL)) {
+            Token token = expectTokenType(TokenType.LITERAL_OCTAL);
+            String v = token.getValue();
+            try {
+                int parsed = Integer.parseInt(v.startsWith("0o") || v.startsWith("0O") ? v.substring(2) : v, 8);
+                return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
+            } catch (NumberFormatException ex) {
+                return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
+            }
         }
         Token token = expectTokenType(TokenType.LITERAL_INTEGER);
         return located(new LiteralExpression<>(LiteralKind.INT, parseInteger(token)), token);
