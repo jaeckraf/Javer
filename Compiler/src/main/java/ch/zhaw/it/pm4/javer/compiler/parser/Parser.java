@@ -815,13 +815,36 @@ public class Parser {
 
     private LiteralExpression<String> parseStringLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_STRING);
-        return located(new LiteralExpression<>(LiteralKind.STRING, stripQuotes(token.getValue())), token);
+        return located(new LiteralExpression<>(LiteralKind.STRING, unescapeString(stripQuotes(token.getValue()))), token);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_CHAR);
-        String value = stripQuotes(token.getValue());
+        String value = unescapeString(stripQuotes(token.getValue()));
         return located(new LiteralExpression<>(LiteralKind.CHAR, value.isEmpty() ? '\0' : value.charAt(0)), token);
+    }
+
+    private String unescapeString(String s) {
+        if (s == null || s.indexOf('\\') < 0) return s == null ? "" : s;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c != '\\') { sb.append(c); continue; }
+            if (i + 1 >= s.length()) { sb.append('\\'); break; }
+            char next = s.charAt(++i);
+            switch (next) {
+                case 'n' -> sb.append('\n');
+                case 't' -> sb.append('\t');
+                case 'r' -> sb.append('\r');
+                case 'b' -> sb.append('\b');
+                case 'f' -> sb.append('\f');
+                case '\\' -> sb.append('\\');
+                case '\'' -> sb.append('\'');
+                case '"' -> sb.append('"');
+                default -> sb.append(next);
+            }
+        }
+        return sb.toString();
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
