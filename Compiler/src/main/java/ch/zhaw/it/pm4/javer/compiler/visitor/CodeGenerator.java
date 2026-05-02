@@ -27,6 +27,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
     private final List<DataSection> dataSections = new ArrayList<>();
+    private int ifLabelCounter = 0;
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -125,7 +126,30 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IfStatement node) {
-        super.visit(node);
+        int currentLabel = ifLabelCounter++;
+        String elseLabel = "if_else_" + currentLabel;
+        String endLabel = "if_end_" + currentLabel;
+
+        node.getCondition().accept(this);
+
+        if (node.getCondition() instanceof LiteralExpression<?> lit && lit.getKind() == LiteralKind.INT) {
+            writeLine("PUSHI, 0");
+            writeLine("IGT");
+        }
+        
+        writeLine("JUMPF, " + elseLabel);
+        node.getThenBranch().accept(this);
+
+        if (node.getElseBranch() != null) {
+            writeLine("JUMP, " + endLabel);
+        }
+
+        writeLine(elseLabel + ":");
+
+        if (node.getElseBranch() != null) {
+            node.getElseBranch().accept(this);
+            writeLine(endLabel + ":");
+        }
     }
 
     @Override
@@ -200,7 +224,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CallExpression node) {
-        if(node.getFunctionName().equalsIgnoreCase("prints")) {
+        if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
             writeLine("DPRINTS, " + "msg");
         }
@@ -241,6 +265,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
             }
             values.add(String.format("%04X", 0));
             dataSections.add(new DataSection("msg", "2", values));
+        } else if (node.getKind() == LiteralKind.NULL) {
+            writeLine("PUSHB, 0");
+        } 
+        else if (node.getKind() == LiteralKind.BOOLEAN) {
+            boolean val = (Boolean) node.getValue();
+            writeLine("PUSHB, " + (val ? "1" : "0"));
+        } else if (node.getKind() == LiteralKind.INT) {
+            int val = (Integer) node.getValue();
+            writeLine("PUSHI, " + val);
         }
     }
 
