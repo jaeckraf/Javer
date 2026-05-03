@@ -3,28 +3,19 @@ package ch.zhaw.it.pm4.javer.compiler.ast;
 import java.util.HashMap;
 import java.util.Map;
 
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Diagnostic;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
-
 public class SymbolTable {
     private final Map<String, SymbolTableEntry> entries = new HashMap<>();
-    private SymbolTable parent;
+    private final SymbolTable parent;
 
     public SymbolTable(SymbolTable parent) {
         this.parent = parent;
     }
 
-    public void addEntry(SymbolTableEntry entry, DiagnosticBag diagnosticBag) {
-        if (entries.containsKey(entry.getName())) {
-            Diagnostic diagnostic = new Diagnostic(
-                    new SourceLocation(1,2,1), // TODO: Provide actual source location
-                    Severity.ERROR,
-                    "Duplicate symbol: " + entry.getName());
-            diagnosticBag.add(diagnostic);
-        }
+    public boolean addEntry(SymbolTableEntry entry) {
+        if (entries.containsKey(entry.getName()))
+            return false;
         entries.put(entry.getName(), entry);
+        return true;
     }
 
     public SymbolTableEntry getEntry(String name) {
@@ -41,5 +32,9 @@ public class SymbolTable {
 
     public Map<String, SymbolTableEntry> getAllEntries() {
         return new HashMap<>(entries);
+    }
+
+    public SymbolTable getParent() {
+        return parent;
     }
 }

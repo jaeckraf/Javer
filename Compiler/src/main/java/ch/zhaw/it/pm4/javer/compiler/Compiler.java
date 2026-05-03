@@ -131,7 +131,7 @@ public class Compiler {
 
     private void resolveNames(CompilationUnit node) {
         enterPhase(CompilationPhase.NAME_RESOLUTION);
-        new NameResoluter().visit(node);
+        new NameResoluter(context.getDiagnosticBag()).visit(node);
     }
 
     private void typeCheck(CompilationUnit node) {

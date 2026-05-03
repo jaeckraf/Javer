@@ -6,14 +6,30 @@ import ch.zhaw.it.pm4.javer.compiler.ast.StructSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.StatementAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NameTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 public class SymbolTableCreation extends AstNodeVisitorBase {
 
-    private SymbolTable symbolTable;
+    private SymbolTable currentScope;
     private final DiagnosticBag diagnosticBag;
 
     public SymbolTableCreation(DiagnosticBag diagnosticBag) {
@@ -22,7 +38,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
-        symbolTable = node.getSymbolTable();
+        currentScope = node.getSymbolTable();
 
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
@@ -36,7 +52,8 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .items(node.getItems())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
 
         for (EnumItem item : node.getItems()) {
             item.accept(this);
@@ -50,7 +67,8 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(new NamedType(NameTypeKind.ENUM, node.getName())) // or enum type if you model it
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
     }
 
     @Override
@@ -61,7 +79,12 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .parameters(node.getParameters())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+
+        SymbolTable functionScope = new SymbolTable(currentScope);
+        node.setSymbolTable(functionScope);
+        currentScope = functionScope;
 
         for (FunctionParameter param : node.getParameters()) {
             param.accept(this);
@@ -69,6 +92,8 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         if (node.getBody() != null) {
             node.getBody().accept(this);
         }
+
+        currentScope = currentScope.getParent(); // exit function scope
     }
 
     @Override
@@ -78,7 +103,8 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(node.getType())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
     }
 
     @Override
@@ -88,7 +114,8 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .fields(node.getFields())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
 
         for (StructField field : node.getFields()) {
             field.accept(this);
@@ -102,14 +129,20 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(node.getType())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
     }
 
     @Override
     public void visit(BlockStatement node) {
+        SymbolTable blockScope = new SymbolTable(currentScope);
+        node.setSymbolTable(blockScope);
+        currentScope = blockScope;
         for (StatementAstNode statement : node.getStatements()) {
             statement.accept(this);
         }
+
+        currentScope = currentScope.getParent(); // exit block scope
     }
 
     @Override
@@ -156,6 +189,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(node.getType())
             .initializer(node.getInitializer()) // or omit entirely if optional
             .build();
-        symbolTable.addEntry(entry, diagnosticBag);
+        if (!currentScope.addEntry(entry))
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
     }
 }

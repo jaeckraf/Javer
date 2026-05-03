@@ -1,10 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
@@ -16,6 +16,8 @@ public final class FunctionDeclaration extends AstNodeBase implements Declaratio
     private final String name;
     private final List<FunctionParameter> parameters;
     private final BlockStatement body;
+
+    private SymbolTable symbolTable;
 
     public FunctionDeclaration(TypeAstNode returnType, String name, List<FunctionParameter> parameters, BlockStatement body) {
         this.returnType = returnType;
@@ -43,5 +45,13 @@ public final class FunctionDeclaration extends AstNodeBase implements Declaratio
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public SymbolTable getSymbolTable() {
+        return symbolTable;
+    }
+
+    public void setSymbolTable(SymbolTable symbolTable) {
+        this.symbolTable = symbolTable;
     }
 }
