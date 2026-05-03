@@ -1,0 +1,3 @@
+fn void main() {
+    let int x = "not an int";
+}
