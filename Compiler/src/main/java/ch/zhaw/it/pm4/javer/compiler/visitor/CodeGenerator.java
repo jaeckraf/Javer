@@ -317,23 +317,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
         super.visit(node);
     }
 
-    private static final class DataSection {
-        private final String name;
-        private final String size;
-        private final List<String> values;
-
-        public DataSection(String name, String size, List<String> values) {
-            this.name = name;
-            this.size = size;
-            this.values = values;
-
-        }
+    private record DataSection(String name, String size, List<String> values) {
 
         @Override
-        public String toString() {
-            return String.format("%s %s %s", name, size, String.join(",", values));
+            public String toString() {
+                return String.format("%s %s %s", name, size, String.join(",", values));
+            }
         }
-    }
 
 
 }
