@@ -95,9 +95,11 @@ public class NameResoluter extends AstNodeVisitorBase {
         popScope();
     }
 
-    // EnumDeclaration / StructDeclaration: their entries are already in the top-level
-    // table from SymbolTableCreation; their bodies contain no NameExpression references
-    // to resolve. Default visitor (no-op) is correct.
+    /* 
+    EnumDeclaration / StructDeclaration: their entries are already in the top-level
+    table from SymbolTableCreation; their bodies contain no NameExpression references
+    to resolve. Default visitor (no-op) is correct. 
+    */
 
 
     @Override
