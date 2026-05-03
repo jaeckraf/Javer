@@ -4,5 +4,5 @@ fn int add(int a, int b) {
 
 fn void main() {
     let int result = call add(20, 22);
-    call print(result);
+    call printi(result);
 }
