@@ -84,6 +84,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
         SymbolTable functionScope = new SymbolTable(currentScope);
         node.setSymbolTable(functionScope);
+        currentScope.addChild(functionScope);
         currentScope = functionScope;
 
         for (FunctionParameter param : node.getParameters()) {
@@ -137,6 +138,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
     public void visit(BlockStatement node) {
         SymbolTable blockScope = new SymbolTable(currentScope);
         node.setSymbolTable(blockScope);
+        currentScope.addChild(blockScope);
         currentScope = blockScope;
         for (StatementAstNode statement : node.getStatements()) {
             statement.accept(this);

@@ -1,11 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.ast;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SymbolTable {
     private final Map<String, SymbolTableEntry> entries = new HashMap<>();
     private final SymbolTable parent;
+    private final List<SymbolTable> children = new ArrayList<>();
 
     public SymbolTable(SymbolTable parent) {
         this.parent = parent;
@@ -26,6 +29,10 @@ public class SymbolTable {
         return entry;
     }
 
+    public void addChild(SymbolTable scope) {
+        children.add(scope);
+    }
+
     public boolean contains(String name) {
         return entries.containsKey(name) || (parent != null && parent.contains(name));
     }
@@ -36,5 +43,9 @@ public class SymbolTable {
 
     public SymbolTable getParent() {
         return parent;
+    }
+
+    public List<SymbolTable> getChildren() {
+        return children;
     }
 }

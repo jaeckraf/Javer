@@ -18,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -358,6 +357,10 @@ public class AstPrinter extends AstNodeVisitorBase {
                     .sorted(Map.Entry.comparingByKey())
                     .toList();
             visitMany(sortedEntries, (entry, childIsLast) -> symbolTableEntryChild(entry.getValue(), childIsLast));
+        }, isLast);
+        withChildren(() -> {
+            List<SymbolTable> scopes = symbolTable.getChildren();
+            visitMany(scopes, (scope, childIsLast) -> symbolTableChild(scope, childIsLast));
         }, isLast);
     }
 
