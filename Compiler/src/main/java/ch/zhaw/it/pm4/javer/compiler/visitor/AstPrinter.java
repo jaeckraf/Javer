@@ -351,6 +351,9 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     private void symbolTableChild(SymbolTable symbolTable, boolean isLast) {
         Map<String, SymbolTableEntry> entries = symbolTable.getAllEntries();
+        if (symbolTable.getChildren().isEmpty() && entries.isEmpty())
+            return;
+
         writeBranchLine("symbolTable (" + entries.size() + ")", isLast);
         withChildren(() -> {
             List<Map.Entry<String, SymbolTableEntry>> sortedEntries = entries.entrySet().stream()
@@ -376,6 +379,7 @@ public class AstPrinter extends AstNodeVisitorBase {
             } else if (entry instanceof FunctionSymbolTableEntry function) {
                 children.add(childIsLast -> labeledNodeChild("returnType", function.getReturnType(), childIsLast));
                 children.add(childIsLast -> nodesChild("parameters", function.getParameters(), childIsLast));
+                children.add(childIsLast -> symbolTableChild(function.getScope(), childIsLast));
             } else if (entry instanceof StructSymbolTableEntry struct) {
                 children.add(childIsLast -> nodesChild("fields", struct.getFields(), childIsLast));
             } else if (entry instanceof EnumSymbolTableEntry enumEntry) {

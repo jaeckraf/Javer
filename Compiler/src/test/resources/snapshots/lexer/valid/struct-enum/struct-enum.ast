@@ -1,5 +1,4 @@
 CompilationUnit [1:1][15:2]
-├── symbolTable (0)
 └── declarations (3)
     ├── EnumDeclaration [1:1][5:1]
     │   ├── name: 'Color' [1:1][5:1]

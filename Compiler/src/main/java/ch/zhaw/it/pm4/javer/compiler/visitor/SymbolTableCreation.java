@@ -73,18 +73,19 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
     @Override
     public void visit(FunctionDeclaration node) {
+        SymbolTable functionScope = new SymbolTable(currentScope);
+        node.setSymbolTable(functionScope);
+        
         FunctionSymbolTableEntry entry = FunctionSymbolTableEntry.builder()
             .name(node.getName())
             .returnType(node.getReturnType())
             .parameters(node.getParameters())
+            .scope(functionScope)
             .build();
 
         if (!currentScope.addEntry(entry))
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
 
-        SymbolTable functionScope = new SymbolTable(currentScope);
-        node.setSymbolTable(functionScope);
-        currentScope.addChild(functionScope);
         currentScope = functionScope;
 
         for (FunctionParameter param : node.getParameters()) {
