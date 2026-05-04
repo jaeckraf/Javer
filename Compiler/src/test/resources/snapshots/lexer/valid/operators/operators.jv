@@ -1,0 +1,15 @@
+fn void main() {
+    let int a = 1;
+    let int b = 2;
+
+    a += b;
+    a -= b;
+    a *= b;
+    a /= b;
+    a %= b;
+
+    a = a << 1;
+    a = a >> 1;
+
+    let bool result = a == b or a != b and a <= b;
+}

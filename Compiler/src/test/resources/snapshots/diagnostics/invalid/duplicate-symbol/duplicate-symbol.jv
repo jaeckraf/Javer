@@ -1,0 +1,4 @@
+fn void main() {
+    let int value = 1;
+    let int value = 2;
+}

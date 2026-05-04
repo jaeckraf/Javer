@@ -1,0 +1,7 @@
+fn int add(int a, int b) {
+    return a + b;
+}
+
+fn void main() {
+    let int result = call add(1, 2);
+}

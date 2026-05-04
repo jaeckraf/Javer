@@ -1,0 +1,3 @@
+fn void main() {
+    x = 1;
+}

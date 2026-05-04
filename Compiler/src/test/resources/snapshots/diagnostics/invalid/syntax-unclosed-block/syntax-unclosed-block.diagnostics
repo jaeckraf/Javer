@@ -1,0 +1,5 @@
+=== Error Report ===
+File: Compiler\src\test\resources\snapshots\diagnostics\invalid\syntax-unclosed-block\syntax-unclosed-block.jv
+Phase: PARSING
+
+[ERROR] at [19 : 19 : 2]: Expected token [SYMBOL_RIGHT_BRACE] but found SPECIAL_END_OF_FILE.

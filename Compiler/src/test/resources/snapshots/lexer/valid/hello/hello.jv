@@ -1,0 +1,5 @@
+fn void main() {
+    let string message = "Hello, world!";
+    let int answer = 42;
+    let bool ok = true;
+}
