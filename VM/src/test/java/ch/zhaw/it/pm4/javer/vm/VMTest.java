@@ -103,6 +103,51 @@ class VMTest {
     }
 
     @Test
+    void printsStringFromDataReference() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 0
+                PUSHR, hello
+                HPRINTS
+                RET
+                
+                .data
+                hello 2 0048,0065,006C,006C,006F,0000
+                """);
+
+        assertEquals("Hello", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
+    void storesDataReferenceInHeapObjectAndPrintsThroughField() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 4
+                PUSHI, 4
+                NEW
+                FSTORE4, 0
+                FLOAD4, 0
+                PUSHI, 0
+                PUSHR, hello
+                HSTORE4
+                FLOAD4, 0
+                PUSHI, 0
+                HLOAD4
+                HPRINTS
+                RET
+                
+                .data
+                hello 2 0048,0065,006C,006C,006F,0000
+                """);
+
+        assertEquals("Hello", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
     void addsIntegers() throws Exception {
         RunResult result = runProgram("""
                 .code
