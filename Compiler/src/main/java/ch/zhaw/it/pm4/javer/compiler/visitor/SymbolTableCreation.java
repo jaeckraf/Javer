@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import ch.zhaw.it.pm4.javer.compiler.ast.EnumSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.FunctionSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.StructSymbolTableEntry;
@@ -7,6 +10,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
@@ -42,7 +46,33 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         if (!currentScope.addEntry(entry))
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
 
-        super.visit(node);
+        Set<Integer> usedValues = new HashSet<>();
+        int nextValue = 0;
+
+        for (EnumItem item : node.getItems()) {
+
+            int value;
+
+            if (item.getValue() != null) {
+                value = item.getValue();
+            } else {
+                value = nextValue;
+            }
+
+            if (usedValues.contains(value)) {
+                diagnosticBag.add(
+                    item.getSourceRange().start(),
+                    Severity.ERROR,
+                    "Duplicate enum value: " + value
+                );
+            }
+
+            usedValues.add(value);
+
+            item.setValue(value);
+
+            nextValue = value + 1;
+        }
     }
 
     @Override

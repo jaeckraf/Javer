@@ -4,7 +4,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.EnumSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
@@ -49,6 +48,8 @@ public class NameResoluter extends AstNodeVisitorBase {
     public void visit(NameExpression node) {
         if (!currentScope.contains(node.getName()))
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Undefined symbol: " + node.getName());
+        else
+            node.setSymbolTableEntry(currentScope.getEntry(node.getName()));
     }
 
     @Override
@@ -57,7 +58,7 @@ public class NameResoluter extends AstNodeVisitorBase {
         if (!(node.getTarget() instanceof NameExpression target))
             return;
 
-        SymbolTableEntry entry = currentScope.getEntry(target.getName());
+        SymbolTableEntry entry = target.getSymbolTableEntry();
 
         if (!(entry instanceof EnumSymbolTableEntry enumEntry)) {
             diagnosticBag.add(node.getSourceRange().start(),
@@ -71,5 +72,11 @@ public class NameResoluter extends AstNodeVisitorBase {
                 Severity.ERROR,
                 "Enum has no value: " + node.getMemberName());
         }
+        else
+            node.setValue(enumEntry.getItems().stream()
+                .filter(item -> item.getName().equals(node.getMemberName()))
+                .findFirst()
+                .orElseThrow()
+                .getValue());
     }
 }
