@@ -1130,19 +1130,19 @@ public class VM {
     }
 
     private void checkReferenceAccess(String sourceName, byte[] obj, int offset, int size) {
-        if (offset < 0 || offset + size > obj.length) {
+        if (size < 0 || offset < 0 || offset > obj.length - size) {
             throw new VMExecutionException(sourceName + " access out of bounds (offset=" + offset + ", size=" + size + ")");
         }
     }
 
     private int checkFrameAccess(int offset, int size) {
-        int addr = fp + offset;
-        if (addr < 0 || addr + size - 1 >= stack.length) {
+        long addr = (long) fp + offset;
+        if (size < 0 || addr < 0 || addr > stack.length - size) {
             throw new VMExecutionException(
                     "Frame access out of bounds: fp=" + fp + ", offset=" + offset + ", size=" + size
             );
         }
-        return addr;
+        return (int) addr;
     }
 
     private byte[] getDataObject(String name) {
@@ -1154,7 +1154,7 @@ public class VM {
     }
 
     private void checkDataAccess(String name, byte[] data, int offset, int size) {
-        if (offset < 0 || offset + size > data.length) {
+        if (size < 0 || offset < 0 || offset > data.length - size) {
             throw new VMExecutionException(
                     "Data access out of bounds for '" + name + "' (offset=" + offset + ", size=" + size + ")"
             );

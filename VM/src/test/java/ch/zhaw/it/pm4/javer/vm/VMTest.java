@@ -491,6 +491,29 @@ class VMTest {
     }
 
     @Test
+    void reportsRuntimeErrorWhenDataCopyToHeapOverflowsRange() throws Exception {
+        RunResult result = runMain("""
+                .code
+                _main:
+                ENTER, 4
+                PUSHI, 4
+                NEW
+                FSTORE4, 0
+                FLOAD4, 0
+                PUSHI, 2147483647
+                PUSHI, 4
+                DCOPYH, values
+                RET
+                
+                .data
+                values 4 0000002A
+                """);
+
+        assertEquals("", result.stdout());
+        assertTrue(result.stderr().contains("Runtime error: heap access out of bounds"));
+    }
+
+    @Test
     void reportsUsageWhenNoArgumentsArePassed() {
         RunResult result = captureMainWithoutFile();
 
