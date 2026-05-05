@@ -13,6 +13,10 @@ public class EnumSymbolTableEntry extends SymbolTableEntry {
         this.items = builder.items;
     }
 
+    public boolean hasItem(String itemName) {
+        return items.stream().anyMatch(item -> item.getName().equals(itemName));
+    }
+
     public List<EnumItem> getItems() {
         return items;
     }
