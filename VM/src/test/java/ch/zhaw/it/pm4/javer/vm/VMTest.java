@@ -367,6 +367,37 @@ class VMTest {
     }
 
     @Test
+    void copiesDataBytesToHeap() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 4
+                PUSHI, 8
+                NEW
+                FSTORE4, 0
+                FLOAD4, 0
+                PUSHI, 0
+                PUSHI, 8
+                DCOPYH, values
+                FLOAD4, 0
+                PUSHI, 0
+                HLOAD4
+                PRINTI
+                FLOAD4, 0
+                PUSHI, 4
+                HLOAD4
+                PRINTI
+                RET
+                
+                .data
+                values 4 0000002A,00000007
+                """);
+
+        assertEquals("427", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
     void reportsMissingCodeSection() throws Exception {
         RunResult result = runMain("""
                 .data

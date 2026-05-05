@@ -30,7 +30,7 @@ public class VM {
 
     private int sp = 0;
     private int pc = 0;
-    private int fp = 0; // Frame Pointer für lokale Variablen
+    private int fp = 0;
     private int programEndAddress = 0;
     private boolean halted = false;
 
@@ -527,6 +527,12 @@ public class VM {
                         parseIdentifier(parts[1], instrName, "data name", lineNumber)
                 );
             }
+            case DCOPYH -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                yield new DataCopyToHeapInstruction(
+                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
+                );
+            }
 
             case POPB -> noOperand(parts, instrName, lineNumber, new PopByteInstruction());
             case POPC -> noOperand(parts, instrName, lineNumber, new PopCharInstruction());
@@ -844,6 +850,7 @@ public class VM {
             case "DSTORE2" -> InstructionKind.DSTORE2;
             case "DSTORE4" -> InstructionKind.DSTORE4;
             case "DSTORE8" -> InstructionKind.DSTORE8;
+            case "DCOPYH" -> InstructionKind.DCOPYH;
 
             case "FLOAD1" -> InstructionKind.FLOAD1;
             case "FLOAD2" -> InstructionKind.FLOAD2;
@@ -1540,6 +1547,33 @@ public class VM {
                 data[offset + i] = (byte) (value & 0xFF);
                 value >>= 8;
             }
+        }
+    }
+
+    private static final class DataCopyToHeapInstruction extends Instruction {
+        private final String name;
+
+        public DataCopyToHeapInstruction(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public void execute(VM vm) {
+            int byteCount = vm.popInt();
+            int offset = vm.popInt();
+            int base = vm.popInt();
+
+            if (byteCount < 0) {
+                throw new VMExecutionException("DCOPYH " + name + ": negative byte count " + byteCount);
+            }
+
+            byte[] data = vm.getDataObject(name);
+            vm.checkDataAccess(name, data, 0, byteCount);
+
+            byte[] obj = vm.getMutableHeapObject(base);
+            vm.checkReferenceAccess("heap", obj, offset, byteCount);
+
+            System.arraycopy(data, 0, obj, offset, byteCount);
         }
     }
 
@@ -2436,6 +2470,7 @@ public class VM {
         DLOAD1, DLOAD2, DLOAD4, DLOAD8,
         STOREB, STOREC, STOREI, STORED,
         DSTORE1, DSTORE2, DSTORE4, DSTORE8,
+        DCOPYH,
         FLOAD1, FLOAD2, FLOAD4, FLOAD8,
         FSTORE1, FSTORE2, FSTORE4, FSTORE8,
         POPB, POPC, POPI, POPD,
