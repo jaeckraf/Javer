@@ -6,7 +6,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.StructSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
@@ -14,14 +13,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.StatementAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NameTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
@@ -40,9 +32,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
     public void visit(CompilationUnit node) {
         currentScope = node.getSymbolTable();
 
-        for (DeclarationAstNode declaration : node.getDeclarations()) {
-            declaration.accept(this);
-        }
+        super.visit(node);
     }
 
     @Override
@@ -55,9 +45,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         if (!currentScope.addEntry(entry))
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
 
-        for (EnumItem item : node.getItems()) {
-            item.accept(this);
-        }
+        super.visit(node);
     }
 
     @Override
@@ -88,12 +76,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
         currentScope = functionScope;
 
-        for (FunctionParameter param : node.getParameters()) {
-            param.accept(this);
-        }
-        if (node.getBody() != null) {
-            node.getBody().accept(this);
-        }
+        super.visit(node);
 
         currentScope = currentScope.getParent(); // exit function scope
     }
@@ -119,9 +102,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         if (!currentScope.addEntry(entry))
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
 
-        for (StructField field : node.getFields()) {
-            field.accept(this);
-        }
+        super.visit(node);
     }
 
     @Override
@@ -141,48 +122,10 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         node.setSymbolTable(blockScope);
         currentScope.addChild(blockScope);
         currentScope = blockScope;
-        for (StatementAstNode statement : node.getStatements()) {
-            statement.accept(this);
-        }
+        
+        super.visit(node);
 
         currentScope = currentScope.getParent(); // exit block scope
-    }
-
-    @Override
-    public void visit(IfStatement node) {
-        node.getThenBranch().accept(this);
-        if (node.getElseBranch() != null) {
-            node.getElseBranch().accept(this);
-        }
-    }
-
-    @Override
-    public void visit(WhileStatement node) {
-        node.getBody().accept(this);
-    }
-
-    @Override
-    public void visit(DoWhileStatement node) {
-        node.getBody().accept(this);
-    }
-
-    @Override
-    public void visit(ForStatement node) {
-        node.getBody().accept(this);
-    }
-
-    @Override
-    public void visit(SwitchStatement node) {
-        for (SwitchCase switchCase : node.getCases()) {
-            switchCase.accept(this);
-        }
-    }
-
-    @Override
-    public void visit(SwitchCase node) {
-        if (node.getStatement() != null) {
-            node.getStatement().accept(this);
-        }
     }
 
     @Override
