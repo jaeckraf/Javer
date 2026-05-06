@@ -19,7 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
@@ -28,6 +30,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private BufferedWriter writer;
     private final List<DataSection> dataSections = new ArrayList<>();
     private int ifLabelCounter = 0;
+    private int loopLabelCounter = 0;
+    private final Deque<LoopContext> loopStack = new ArrayDeque<>();
+
+    private record LoopContext(String continueLabel, String endLabel) {}
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -154,17 +160,67 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(WhileStatement node) {
-        super.visit(node);
+        int label = loopLabelCounter++;
+        String condLabel = "while_cond_" + label;
+        String endLabel = "while_end_" + label;
+
+        loopStack.push(new LoopContext(condLabel, endLabel));
+
+        writeLine(condLabel + ":");
+        node.getCondition().accept(this);
+        writeLine("JUMPF, " + endLabel);
+        node.getBody().accept(this);
+        writeLine("JUMP, " + condLabel);
+        writeLine(endLabel + ":");
+
+        loopStack.pop();
     }
 
     @Override
     public void visit(DoWhileStatement node) {
-        super.visit(node);
+        int label = loopLabelCounter++;
+        String startLabel = "do_start_" + label;
+        String condLabel = "do_cond_" + label;
+        String endLabel = "do_end_" + label;
+
+        loopStack.push(new LoopContext(condLabel, endLabel));
+
+        writeLine(startLabel + ":");
+        node.getBody().accept(this);
+        writeLine(condLabel + ":");
+        node.getCondition().accept(this);
+        writeLine("JUMPT, " + startLabel);
+        writeLine(endLabel + ":");
+
+        loopStack.pop();
     }
 
     @Override
     public void visit(ForStatement node) {
-        super.visit(node);
+        int label = loopLabelCounter++;
+        String condLabel = "for_cond_" + label;
+        String updateLabel = "for_update_" + label;
+        String endLabel = "for_end_" + label;
+
+        loopStack.push(new LoopContext(updateLabel, endLabel));
+
+        if (node.getForInit() != null) {
+            node.getForInit().accept(this);
+        }
+        writeLine(condLabel + ":");
+        if (node.getCondition() != null) {
+            node.getCondition().accept(this);
+            writeLine("JUMPF, " + endLabel);
+        }
+        node.getBody().accept(this);
+        writeLine(updateLabel + ":");
+        if (node.getUpdate() != null) {
+            node.getUpdate().forEach(expr -> expr.accept(this));
+        }
+        writeLine("JUMP, " + condLabel);
+        writeLine(endLabel + ":");
+
+        loopStack.pop();
     }
 
     @Override
@@ -179,12 +235,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BreakStatement node) {
-        super.visit(node);
+        writeLine("JUMP, " + loopStack.peek().endLabel());
     }
 
     @Override
     public void visit(ContinueStatement node) {
-        super.visit(node);
+        writeLine("JUMP, " + loopStack.peek().continueLabel());
     }
 
     @Override
