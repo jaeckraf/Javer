@@ -45,7 +45,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .build();
 
         if (!currentScope.addEntry(entry))
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate enum: " + node.getName());
 
         Set<Integer> usedValues = new HashSet<>();
         int nextValue = 0;
@@ -89,7 +89,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .build();
 
         if (!currentScope.addEntry(entry))
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate function: " + node.getName());
 
         currentScope = functionScope;
 
@@ -106,7 +106,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .build();
 
         if (!currentScope.addEntry(entry))
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate function parameter: " + node.getName());
     }
 
     @Override
@@ -117,7 +117,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .build();
 
         if (!currentScope.addEntry(entry))
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate struct: " + node.getName());
 
         super.visit(node);
     }
@@ -130,7 +130,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .build();
 
         if (!currentScope.addEntry(entry))
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate struct field: " + node.getName());
     }
 
     @Override
@@ -154,6 +154,6 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .initializer(node.getInitializer()) // or omit entirely if optional
             .build();
         if (!currentScope.addEntry(entry))
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate variable: " + node.getName());
     }
 }

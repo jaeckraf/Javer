@@ -2,4 +2,4 @@
 File: Compiler\src\test\resources\snapshots\diagnostics\invalid\duplicate-symbol\duplicate-symbol.jv
 Phase: SYMBOL_TABLE_CREATION
 
-[ERROR] at [5 : 7 : 3]: Duplicate symbol: value
+[ERROR] at [5 : 7 : 3]: Duplicate variable: value
