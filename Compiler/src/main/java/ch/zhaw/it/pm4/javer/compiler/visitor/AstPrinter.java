@@ -375,23 +375,21 @@ public class AstPrinter extends AstNodeVisitorBase {
                 children.add(childIsLast -> labeledNodeChild("type", storage.getType(), childIsLast));
                 children.add(childIsLast -> scalarChild("sizeBytes", storage.getSizeBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
-                if (entry instanceof VariableSymbolTableEntry variable && variable.getInitializer() != null) {
-                    children.add(childIsLast -> labeledNodeChild("initializer", variable.getInitializer(), childIsLast));
+                if (entry instanceof VariableSymbolTableEntry variable) {
+                    children.add(childIsLast -> scalarChild("hasExplicitInitializer", variable.hasExplicitInitializer(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("defaultValue", quoteValue(variable.getDefaultValue()), null, childIsLast));
                 }
             } else if (entry instanceof FunctionSymbolTableEntry function) {
                 children.add(childIsLast -> labeledNodeChild("returnType", function.getReturnType(), childIsLast));
-                children.add(childIsLast -> nodesChild("parameters", function.getParameters(), childIsLast));
                 children.add(childIsLast -> scalarChild("label", quote(function.getLabel()), null, childIsLast));
                 children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
                 children.add(childIsLast -> symbolTableChild(function.getScope(), childIsLast));
             } else if (entry instanceof StructSymbolTableEntry struct) {
-                children.add(childIsLast -> nodesChild("fields", struct.getFields(), childIsLast));
                 children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
                 children.add(childIsLast -> symbolTableChild(struct.getSymbolTable(), childIsLast));
             } else if (entry instanceof EnumSymbolTableEntry enumEntry) {
-                children.add(childIsLast -> nodesChild("items", enumEntry.getItems(), childIsLast));
                 children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
                 children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));

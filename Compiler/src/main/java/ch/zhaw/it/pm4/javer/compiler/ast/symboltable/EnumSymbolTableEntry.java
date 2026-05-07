@@ -1,12 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symboltable;
 
-import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
-
 public class EnumSymbolTableEntry extends SymbolTableEntry {
 
-    private final List<EnumItem> items;
     private SymbolTable symbolTable;
     private final String dataLabel;
     private final int elementSizeBytes;
@@ -14,7 +9,6 @@ public class EnumSymbolTableEntry extends SymbolTableEntry {
 
     private EnumSymbolTableEntry(Builder builder) {
         super(builder.name, SymbolTableEntryKind.ENUM);
-        this.items = builder.items;
         this.symbolTable = builder.symbolTable;
         this.dataLabel = builder.dataLabel != null ? builder.dataLabel : "enum_" + builder.name;
         this.elementSizeBytes = builder.elementSizeBytes;
@@ -22,13 +16,7 @@ public class EnumSymbolTableEntry extends SymbolTableEntry {
     }
 
     public boolean hasItem(String itemName) {
-        return symbolTable != null
-            ? symbolTable.resolveEnumValue(itemName) != null
-            : items.stream().anyMatch(item -> item.getName().equals(itemName));
-    }
-
-    public List<EnumItem> getItems() {
-        return items;
+        return symbolTable != null && symbolTable.resolveEnumValue(itemName) != null;
     }
 
     public SymbolTable getSymbolTable() {
@@ -61,7 +49,6 @@ public class EnumSymbolTableEntry extends SymbolTableEntry {
 
     public static class Builder {
         private String name;
-        private List<EnumItem> items = List.of();
         private SymbolTable symbolTable;
         private String dataLabel;
         private int elementSizeBytes = 4;
@@ -69,11 +56,6 @@ public class EnumSymbolTableEntry extends SymbolTableEntry {
 
         public Builder name(String name) {
             this.name = name;
-            return this;
-        }
-
-        public Builder items(List<EnumItem> items) {
-            this.items = items;
             return this;
         }
 

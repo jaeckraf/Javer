@@ -1,13 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symboltable;
 
-import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 
 public class FunctionSymbolTableEntry extends SymbolTableEntry {
 
-    private final List<FunctionParameter> parameters;
     protected final TypeAstNode returnType;
     private SymbolTable symbolTable;
     private final String label;
@@ -18,13 +14,8 @@ public class FunctionSymbolTableEntry extends SymbolTableEntry {
     private FunctionSymbolTableEntry(Builder builder) {
         super(builder.name, SymbolTableEntryKind.FUNCTION);
         this.returnType = builder.returnType;
-        this.parameters = builder.parameters;
         this.symbolTable = builder.symbolTable;
         this.label = builder.label != null ? builder.label : "_" + builder.name;
-    }
-
-    public List<FunctionParameter> getParameters() {
-        return parameters;
     }
 
     public TypeAstNode getReturnType() {
@@ -77,7 +68,6 @@ public class FunctionSymbolTableEntry extends SymbolTableEntry {
     public static class Builder {
         private String name;
         private TypeAstNode returnType;
-        private List<FunctionParameter> parameters = List.of();
         private SymbolTable symbolTable;
         private String label;
 
@@ -88,11 +78,6 @@ public class FunctionSymbolTableEntry extends SymbolTableEntry {
 
         public Builder returnType(TypeAstNode returnType) {
             this.returnType = returnType;
-            return this;
-        }
-
-        public Builder parameters(List<FunctionParameter> parameters) {
-            this.parameters = parameters;
             return this;
         }
 

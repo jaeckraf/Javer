@@ -77,13 +77,13 @@ public class Compiler {
         if (stopOnErrors()) {
             return;
         }
-        if (options.isDumpAstSymbolTable()) {
-            printSection("AST SYMBOL TABLE", dumpAst(rootNode));
-        }
 
         resolveNames(rootNode);
         if (stopOnErrors()) {
             return;
+        }
+        if (options.isDumpAstSymbolTable()) {
+            printSection("AST SYMBOL TABLE", dumpAst(rootNode));
         }
         typeCheck(rootNode);
         if (stopOnErrors()) {

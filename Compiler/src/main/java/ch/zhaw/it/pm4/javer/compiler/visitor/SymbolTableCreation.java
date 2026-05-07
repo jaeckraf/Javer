@@ -10,7 +10,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FunctionSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.ParameterSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StructSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.VariableSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.TypeLayout;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
@@ -20,20 +20,12 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 public class SymbolTableCreation extends AstNodeVisitorBase {
 
     private SymbolTable currentScope;
-    private FunctionSymbolTableEntry currentFunction;
-    private StructSymbolTableEntry currentStruct;
     private final DiagnosticBag diagnosticBag;
 
     public SymbolTableCreation(DiagnosticBag diagnosticBag) {
@@ -53,7 +45,6 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
         EnumSymbolTableEntry entry = EnumSymbolTableEntry.builder()
             .name(node.getName())
-            .items(node.getItems())
             .symbolTable(enumScope)
             .dataLabel("enum_" + node.getName())
             .elementSizeBytes(4)
@@ -110,7 +101,6 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         FunctionSymbolTableEntry entry = FunctionSymbolTableEntry.builder()
             .name(node.getName())
             .returnType(node.getReturnType())
-            .parameters(node.getParameters())
             .symbolTable(functionScope)
             .label("_" + node.getName())
             .build();
@@ -121,28 +111,25 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         }
 
         SymbolTable previousScope = currentScope;
-        FunctionSymbolTableEntry previousFunction = currentFunction;
         currentScope = functionScope;
-        currentFunction = entry;
 
-        defineParameters(node);
+        defineParameters(node, entry);
         if (node.getBody() != null) {
             node.getBody().accept(this);
         }
 
-        currentFunction = previousFunction;
         currentScope = previousScope;
     }
 
-    private void defineParameters(FunctionDeclaration node) {
+    private void defineParameters(FunctionDeclaration node, FunctionSymbolTableEntry currentFunction) {
         int parameterBytes = node.getParameters().stream()
-            .mapToInt(parameter -> sizeOf(parameter.getType()))
+            .mapToInt(parameter -> TypeLayout.sizeOf(parameter.getType()))
             .sum();
         currentFunction.setParameterBytes(parameterBytes);
 
         int offsetBytes = -parameterBytes;
         for (FunctionParameter parameter : node.getParameters()) {
-            int sizeBytes = sizeOf(parameter.getType());
+            int sizeBytes = TypeLayout.sizeOf(parameter.getType());
             ParameterSymbolTableEntry entry = ParameterSymbolTableEntry.builder()
                 .name(parameter.getName())
                 .type(parameter.getType())
@@ -166,7 +153,6 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
         StructSymbolTableEntry entry = StructSymbolTableEntry.builder()
             .name(node.getName())
-            .fields(node.getFields())
             .symbolTable(structScope)
             .build();
         node.setSymbolEntry(entry);
@@ -176,9 +162,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         }
 
         SymbolTable previousScope = currentScope;
-        StructSymbolTableEntry previousStruct = currentStruct;
         currentScope = structScope;
-        currentStruct = entry;
 
         int offsetBytes = 0;
         for (StructField field : node.getFields()) {
@@ -186,12 +170,11 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         }
         entry.setSizeBytes(offsetBytes);
 
-        currentStruct = previousStruct;
         currentScope = previousScope;
     }
 
     private int defineField(StructField node, int offsetBytes) {
-        int sizeBytes = sizeOf(node.getType());
+        int sizeBytes = TypeLayout.sizeOf(node.getType());
         FieldSymbolTableEntry entry = FieldSymbolTableEntry.builder()
             .name(node.getName())
             .type(node.getType())
@@ -242,46 +225,5 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
         node.getBody().accept(this);
 
         currentScope = previousScope;
-    }
-
-    @Override
-    public void visit(VarDeclarationStatement node) {
-        int sizeBytes = sizeOf(node.getType());
-        int offsetBytes = currentFunction != null ? currentFunction.allocateLocalBytes(sizeBytes) : 0;
-        VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
-            .name(node.getName())
-            .type(node.getType())
-            .initializer(node.getInitializer())
-            .sizeBytes(sizeBytes)
-            .offsetBytes(offsetBytes)
-            .build();
-        node.setSymbolEntry(entry);
-
-        if (!currentScope.defineLocal(entry)) {
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
-        }
-    }
-
-    private int sizeOf(TypeAstNode type) {
-        if (type instanceof PrimitiveType primitiveType) {
-            return switch (primitiveType.getKind()) {
-                case BOOL -> 1;
-                case CHAR -> 2;
-                case INT -> 4;
-                case DOUBLE -> 8;
-                case STRING -> 4;
-                case INVALID -> 0;
-            };
-        }
-        if (type instanceof NamedType) {
-            return 4;
-        }
-        if (type instanceof ArrayType) {
-            return 4;
-        }
-        if (type instanceof VoidType) {
-            return 0;
-        }
-        return 0;
     }
 }

@@ -10,6 +10,8 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StorageSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StructSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.TypeLayout;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
@@ -31,6 +33,7 @@ public class NameResoluter extends AstNodeVisitorBase {
     private static final Set<String> BUILT_IN_FUNCTIONS = Set.of("printi", "prints", "println");
 
     private SymbolTable currentScope;
+    private FunctionSymbolTableEntry currentFunction;
     private final DiagnosticBag diagnosticBag;
 
     public NameResoluter(DiagnosticBag diagnosticBag) {
@@ -48,7 +51,9 @@ public class NameResoluter extends AstNodeVisitorBase {
         node.getReturnType().accept(this);
 
         SymbolTable previousScope = currentScope;
+        FunctionSymbolTableEntry previousFunction = currentFunction;
         currentScope = node.getSymbolTable();
+        currentFunction = node.getSymbolEntry();
 
         for (FunctionParameter parameter : node.getParameters()) {
             parameter.accept(this);
@@ -57,6 +62,7 @@ public class NameResoluter extends AstNodeVisitorBase {
             node.getBody().accept(this);
         }
 
+        currentFunction = previousFunction;
         currentScope = previousScope;
     }
 
@@ -114,8 +120,25 @@ public class NameResoluter extends AstNodeVisitorBase {
     @Override
     public void visit(VarDeclarationStatement node) {
         node.getType().accept(this);
+
         if (node.getInitializer() != null) {
             node.getInitializer().accept(this);
+        }
+
+        int sizeBytes = TypeLayout.sizeOf(node.getType());
+        int offsetBytes = currentFunction != null ? currentFunction.allocateLocalBytes(sizeBytes) : 0;
+        VariableSymbolTableEntry entry = VariableSymbolTableEntry.builder()
+            .name(node.getName())
+            .type(node.getType())
+            .sizeBytes(sizeBytes)
+            .offsetBytes(offsetBytes)
+            .hasExplicitInitializer(node.getInitializer() != null)
+            .defaultValue(TypeLayout.defaultValueOf(node.getType()))
+            .build();
+        node.setSymbolEntry(entry);
+
+        if (!currentScope.defineLocal(entry)) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
         }
     }
 

@@ -1,24 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symboltable;
 
-import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
-
 public class StructSymbolTableEntry extends SymbolTableEntry {
 
-    private final List<StructField> fields;
     private SymbolTable symbolTable;
     private int sizeBytes;
 
     private StructSymbolTableEntry(Builder builder) {
         super(builder.name, SymbolTableEntryKind.STRUCT);
-        this.fields = builder.fields;
         this.symbolTable = builder.symbolTable;
         this.sizeBytes = builder.sizeBytes;
-    }
-
-    public List<StructField> getFields() {
-        return fields;
     }
 
     public SymbolTable getSymbolTable() {
@@ -43,17 +33,11 @@ public class StructSymbolTableEntry extends SymbolTableEntry {
 
     public static class Builder {
         private String name;
-        private List<StructField> fields = List.of();
         private SymbolTable symbolTable;
         private int sizeBytes;
 
         public Builder name(String name) {
             this.name = name;
-            return this;
-        }
-
-        public Builder fields(List<StructField> fields) {
-            this.fields = fields;
             return this;
         }
 
