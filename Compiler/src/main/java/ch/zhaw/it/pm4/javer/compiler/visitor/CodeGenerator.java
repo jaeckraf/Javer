@@ -29,9 +29,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private final List<DataSection> dataSections = new ArrayList<>();
     private int ifLabelCounter = 0;
 
-    private final java.util.Deque<java.util.Map<String, Integer>> scopes = new java.util.ArrayDeque<>();
-    private int currentFrameOffset = 0;
-
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
         prepareOutputDirectory(outputFile);
@@ -102,52 +99,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(FunctionDeclaration node) {
-        scopes.clear();
-        currentFrameOffset = 0;
-        
-        int[] size = {0};
-        node.accept(new AstNodeVisitorBase() {
-            @Override
-            public void visit(FunctionDeclaration funcNode) {
-                if (funcNode.getBody() != null) funcNode.getBody().accept(this);
-            }
-            @Override
-            public void visit(BlockStatement blockNode) {
-                for (StatementAstNode stmt : blockNode.getStatements()) {
-                    stmt.accept(this);
-                }
-            }
-            @Override
-            public void visit(IfStatement ifNode) {
-                ifNode.getThenBranch().accept(this);
-                if (ifNode.getElseBranch() != null) ifNode.getElseBranch().accept(this);
-            }
-            @Override
-            public void visit(WhileStatement whileNode) {
-                whileNode.getBody().accept(this);
-            }
-            @Override
-            public void visit(DoWhileStatement doWhileNode) {
-                doWhileNode.getBody().accept(this);
-            }
-            @Override
-            public void visit(ForStatement forNode) {
-                if (forNode.getForInit() instanceof ForInitVarDeclaration initVar) {
-                    initVar.getVarDeclaration().accept(this);
-                }
-                forNode.getBody().accept(this);
-            }
-            @Override
-            public void visit(VarDeclarationStatement varNode) {
-                size[0] += 4;
-            }
-        });
-        
         writeLine("_" + node.getName() + ":");
-        writeLine("ENTER, " + size[0]);
-        if (node.getBody() != null) {
-            node.getBody().accept(this);
-        }
+        writeLine("ENTER, 0");
+        node.getBody().accept(this);
     }
 
     @Override
@@ -167,9 +121,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BlockStatement node) {
-        scopes.push(new java.util.HashMap<>());
         node.getStatements().forEach(statement -> statement.accept(this));
-        scopes.pop();
     }
 
     @Override
@@ -242,38 +194,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(VarDeclarationStatement node) {
-        if (node.getInitializer() != null) {
-            node.getInitializer().accept(this);
-        } else {
-            writeLine("PUSHI, 0");
-        }
-        
-        int offset = currentFrameOffset;
-        currentFrameOffset += 4;
-        
-        if (!scopes.isEmpty()) {
-            scopes.peek().put(node.getName(), offset);
-        }
-        
-        writeLine("FSTORE4, " + offset);
+        super.visit(node);
     }
 
     @Override
     public void visit(AssignExpression node) {
-        node.getValue().accept(this);
-        if (node.getTarget() instanceof NameExpression nameExpr) {
-            String name = nameExpr.getName();
-            Integer offset = null;
-            for (java.util.Map<String, Integer> scope : scopes) {
-                if (scope.containsKey(name)) {
-                    offset = scope.get(name);
-                    break;
-                }
-            }
-            if (offset != null) {
-                writeLine("FSTORE4, " + offset);
-            }
-        }
+        super.visit(node);
     }
 
     @Override
@@ -283,42 +209,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BinaryExpression node) {
-        node.getLeft().accept(this);
-        node.getRight().accept(this);
-        switch (node.getOperator()) {
-            case ADD -> writeLine("IADD");
-            case SUBTRACT -> writeLine("ISUB");
-            case MULTIPLY -> writeLine("IMUL");
-            case DIVIDE -> writeLine("IDIV");
-            case MODULO -> writeLine("IMOD");
-            case EQUALS -> writeLine("IEQ");
-            case NOT_EQUALS -> writeLine("INE");
-            case LESS -> writeLine("ILT");
-            case LESS_EQUALS -> writeLine("ILE");
-            case GREATER -> writeLine("IGT");
-            case GREATER_EQUALS -> writeLine("IGE");
-            case SHIFT_LEFT -> writeLine("ISHL");
-            case SHIFT_RIGHT -> writeLine("ISHR");
-            case BITWISE_AND, AND -> writeLine("IAND");
-            case BITWISE_OR, OR -> writeLine("IOR");
-            case BITWISE_XOR -> writeLine("IXOR");
-            default -> {}
-        }
+        super.visit(node);
     }
 
     @Override
     public void visit(UnaryExpression node) {
-        node.getOperand().accept(this);
-        switch (node.getKind()) {
-            case MINUS -> writeLine("INEG");
-            case BITWISE_NOT -> writeLine("IINV");
-            case LOGICAL_NOT -> {
-                writeLine("B2I");
-                writeLine("PUSHI, 0");
-                writeLine("IEQ");
-            }
-            default -> {}
-        }
+        super.visit(node);
     }
 
     @Override
@@ -331,9 +227,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
             writeLine("DPRINTS, " + "msg");
-        } else if(node.getFunctionName().equalsIgnoreCase("printi") || node.getFunctionName().equalsIgnoreCase("print")) {
-            node.getArguments().getFirst().accept(this);
-            writeLine("PRINTI");
         }
     }
 
@@ -359,26 +252,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(NameExpression node) {
-        String name = node.getName();
-        Integer offset = null;
-        for (java.util.Map<String, Integer> scope : scopes) {
-            if (scope.containsKey(name)) {
-                offset = scope.get(name);
-                break;
-            }
-        }
-        if (offset != null) {
-            writeLine("FLOAD4, " + offset);
-        } else {
-            writeLine("PUSHI, 0");
-        }
+        super.visit(node);
     }
 
     @Override
     public void visit(LiteralExpression<?> node) {
-        if(node.getKind() == LiteralKind.INT) {
-            writeLine("PUSHI, " + node.getValue());
-        } else if(node.getKind() == LiteralKind.STRING) {
+        if(node.getKind() == LiteralKind.STRING) {
             List<String> values = new ArrayList<>();
             String value = (String) node.getValue();
             for(char c : value.toCharArray()) {
@@ -386,8 +265,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
             }
             values.add(String.format("%04X", 0));
             dataSections.add(new DataSection("msg", "2", values));
-        } else if(node.getKind() == LiteralKind.BOOLEAN) {
-            writeLine("PUSHB, " + ((Boolean) node.getValue() ? "1" : "0"));
+        } else if (node.getKind() == LiteralKind.NULL) {
+            writeLine("PUSHB, 0");
+        } 
+        else if (node.getKind() == LiteralKind.BOOLEAN) {
+            boolean val = (Boolean) node.getValue();
+            writeLine("PUSHB, " + (val ? "1" : "0"));
+        } else if (node.getKind() == LiteralKind.INT) {
+            int val = (Integer) node.getValue();
+            writeLine("PUSHI, " + val);
         }
     }
 
