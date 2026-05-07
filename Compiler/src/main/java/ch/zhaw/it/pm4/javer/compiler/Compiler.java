@@ -141,7 +141,7 @@ public class Compiler {
 
     private void semanticAnalysis(CompilationUnit node) {
         enterPhase(CompilationPhase.SEMANTIC_ANALYSIS);
-        new SemanticChecker().visit(node);
+        new SemanticChecker(context.getDiagnosticBag()).visit(node);
     }
 
     private void generateCode(CompilationUnit node) {
