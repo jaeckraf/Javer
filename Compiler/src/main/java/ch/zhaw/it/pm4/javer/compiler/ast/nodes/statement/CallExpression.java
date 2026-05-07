@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FunctionSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
@@ -12,6 +13,7 @@ public final class CallExpression extends AstNodeBase implements ExpressionAstNo
 
     private final String functionName;
     private final List<ExpressionAstNode> arguments;
+    private FunctionSymbolTableEntry resolvedFunction;
 
     public CallExpression(String functionName, List<ExpressionAstNode> arguments) {
         this.functionName = functionName;
@@ -24,6 +26,14 @@ public final class CallExpression extends AstNodeBase implements ExpressionAstNo
 
     public List<ExpressionAstNode> getArguments() {
         return arguments;
+    }
+
+    public FunctionSymbolTableEntry getResolvedFunction() {
+        return resolvedFunction;
+    }
+
+    public void setResolvedFunction(FunctionSymbolTableEntry resolvedFunction) {
+        this.resolvedFunction = resolvedFunction;
     }
 
     @Override

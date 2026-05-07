@@ -1,6 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.EnumSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FunctionSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StorageSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StructSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
@@ -27,6 +32,11 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
     private final List<DataSection> dataSections = new ArrayList<>();
+    private SymbolTable currentScope;
+    private FunctionSymbolTableEntry currentFunction;
+    private StructSymbolTableEntry currentStruct;
+    private EnumSymbolTableEntry currentEnum;
+    private StorageSymbolTableEntry currentStorage;
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);

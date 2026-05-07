@@ -3,7 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 

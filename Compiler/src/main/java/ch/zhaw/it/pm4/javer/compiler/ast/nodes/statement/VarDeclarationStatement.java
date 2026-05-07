@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
@@ -12,6 +13,7 @@ public final class VarDeclarationStatement extends AstNodeBase implements Statem
     private final TypeAstNode type;
     private final String name;
     private final ExpressionAstNode initializer;
+    private VariableSymbolTableEntry symbolEntry;
 
     private VarDeclarationStatement(Builder builder) {
         this.type = builder.type;
@@ -53,6 +55,14 @@ public final class VarDeclarationStatement extends AstNodeBase implements Statem
 
     public ExpressionAstNode getInitializer() {
         return initializer;
+    }
+
+    public VariableSymbolTableEntry getSymbolEntry() {
+        return symbolEntry;
+    }
+
+    public void setSymbolEntry(VariableSymbolTableEntry symbolEntry) {
+        this.symbolEntry = symbolEntry;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.EnumValueSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
@@ -10,6 +11,7 @@ public final class EnumItem extends AstNodeBase implements AstNode {
 
     private final String name;
     private Integer value;
+    private EnumValueSymbolTableEntry symbolEntry;
 
     private EnumItem(Builder builder) {
         this.name = builder.name;
@@ -48,6 +50,14 @@ public final class EnumItem extends AstNodeBase implements AstNode {
 
     public void setValue(Integer value) {
         this.value = value;
+    }
+
+    public EnumValueSymbolTableEntry getSymbolEntry() {
+        return symbolEntry;
+    }
+
+    public void setSymbolEntry(EnumValueSymbolTableEntry symbolEntry) {
+        this.symbolEntry = symbolEntry;
     }
 
     @Override

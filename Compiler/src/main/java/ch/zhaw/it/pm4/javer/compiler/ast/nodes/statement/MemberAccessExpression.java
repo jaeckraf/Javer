@@ -1,6 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.EnumValueSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FieldSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
@@ -10,6 +12,8 @@ public final class MemberAccessExpression extends AstNodeBase implements Express
     private final ExpressionAstNode target;
     private final String memberName;
     private int value;
+    private FieldSymbolTableEntry resolvedField;
+    private EnumValueSymbolTableEntry resolvedEnumValue;
 
     public MemberAccessExpression(ExpressionAstNode target, String memberName) {
         this.target = target;
@@ -35,5 +39,21 @@ public final class MemberAccessExpression extends AstNodeBase implements Express
 
     public int getValue() {
         return value;
+    }
+
+    public FieldSymbolTableEntry getResolvedField() {
+        return resolvedField;
+    }
+
+    public void setResolvedField(FieldSymbolTableEntry resolvedField) {
+        this.resolvedField = resolvedField;
+    }
+
+    public EnumValueSymbolTableEntry getResolvedEnumValue() {
+        return resolvedEnumValue;
+    }
+
+    public void setResolvedEnumValue(EnumValueSymbolTableEntry resolvedEnumValue) {
+        this.resolvedEnumValue = resolvedEnumValue;
     }
 }

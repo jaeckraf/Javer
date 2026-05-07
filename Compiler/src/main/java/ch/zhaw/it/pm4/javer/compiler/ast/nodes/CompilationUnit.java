@@ -2,7 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes;
 
 import java.util.List;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 

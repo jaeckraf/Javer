@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
@@ -8,6 +7,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
 
 import java.io.BufferedWriter;
@@ -371,26 +371,44 @@ public class AstPrinter extends AstNodeVisitorBase {
         writeBranchLine(entry.getName() + ": " + entry.getClass().getSimpleName(), isLast);
         withChildren(() -> {
             List<Consumer<Boolean>> children = new ArrayList<>();
-            if (entry instanceof VariableSymbolTableEntry variable) {
-                children.add(childIsLast -> labeledNodeChild("type", variable.getType(), childIsLast));
-                if (variable.getInitializer() != null) {
+            if (entry instanceof StorageSymbolTableEntry storage) {
+                children.add(childIsLast -> labeledNodeChild("type", storage.getType(), childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", storage.getSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
+                if (entry instanceof VariableSymbolTableEntry variable && variable.getInitializer() != null) {
                     children.add(childIsLast -> labeledNodeChild("initializer", variable.getInitializer(), childIsLast));
                 }
             } else if (entry instanceof FunctionSymbolTableEntry function) {
                 children.add(childIsLast -> labeledNodeChild("returnType", function.getReturnType(), childIsLast));
                 children.add(childIsLast -> nodesChild("parameters", function.getParameters(), childIsLast));
+                children.add(childIsLast -> scalarChild("label", quote(function.getLabel()), null, childIsLast));
+                children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
                 children.add(childIsLast -> symbolTableChild(function.getScope(), childIsLast));
             } else if (entry instanceof StructSymbolTableEntry struct) {
                 children.add(childIsLast -> nodesChild("fields", struct.getFields(), childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> symbolTableChild(struct.getSymbolTable(), childIsLast));
             } else if (entry instanceof EnumSymbolTableEntry enumEntry) {
                 children.add(childIsLast -> nodesChild("items", enumEntry.getItems(), childIsLast));
+                children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
+                children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> symbolTableChild(enumEntry.getSymbolTable(), childIsLast));
+            } else if (entry instanceof EnumValueSymbolTableEntry enumValue) {
+                children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
+                children.add(childIsLast -> scalarChild("value", enumValue.getValue(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", enumValue.getSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
             }
             visitMany(children);
         }, isLast);
     }
 
     private void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
-        writeBranchLine(label + ": " + value + " " + range, isLast);
+        writeBranchLine(label + ": " + value + (range != null ? " " + range : ""), isLast);
     }
 
     private void labeledNodeChild(String label, AstNode node, boolean isLast) {
