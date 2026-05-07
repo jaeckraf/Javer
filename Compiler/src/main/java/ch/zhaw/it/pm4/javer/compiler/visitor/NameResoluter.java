@@ -7,6 +7,7 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
@@ -69,6 +70,13 @@ public class NameResoluter extends AstNodeVisitorBase {
         scopes.pop();
     }
 
+    private void declare(SymbolTableEntry entry, AstNode node) {
+        if (!currentScope().addEntry(entry)) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Duplicate symbol: " + entry.getName());
+        }
+    }
+
 
     @Override
     public void visit(CompilationUnit node) {
@@ -87,11 +95,9 @@ public class NameResoluter extends AstNodeVisitorBase {
                     .name(parameter.getName())
                     .type(parameter.getType())
                     .build();
-            currentScope().addEntry(entry, diagnosticBag);
+            declare(entry, parameter);
         }
-        if (node.getBody() != null) {
-            node.getBody().accept(this);
-        }
+        node.getBody().accept(this);
         popScope();
     }
 
@@ -122,7 +128,7 @@ public class NameResoluter extends AstNodeVisitorBase {
                 .type(node.getType())
                 .initializer(node.getInitializer())
                 .build();
-        currentScope().addEntry(entry, diagnosticBag);
+        declare(entry, node);
     }
 
     @Override
@@ -248,15 +254,16 @@ public class NameResoluter extends AstNodeVisitorBase {
 
     @Override
     public void visit(MemberAccessExpression node) {
-        // Recurse into target only. `memberName` is resolved against the struct/enum
-        // type during the type-check phase, not here.
         node.getTarget().accept(this);
     }
 
     @Override
     public void visit(CallExpression node) {
-        // Function-name resolution is its own follow-up ticket (the AST currently holds
-        // the function name as a raw String, not a NameExpression). Resolve arguments.
+        SymbolTableEntry entry = currentScope().getEntry(node.getFunctionName());
+        if (entry == null) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Undefined function '" + node.getFunctionName() + "'");
+        }
         for (ExpressionAstNode argument : node.getArguments()) {
             argument.accept(this);
         }

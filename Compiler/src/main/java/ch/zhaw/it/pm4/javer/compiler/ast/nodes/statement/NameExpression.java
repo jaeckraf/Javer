@@ -17,11 +17,6 @@ public final class NameExpression extends AstNodeBase implements ExpressionAstNo
         return name;
     }
 
-    /**
-     * The symbol this name binds to. {@code null} until the name-resolution
-     * pass populates it via {@link #setResolvedEntry(SymbolTableEntry)}.
-     * Mirrors the post-construction mutability of {@code SourceRange}.
-     */
     public SymbolTableEntry getResolvedEntry() {
         return resolvedEntry;
     }

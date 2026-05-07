@@ -8,8 +8,11 @@ import ch.zhaw.it.pm4.javer.compiler.ast.VariableSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 public class SymbolTableCreation extends AstNodeVisitorBase {
 
@@ -18,6 +21,13 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
 
     public SymbolTableCreation(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
+    }
+
+    private void declare(SymbolTableEntry entry, AstNode node) {
+        if (!symbolTable.addEntry(entry)) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Duplicate symbol: " + entry.getName());
+        }
     }
 
     @Override
@@ -36,7 +46,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .items(node.getItems())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
 
         for (EnumItem item : node.getItems()) {
             item.accept(this);
@@ -50,7 +60,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(new NamedType(NameTypeKind.ENUM, node.getName())) // or enum type if you model it
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
     }
 
     @Override
@@ -61,7 +71,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .parameters(node.getParameters())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
 
         for (FunctionParameter param : node.getParameters()) {
             param.accept(this);
@@ -78,7 +88,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(node.getType())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
     }
 
     @Override
@@ -88,7 +98,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .fields(node.getFields())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
 
         for (StructField field : node.getFields()) {
             field.accept(this);
@@ -102,7 +112,7 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(node.getType())
             .build();
 
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
     }
 
     @Override
@@ -156,6 +166,6 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
             .type(node.getType())
             .initializer(node.getInitializer()) // or omit entirely if optional
             .build();
-        symbolTable.addEntry(entry, diagnosticBag);
+        declare(entry, node);
     }
 }

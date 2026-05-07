@@ -3,11 +3,6 @@ package ch.zhaw.it.pm4.javer.compiler.ast;
 import java.util.HashMap;
 import java.util.Map;
 
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Diagnostic;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
-
 public class SymbolTable {
     private final Map<String, SymbolTableEntry> entries = new HashMap<>();
     private SymbolTable parent;
@@ -16,15 +11,17 @@ public class SymbolTable {
         this.parent = parent;
     }
 
-    public void addEntry(SymbolTableEntry entry, DiagnosticBag diagnosticBag) {
+    /**
+     * Adds the entry to this scope. Returns {@code false} if an entry with the same
+     * name already exists in this scope (the existing entry is kept); the caller
+     * is responsible for reporting the duplicate diagnostic.
+     */
+    public boolean addEntry(SymbolTableEntry entry) {
         if (entries.containsKey(entry.getName())) {
-            Diagnostic diagnostic = new Diagnostic(
-                    new SourceLocation(1,2,1), // TODO: Provide actual source location
-                    Severity.ERROR,
-                    "Duplicate symbol: " + entry.getName());
-            diagnosticBag.add(diagnostic);
+            return false;
         }
         entries.put(entry.getName(), entry);
+        return true;
     }
 
     public SymbolTableEntry getEntry(String name) {
