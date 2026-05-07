@@ -351,7 +351,7 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     private void symbolTableChild(SymbolTable symbolTable, boolean isLast) {
         Map<String, SymbolTableEntry> entries = symbolTable.getAllEntries();
-        if (symbolTable.getChildren().isEmpty() && entries.isEmpty())
+        if (entries.isEmpty())
             return;
 
         writeBranchLine("symbolTable (" + entries.size() + ")", isLast);
@@ -360,10 +360,6 @@ public class AstPrinter extends AstNodeVisitorBase {
                     .sorted(Map.Entry.comparingByKey())
                     .toList();
             visitMany(sortedEntries, (entry, childIsLast) -> symbolTableEntryChild(entry.getValue(), childIsLast));
-        }, isLast);
-        withChildren(() -> {
-            List<SymbolTable> scopes = symbolTable.getChildren();
-            visitMany(scopes, (scope, childIsLast) -> symbolTableChild(scope, childIsLast));
         }, isLast);
     }
 
@@ -384,6 +380,8 @@ public class AstPrinter extends AstNodeVisitorBase {
                 children.add(childIsLast -> nodesChild("fields", struct.getFields(), childIsLast));
             } else if (entry instanceof EnumSymbolTableEntry enumEntry) {
                 children.add(childIsLast -> nodesChild("items", enumEntry.getItems(), childIsLast));
+            } else if (entry instanceof BlockSymbolTableEntry blockEntry) {
+                children.add(childIsLast -> symbolTableChild(blockEntry.getSymbolTable(), childIsLast));
             }
             visitMany(children);
         }, isLast);

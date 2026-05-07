@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 import java.util.HashSet;
 import java.util.Set;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.BlockSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.EnumSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.FunctionSymbolTableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.StructSymbolTableEntry;
@@ -136,7 +137,8 @@ public class SymbolTableCreation extends AstNodeVisitorBase {
     public void visit(BlockStatement node) {
         SymbolTable blockScope = new SymbolTable(currentScope);
         node.setSymbolTable(blockScope);
-        currentScope.addChild(blockScope);
+        BlockSymbolTableEntry entry = new BlockSymbolTableEntry(blockScope);
+        currentScope.addEntry(entry);
         currentScope = blockScope;
         
         super.visit(node);

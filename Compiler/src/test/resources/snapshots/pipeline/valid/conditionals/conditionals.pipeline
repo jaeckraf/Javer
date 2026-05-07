@@ -104,27 +104,30 @@ CompilationUnit [1:1][11:2]
 │   │   │       ├── type PrimitiveType [1:12][1:14]
 │   │   │       │   └── kind: INT [1:12][1:14]
 │   │   │       └── name: 'value' [1:12][1:20]
-│   │   └── symbolTable (1)
+│   │   └── symbolTable (2)
+│   │       ├── block: BlockSymbolTableEntry
+│   │       │   └── symbolTable (1)
+│   │       │       └── block: BlockSymbolTableEntry
 │   │       └── value: VariableSymbolTableEntry
 │   │           └── type PrimitiveType [1:12][1:14]
 │   │               └── kind: INT [1:12][1:14]
-│   │       └── symbolTable (0)
 │   └── main: FunctionSymbolTableEntry
 │       ├── returnType VoidType [9:4][9:7]
 │       ├── parameters (0)
-│       └── symbolTable (0)
-│           └── symbolTable (1)
-│               └── result: VariableSymbolTableEntry
-│                   ├── type PrimitiveType [10:9][10:11]
-│                   │   └── kind: INT [10:9][10:11]
-│                   └── initializer CallExpression [10:22][10:33]
-│                       ├── functionName: 'abs' [10:22][10:33]
-│                       └── arguments (1)
-│                           └── UnaryExpression [10:31][10:32]
-│                               ├── operator: MINUS [10:31][10:32]
-│                               └── operand LiteralExpression [10:32][10:32]
-│                                   ├── kind: INT [10:32][10:32]
-│                                   └── value: 5 [10:32][10:32]
+│       └── symbolTable (1)
+│           └── block: BlockSymbolTableEntry
+│               └── symbolTable (1)
+│                   └── result: VariableSymbolTableEntry
+│                       ├── type PrimitiveType [10:9][10:11]
+│                       │   └── kind: INT [10:9][10:11]
+│                       └── initializer CallExpression [10:22][10:33]
+│                           ├── functionName: 'abs' [10:22][10:33]
+│                           └── arguments (1)
+│                               └── UnaryExpression [10:31][10:32]
+│                                   ├── operator: MINUS [10:31][10:32]
+│                                   └── operand LiteralExpression [10:32][10:32]
+│                                       ├── kind: INT [10:32][10:32]
+│                                       └── value: 5 [10:32][10:32]
 └── declarations (2)
     ├── FunctionDeclaration [1:1][7:1]
     │   ├── name: 'abs' [1:1][7:1]

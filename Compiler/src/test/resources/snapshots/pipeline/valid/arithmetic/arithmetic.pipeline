@@ -87,22 +87,23 @@ CompilationUnit [1:1][8:2]
 │   ├── main: FunctionSymbolTableEntry
 │   │   ├── returnType VoidType [5:4][5:7]
 │   │   ├── parameters (0)
-│   │   └── symbolTable (0)
-│   │       └── symbolTable (2)
-│   │           ├── a: VariableSymbolTableEntry
-│   │           │   ├── type PrimitiveType [6:9][6:11]
-│   │           │   │   └── kind: INT [6:9][6:11]
-│   │           │   └── initializer LiteralExpression [6:17][6:17]
-│   │           │       ├── kind: INT [6:17][6:17]
-│   │           │       └── value: 4 [6:17][6:17]
-│   │           └── b: VariableSymbolTableEntry
-│   │               ├── type PrimitiveType [7:9][7:11]
-│   │               │   └── kind: INT [7:9][7:11]
-│   │               └── initializer CallExpression [7:17][7:30]
-│   │                   ├── functionName: 'square' [7:17][7:30]
-│   │                   └── arguments (1)
-│   │                       └── NameExpression [7:29][7:29]
-│   │                           └── name: 'a' [7:29][7:29]
+│   │   └── symbolTable (1)
+│   │       └── block: BlockSymbolTableEntry
+│   │           └── symbolTable (2)
+│   │               ├── a: VariableSymbolTableEntry
+│   │               │   ├── type PrimitiveType [6:9][6:11]
+│   │               │   │   └── kind: INT [6:9][6:11]
+│   │               │   └── initializer LiteralExpression [6:17][6:17]
+│   │               │       ├── kind: INT [6:17][6:17]
+│   │               │       └── value: 4 [6:17][6:17]
+│   │               └── b: VariableSymbolTableEntry
+│   │                   ├── type PrimitiveType [7:9][7:11]
+│   │                   │   └── kind: INT [7:9][7:11]
+│   │                   └── initializer CallExpression [7:17][7:30]
+│   │                       ├── functionName: 'square' [7:17][7:30]
+│   │                       └── arguments (1)
+│   │                           └── NameExpression [7:29][7:29]
+│   │                               └── name: 'a' [7:29][7:29]
 │   └── square: FunctionSymbolTableEntry
 │       ├── returnType PrimitiveType [1:4][1:6]
 │       │   └── kind: INT [1:4][1:6]
@@ -111,7 +112,8 @@ CompilationUnit [1:1][8:2]
 │       │       ├── type PrimitiveType [1:15][1:17]
 │       │       │   └── kind: INT [1:15][1:17]
 │       │       └── name: 'x' [1:15][1:19]
-│       └── symbolTable (1)
+│       └── symbolTable (2)
+│           ├── block: BlockSymbolTableEntry
 │           └── x: VariableSymbolTableEntry
 │               └── type PrimitiveType [1:15][1:17]
 │                   └── kind: INT [1:15][1:17]
