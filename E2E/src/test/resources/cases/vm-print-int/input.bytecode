@@ -1,0 +1,8 @@
+.code
+_main:
+ENTER, 0
+PUSHI, 42
+PRINTI
+RET
+
+.data
