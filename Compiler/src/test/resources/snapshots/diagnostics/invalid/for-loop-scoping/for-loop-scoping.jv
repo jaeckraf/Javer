@@ -1,0 +1,5 @@
+fn void main() {
+    for (let int i = 0; i < 3; i = i + 1) {
+    }
+    let int leak = i;
+}

@@ -1,0 +1,8 @@
+=== Error Report ===
+File: Compiler\src\test\resources\snapshots\diagnostics\invalid\expression-recursion-paths\expression-recursion-paths.jv
+Phase: NAME_RESOLUTION
+
+[ERROR] at [18 : 27 : 3]: Undefined identifier 'undefUnary'
+[ERROR] at [21 : 32 : 4]: Undefined identifier 'undefPostfix'
+[ERROR] at [25 : 33 : 5]: Undefined identifier 'undefThen'
+[ERROR] at [37 : 45 : 5]: Undefined identifier 'undefElse'

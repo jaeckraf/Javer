@@ -1,0 +1,9 @@
+fn int twice(int n) {
+    return n + n;
+}
+
+fn void main() {
+    let int x = 1 + missing;
+    let int y = call notDefined(x);
+    let int z = call twice(missing);
+}

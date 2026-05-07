@@ -1,0 +1,6 @@
+fn void main() {
+    let int a = 1;
+    let int u = -undefUnary;
+    let int p = a + undefPostfix++;
+    let int t = a > 0 ? undefThen : undefElse;
+}

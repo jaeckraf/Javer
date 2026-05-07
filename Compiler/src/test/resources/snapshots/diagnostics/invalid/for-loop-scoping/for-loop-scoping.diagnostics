@@ -1,0 +1,5 @@
+=== Error Report ===
+File: Compiler\src\test\resources\snapshots\diagnostics\invalid\for-loop-scoping\for-loop-scoping.jv
+Phase: NAME_RESOLUTION
+
+[ERROR] at [20 : 20 : 4]: Undefined identifier 'i'

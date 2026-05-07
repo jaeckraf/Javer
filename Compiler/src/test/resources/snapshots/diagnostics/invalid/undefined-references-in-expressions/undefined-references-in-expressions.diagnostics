@@ -1,0 +1,7 @@
+=== Error Report ===
+File: Compiler\src\test\resources\snapshots\diagnostics\invalid\undefined-references-in-expressions\undefined-references-in-expressions.jv
+Phase: NAME_RESOLUTION
+
+[ERROR] at [21 : 27 : 6]: Undefined identifier 'missing'
+[ERROR] at [17 : 20 : 7]: Undefined function 'notDefined'
+[ERROR] at [28 : 34 : 8]: Undefined identifier 'missing'
