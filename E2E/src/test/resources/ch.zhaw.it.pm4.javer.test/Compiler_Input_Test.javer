@@ -1,10 +1,17 @@
+
+struct s {}
+enum e {}
+fn void f() {}
+
 fn void main() {
 
-	if(1) {
-	    call prints("True");
-	} else {
-	    call prints("False");
-	}
+    let int a;
+    {
+        let int b;
+        {
+            let int c;
+        }
+    }
 
 	return;
 }

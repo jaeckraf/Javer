@@ -17,6 +17,7 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.LayoutVisitor;
 import ch.zhaw.it.pm4.javer.compiler.visitor.NameResolutionVisitor;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolDeclarationVisitor;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableAstPrinter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.TypeCheckVisitor;
 
 public class Compiler {
@@ -84,7 +85,7 @@ public class Compiler {
             return;
         }
         if (options.isDumpAstSymbolTable()) {
-            printSection("AST SYMBOL TABLE", dumpAst(rootNode));
+            printSection("AST SYMBOL TABLE", dumpAstSymbolTable(rootNode));
         }
         typeCheck(rootNode);
         if (stopOnErrors()) {
@@ -181,6 +182,10 @@ public class Compiler {
 
     private static String dumpAst(CompilationUnit rootNode) {
         return new AstPrinter().printToString(rootNode);
+    }
+
+    private static String dumpAstSymbolTable(CompilationUnit rootNode) {
+        return new SymbolTableAstPrinter().printToString(rootNode);
     }
 
 }

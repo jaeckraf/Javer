@@ -82,10 +82,7 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
-        List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> globalScopeChild(node.getGlobalScope(), isLast));
-        children.add(isLast -> nodesChild("declarations", node.getDeclarations(), isLast));
-        visitMany(children);
+        nodesChild("declarations", node.getDeclarations(), true);
     }
 
     @Override
@@ -362,25 +359,18 @@ public class AstPrinter extends AstNodeVisitorBase {
         nodesChild("expressions", node.getExpressions(), true);
     }
 
-    private void globalScopeChild(GlobalScope globalScope, boolean isLast) {
+    protected void globalScopeChild(GlobalScope globalScope, boolean isLast) {
         Map<String, SymbolEntry> entries = globalScope.getAllEntries();
-        if (entries.isEmpty())
-            return;
-
         writeBranchLine("globalScope (" + entries.size() + ")", isLast);
         withChildren(() -> symbolEntriesChildren(entries), isLast);
     }
 
     private void functionScopeChild(FunctionScope scope, boolean isLast) {
         Map<String, SymbolEntry> entries = scope.getAllEntries();
-        if (entries.isEmpty() && scope.getRootBlock() == null) {
-            return;
-        }
-
         writeBranchLine("functionScope (" + entries.size() + ")", isLast);
         withChildren(() -> {
             List<Consumer<Boolean>> children = symbolEntryConsumers(entries);
-            if (scope.getRootBlock() != null) {
+            if (hasBlockScopeContent(scope.getRootBlock())) {
                 children.add(childIsLast -> blockScopeChild(scope.getRootBlock(), childIsLast));
             }
             visitMany(children);
@@ -389,14 +379,16 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     private void blockScopeChild(BlockScope scope, boolean isLast) {
         Map<String, SymbolEntry> entries = scope.getAllEntries();
-        if (entries.isEmpty() && scope.getChildren().isEmpty()) {
+        if (!hasBlockScopeContent(scope)) {
             return;
         }
 
         writeBranchLine("blockScope (" + entries.size() + ")", isLast);
         withChildren(() -> {
             List<Consumer<Boolean>> children = symbolEntryConsumers(entries);
-            scope.getChildren().forEach(childScope -> children.add(childIsLast -> blockScopeChild(childScope, childIsLast)));
+            scope.getChildren().stream()
+                    .filter(this::hasBlockScopeContent)
+                    .forEach(childScope -> children.add(childIsLast -> blockScopeChild(childScope, childIsLast)));
             visitMany(children);
         }, isLast);
     }
@@ -452,15 +444,21 @@ public class AstPrinter extends AstNodeVisitorBase {
                 children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
-                children.add(childIsLast -> functionScopeChild(function.getScope(), childIsLast));
+                if (function.getScope() != null) {
+                    children.add(childIsLast -> functionScopeChild(function.getScope(), childIsLast));
+                }
             } else if (entry instanceof StructEntry struct) {
                 children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
-                children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
+                if (hasStructScopeContent(struct.getScope())) {
+                    children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
+                }
             } else if (entry instanceof EnumEntry enumEntry) {
                 children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
                 children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
                 children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));
-                children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
+                if (hasEnumScopeContent(enumEntry.getScope())) {
+                    children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
+                }
             } else if (entry instanceof EnumValueEntry enumValue) {
                 children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
                 children.add(childIsLast -> scalarChild("value", enumValue.getValue(), null, childIsLast));
@@ -477,11 +475,24 @@ public class AstPrinter extends AstNodeVisitorBase {
         }, isLast);
     }
 
-    private void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
+    private boolean hasBlockScopeContent(BlockScope scope) {
+        return scope != null
+                && (!scope.getAllEntries().isEmpty() || scope.getChildren().stream().anyMatch(this::hasBlockScopeContent));
+    }
+
+    private boolean hasStructScopeContent(StructScope scope) {
+        return scope != null && !scope.getAllEntries().isEmpty();
+    }
+
+    private boolean hasEnumScopeContent(EnumScope scope) {
+        return scope != null && !scope.getAllEntries().isEmpty();
+    }
+
+    protected void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
         writeBranchLine(label + ": " + value + (range != null ? " " + range : ""), isLast);
     }
 
-    private void labeledNodeChild(String label, AstNode node, boolean isLast) {
+    protected void labeledNodeChild(String label, AstNode node, boolean isLast) {
         if (node == null) {
             writeBranchLine(label + ": <null>", isLast);
             return;
@@ -496,7 +507,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         withChildren(() -> node.accept(this), isLast);
     }
 
-    private void nodesChild(String label, List<? extends AstNode> nodes, boolean isLast) {
+    protected void nodesChild(String label, List<? extends AstNode> nodes, boolean isLast) {
         int size = nodes == null ? 0 : nodes.size();
         writeBranchLine(label + " (" + size + ")", isLast);
         withChildren(() -> {
@@ -506,7 +517,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         }, isLast);
     }
 
-    private void writeBranchLine(String text, boolean isLast) {
+    protected void writeBranchLine(String text, boolean isLast) {
         for (boolean last : isLastStack) {
             write(last ? "    " : "\u2502   ");
         }
@@ -515,7 +526,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         writeLine();
     }
 
-    private void withChildren(Runnable body, boolean isLast) {
+    protected void withChildren(Runnable body, boolean isLast) {
         isLastStack.add(isLast);
         body.run();
         isLastStack.remove(isLastStack.size() - 1);
@@ -527,7 +538,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         }
     }
 
-    private void visitMany(List<Consumer<Boolean>> children) {
+    protected void visitMany(List<Consumer<Boolean>> children) {
         visitMany(children, Consumer::accept);
     }
 
@@ -543,12 +554,21 @@ public class AstPrinter extends AstNodeVisitorBase {
         return typeName.endsWith("AstNode") ? typeName.substring(0, typeName.length() - "AstNode".length()) : typeName;
     }
 
-    private static String quote(String value) {
+    protected static String quote(String value) {
         return value == null ? "<null>" : "'" + value.replace("'", "\\'") + "'";
     }
 
-    private static String quoteValue(Object value) {
+    protected static String quoteValue(Object value) {
         return value instanceof String stringValue ? quote(stringValue) : String.valueOf(value);
+    }
+
+    protected void writeRawLine(String text) {
+        write(text);
+        writeLine();
+    }
+
+    protected void writeBlankLine() {
+        writeLine();
     }
 
     private void writeLine() {
