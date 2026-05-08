@@ -1,0 +1,10 @@
+fn void main() {
+
+	if(1) {
+	    call prints("True");
+	} else {
+	    call prints("False");
+	}
+
+	return;
+}
