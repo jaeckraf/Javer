@@ -13,10 +13,12 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstPrinter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
-import ch.zhaw.it.pm4.javer.compiler.visitor.NameResoluter;
+import ch.zhaw.it.pm4.javer.compiler.visitor.LayoutVisitor;
+import ch.zhaw.it.pm4.javer.compiler.visitor.NameResolutionVisitor;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
-import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableCreation;
-import ch.zhaw.it.pm4.javer.compiler.visitor.TypeChecker;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolDeclarationVisitor;
+import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableAstPrinter;
+import ch.zhaw.it.pm4.javer.compiler.visitor.TypeCheckVisitor;
 
 public class Compiler {
 
@@ -73,19 +75,23 @@ public class Compiler {
             printSection("AST", dumpAst(rootNode));
         }
 
-        createSymbolTable(rootNode);
+        declareSymbols(rootNode);
         if (stopOnErrors()) {
             return;
-        }
-        if (options.isDumpAstSymbolTable()) {
-            printSection("AST SYMBOL TABLE", dumpAst(rootNode));
         }
 
         resolveNames(rootNode);
         if (stopOnErrors()) {
             return;
         }
+        if (options.isDumpAstSymbolTable()) {
+            printSection("AST SYMBOL TABLE", dumpAstSymbolTable(rootNode));
+        }
         typeCheck(rootNode);
+        if (stopOnErrors()) {
+            return;
+        }
+        layout(rootNode);
         if (stopOnErrors()) {
             return;
         }
@@ -124,19 +130,24 @@ public class Compiler {
         return new Parser(tokens, context.getDiagnosticBag()).parse();
     }
 
-    private void createSymbolTable(CompilationUnit rootNode) {
+    private void declareSymbols(CompilationUnit rootNode) {
         enterPhase(CompilationPhase.SYMBOL_TABLE_CREATION);
-        new SymbolTableCreation(context.getDiagnosticBag()).visit(rootNode);
+        new SymbolDeclarationVisitor(context.getDiagnosticBag()).visit(rootNode);
     }
 
     private void resolveNames(CompilationUnit node) {
         enterPhase(CompilationPhase.NAME_RESOLUTION);
-        new NameResoluter().visit(node);
+        new NameResolutionVisitor(context.getDiagnosticBag()).visit(node);
     }
 
     private void typeCheck(CompilationUnit node) {
         enterPhase(CompilationPhase.TYPE_CHECKING);
-        new TypeChecker().visit(node);
+        new TypeCheckVisitor(context.getDiagnosticBag()).visit(node);
+    }
+
+    private void layout(CompilationUnit node) {
+        enterPhase(CompilationPhase.LAYOUT);
+        new LayoutVisitor().visit(node);
     }
 
     private void semanticAnalysis(CompilationUnit node) {
@@ -171,6 +182,10 @@ public class Compiler {
 
     private static String dumpAst(CompilationUnit rootNode) {
         return new AstPrinter().printToString(rootNode);
+    }
+
+    private static String dumpAstSymbolTable(CompilationUnit rootNode) {
+        return new SymbolTableAstPrinter().printToString(rootNode);
     }
 
 }

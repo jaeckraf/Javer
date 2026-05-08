@@ -1,0 +1,49 @@
+package ch.zhaw.it.pm4.javer.compiler.ast.scope;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+
+public final class DataSection {
+
+    private final Map<String, DataEntry> entries = new LinkedHashMap<>();
+    private final Map<String, DataEntry> strings = new LinkedHashMap<>();
+
+    public DataEntry internString(String value) {
+        DataEntry existing = strings.get(value);
+        if (existing != null) {
+            return existing;
+        }
+
+        String label = strings.isEmpty() ? "msg" : "msg_" + strings.size();
+        List<String> encoded = encodeString(value);
+        DataEntry entry = addConstant(label, PrimitiveTypeInfo.of(PrimitiveTypeKind.CHAR), encoded);
+        strings.put(value, entry);
+        return entry;
+    }
+
+    public DataEntry addConstant(String label, TypeInfo type, Object value) {
+        DataEntry entry = new DataEntry(label, type, value);
+        entries.put(label, entry);
+        return entry;
+    }
+
+    public Map<String, DataEntry> getEntries() {
+        return entries;
+    }
+
+    private static List<String> encodeString(String value) {
+        List<String> values = new ArrayList<>();
+        for (char c : value.toCharArray()) {
+            values.add(String.format("%04X", (int) c));
+        }
+        values.add(String.format("%04X", 0));
+        return values;
+    }
+}

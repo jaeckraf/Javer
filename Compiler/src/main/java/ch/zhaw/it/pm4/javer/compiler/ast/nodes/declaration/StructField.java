@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
@@ -12,6 +13,7 @@ public final class StructField extends AstNodeBase implements AstNode {
 
     private final TypeAstNode type;
     private final String name;
+    private FieldEntry symbolEntry;
 
     public StructField(TypeAstNode type, String name) {
         this.type = type;
@@ -24,6 +26,14 @@ public final class StructField extends AstNodeBase implements AstNode {
 
     public String getName() {
         return name;
+    }
+
+    public FieldEntry getSymbolEntry() {
+        return symbolEntry;
+    }
+
+    public void setSymbolEntry(FieldEntry symbolEntry) {
+        this.symbolEntry = symbolEntry;
     }
 
     @Override

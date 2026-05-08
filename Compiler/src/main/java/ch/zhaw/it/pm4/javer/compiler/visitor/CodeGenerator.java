@@ -11,6 +11,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -19,15 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
-    private final List<DataSection> dataSections = new ArrayList<>();
-    private int ifLabelCounter = 0;
+    private DataSection dataSection;
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -78,13 +76,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
+        dataSection = node.getDataSection();
         writeLine(".code");
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
         }
         writeLine("");
         writeLine(".data");
-        dataSections.forEach(dataSection -> writeLine(dataSection.toString()));
+        dataSection.getEntries().values().forEach(entry -> writeLine(entry.toString()));
+        dataSection = null;
     }
 
     @Override
@@ -126,30 +126,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IfStatement node) {
-        int currentLabel = ifLabelCounter++;
-        String elseLabel = "if_else_" + currentLabel;
-        String endLabel = "if_end_" + currentLabel;
-
-        node.getCondition().accept(this);
-
-        if (node.getCondition() instanceof LiteralExpression<?> lit && lit.getKind() == LiteralKind.INT) {
-            writeLine("PUSHI, 0");
-            writeLine("IGT");
-        }
-        
-        writeLine("JUMPF, " + elseLabel);
-        node.getThenBranch().accept(this);
-
-        if (node.getElseBranch() != null) {
-            writeLine("JUMP, " + endLabel);
-        }
-
-        writeLine(elseLabel + ":");
-
-        if (node.getElseBranch() != null) {
-            node.getElseBranch().accept(this);
-            writeLine(endLabel + ":");
-        }
+        super.visit(node);
     }
 
     @Override
@@ -224,7 +201,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CallExpression node) {
-        if (node.getFunctionName().equalsIgnoreCase("prints")) {
+        if(node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
             writeLine("DPRINTS, " + "msg");
         }
@@ -258,22 +235,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(LiteralExpression<?> node) {
         if(node.getKind() == LiteralKind.STRING) {
-            List<String> values = new ArrayList<>();
-            String value = (String) node.getValue();
-            for(char c : value.toCharArray()) {
-                values.add(String.format("%04X", (int) c));
-            }
-            values.add(String.format("%04X", 0));
-            dataSections.add(new DataSection("msg", "2", values));
-        } else if (node.getKind() == LiteralKind.NULL) {
-            writeLine("PUSHB, 0");
-        } 
-        else if (node.getKind() == LiteralKind.BOOLEAN) {
-            boolean val = (Boolean) node.getValue();
-            writeLine("PUSHB, " + (val ? "1" : "0"));
-        } else if (node.getKind() == LiteralKind.INT) {
-            int val = (Integer) node.getValue();
-            writeLine("PUSHI, " + val);
+            dataSection.internString((String) node.getValue());
         }
     }
 
@@ -316,14 +278,5 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(ForInitExpressionList node) {
         super.visit(node);
     }
-
-    private record DataSection(String name, String size, List<String> values) {
-
-        @Override
-            public String toString() {
-                return String.format("%s %s %s", name, size, String.join(",", values));
-            }
-        }
-
 
 }

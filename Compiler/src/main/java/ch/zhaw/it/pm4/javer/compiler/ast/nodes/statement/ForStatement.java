@@ -5,6 +5,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
@@ -14,6 +15,7 @@ public final class ForStatement extends AstNodeBase implements StatementAstNode 
     private final ExpressionAstNode condition;
     private final List<ExpressionAstNode> update;
     private final StatementAstNode body;
+    private BlockScope blockScope;
 
     private ForStatement(Builder builder) {
         this.forInit = builder.forInit;
@@ -70,6 +72,14 @@ public final class ForStatement extends AstNodeBase implements StatementAstNode 
 
     public List<ExpressionAstNode> getUpdate() {
         return update;
+    }
+
+    public BlockScope getBlockScope() {
+        return blockScope;
+    }
+
+    public void setBlockScope(BlockScope blockScope) {
+        this.blockScope = blockScope;
     }
 
     @Override
