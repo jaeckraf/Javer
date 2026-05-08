@@ -3,7 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.EnumValueSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
@@ -11,7 +11,7 @@ public final class EnumCaseLabel extends AstNodeBase implements CaseLabelAstNode
 
     private final String enumTypeName;
     private final String enumValueName;
-    private EnumValueSymbolTableEntry resolvedEnumValue;
+    private EnumValueEntry resolvedEnumValue;
 
     public EnumCaseLabel(String enumTypeName, String enumValueName) {
         this.enumTypeName = enumTypeName;
@@ -26,11 +26,11 @@ public final class EnumCaseLabel extends AstNodeBase implements CaseLabelAstNode
         return enumValueName;
     }
 
-    public EnumValueSymbolTableEntry getResolvedEnumValue() {
+    public EnumValueEntry getResolvedEnumValue() {
         return resolvedEnumValue;
     }
 
-    public void setResolvedEnumValue(EnumValueSymbolTableEntry resolvedEnumValue) {
+    public void setResolvedEnumValue(EnumValueEntry resolvedEnumValue) {
         this.resolvedEnumValue = resolvedEnumValue;
     }
 

@@ -3,8 +3,8 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FunctionSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
@@ -18,8 +18,8 @@ public final class FunctionDeclaration extends AstNodeBase implements Declaratio
     private final List<FunctionParameter> parameters;
     private final BlockStatement body;
 
-    private SymbolTable symbolTable;
-    private FunctionSymbolTableEntry symbolEntry;
+    private FunctionScope functionScope;
+    private FunctionEntry symbolEntry;
 
     public FunctionDeclaration(TypeAstNode returnType, String name, List<FunctionParameter> parameters, BlockStatement body) {
         this.returnType = returnType;
@@ -49,19 +49,19 @@ public final class FunctionDeclaration extends AstNodeBase implements Declaratio
         visitor.visit(this);
     }
 
-    public SymbolTable getSymbolTable() {
-        return symbolTable;
+    public FunctionScope getFunctionScope() {
+        return functionScope;
     }
 
-    public void setSymbolTable(SymbolTable symbolTable) {
-        this.symbolTable = symbolTable;
+    public void setFunctionScope(FunctionScope functionScope) {
+        this.functionScope = functionScope;
     }
 
-    public FunctionSymbolTableEntry getSymbolEntry() {
+    public FunctionEntry getSymbolEntry() {
         return symbolEntry;
     }
 
-    public void setSymbolEntry(FunctionSymbolTableEntry symbolEntry) {
+    public void setSymbolEntry(FunctionEntry symbolEntry) {
         this.symbolEntry = symbolEntry;
     }
 }

@@ -1,7 +1,15 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
-@JacocoGenerated("jacoco-ignore")
-public class TypeChecker extends AstNodeVisitorBase {
+@Deprecated
+public class TypeChecker extends TypeCheckVisitor {
+
+    public TypeChecker() {
+        super();
+    }
+
+    public TypeChecker(DiagnosticBag diagnosticBag) {
+        super(diagnosticBag);
+    }
 }

@@ -1,11 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.EnumSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FunctionSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StorageSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StructSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
@@ -16,6 +11,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -24,19 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
-    private final List<DataSection> dataSections = new ArrayList<>();
-    private SymbolTable currentScope;
-    private FunctionSymbolTableEntry currentFunction;
-    private StructSymbolTableEntry currentStruct;
-    private EnumSymbolTableEntry currentEnum;
-    private StorageSymbolTableEntry currentStorage;
+    private DataSection dataSection;
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -87,13 +76,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
+        dataSection = node.getDataSection();
         writeLine(".code");
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
         }
         writeLine("");
         writeLine(".data");
-        dataSections.forEach(dataSection -> writeLine(dataSection.toString()));
+        dataSection.getEntries().values().forEach(entry -> writeLine(entry.toString()));
+        dataSection = null;
     }
 
     @Override
@@ -244,13 +235,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(LiteralExpression<?> node) {
         if(node.getKind() == LiteralKind.STRING) {
-            List<String> values = new ArrayList<>();
-            String value = (String) node.getValue();
-            for(char c : value.toCharArray()) {
-                values.add(String.format("%04X", (int) c));
-            }
-            values.add(String.format("%04X", 0));
-            dataSections.add(new DataSection("msg", "2", values));
+            dataSection.internString((String) node.getValue());
         }
     }
 
@@ -293,24 +278,5 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(ForInitExpressionList node) {
         super.visit(node);
     }
-
-    private static final class DataSection {
-        private final String name;
-        private final String size;
-        private final List<String> values;
-
-        public DataSection(String name, String size, List<String> values) {
-            this.name = name;
-            this.size = size;
-            this.values = values;
-
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s %s %s", name, size, String.join(",", values));
-        }
-    }
-
 
 }

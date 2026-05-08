@@ -1,19 +1,17 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FunctionSymbolTableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class CallExpression extends AstNodeBase implements ExpressionAstNode {
+public final class CallExpression extends ExpressionAstNodeBase {
 
     private final String functionName;
     private final List<ExpressionAstNode> arguments;
-    private FunctionSymbolTableEntry resolvedFunction;
+    private FunctionEntry resolvedFunction;
 
     public CallExpression(String functionName, List<ExpressionAstNode> arguments) {
         this.functionName = functionName;
@@ -28,11 +26,11 @@ public final class CallExpression extends AstNodeBase implements ExpressionAstNo
         return arguments;
     }
 
-    public FunctionSymbolTableEntry getResolvedFunction() {
+    public FunctionEntry getResolvedFunction() {
         return resolvedFunction;
     }
 
-    public void setResolvedFunction(FunctionSymbolTableEntry resolvedFunction) {
+    public void setResolvedFunction(FunctionEntry resolvedFunction) {
         this.resolvedFunction = resolvedFunction;
     }
 

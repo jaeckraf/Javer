@@ -1,7 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
@@ -9,7 +7,7 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 import java.util.List;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class NewExpression extends AstNodeBase implements ExpressionAstNode {
+public final class NewExpression extends ExpressionAstNodeBase {
 
     private final TypeAstNode type;
     private final List<ExpressionAstNode> dimensions;

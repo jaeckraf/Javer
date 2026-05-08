@@ -1,19 +1,18 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.EnumValueSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.FieldSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
-public final class MemberAccessExpression extends AstNodeBase implements ExpressionAstNode {
+public final class MemberAccessExpression extends ExpressionAstNodeBase {
 
     private final ExpressionAstNode target;
     private final String memberName;
     private int value;
-    private FieldSymbolTableEntry resolvedField;
-    private EnumValueSymbolTableEntry resolvedEnumValue;
+    private FieldEntry resolvedField;
+    private EnumValueEntry resolvedEnumValue;
 
     public MemberAccessExpression(ExpressionAstNode target, String memberName) {
         this.target = target;
@@ -41,19 +40,19 @@ public final class MemberAccessExpression extends AstNodeBase implements Express
         return value;
     }
 
-    public FieldSymbolTableEntry getResolvedField() {
+    public FieldEntry getResolvedField() {
         return resolvedField;
     }
 
-    public void setResolvedField(FieldSymbolTableEntry resolvedField) {
+    public void setResolvedField(FieldEntry resolvedField) {
         this.resolvedField = resolvedField;
     }
 
-    public EnumValueSymbolTableEntry getResolvedEnumValue() {
+    public EnumValueEntry getResolvedEnumValue() {
         return resolvedEnumValue;
     }
 
-    public void setResolvedEnumValue(EnumValueSymbolTableEntry resolvedEnumValue) {
+    public void setResolvedEnumValue(EnumValueEntry resolvedEnumValue) {
         this.resolvedEnumValue = resolvedEnumValue;
     }
 }

@@ -3,7 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
@@ -11,7 +11,7 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 public final class BlockStatement extends AstNodeBase implements StatementAstNode {
 
     private final List<StatementAstNode> statements;
-    private SymbolTable symbolTable;
+    private BlockScope blockScope;
 
     public BlockStatement(List<StatementAstNode> statements) {
         this.statements = statements;
@@ -26,11 +26,11 @@ public final class BlockStatement extends AstNodeBase implements StatementAstNod
         visitor.visit(this);
     }
 
-    public SymbolTable getSymbolTable() {
-        return symbolTable;
+    public BlockScope getBlockScope() {
+        return blockScope;
     }
 
-    public void setSymbolTable(SymbolTable symbolTable) {
-        this.symbolTable = symbolTable;
+    public void setBlockScope(BlockScope blockScope) {
+        this.blockScope = blockScope;
     }
 }

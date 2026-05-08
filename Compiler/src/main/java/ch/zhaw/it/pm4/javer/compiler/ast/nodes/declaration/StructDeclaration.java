@@ -5,16 +5,16 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.StructSymbolTableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symboltable.SymbolTable;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class StructDeclaration extends AstNodeBase implements DeclarationAstNode {
 
      private final String name;
      private final List<StructField> fields;
-     private SymbolTable symbolTable;
-     private StructSymbolTableEntry symbolEntry;
+     private StructScope structScope;
+     private StructEntry symbolEntry;
 
     public StructDeclaration(String name, List<StructField> fields) {
         this.name = name;
@@ -29,19 +29,19 @@ public final class StructDeclaration extends AstNodeBase implements DeclarationA
         return fields;
     }
 
-    public SymbolTable getSymbolTable() {
-        return symbolTable;
+    public StructScope getStructScope() {
+        return structScope;
     }
 
-    public void setSymbolTable(SymbolTable symbolTable) {
-        this.symbolTable = symbolTable;
+    public void setStructScope(StructScope structScope) {
+        this.structScope = structScope;
     }
 
-    public StructSymbolTableEntry getSymbolEntry() {
+    public StructEntry getSymbolEntry() {
         return symbolEntry;
     }
 
-    public void setSymbolEntry(StructSymbolTableEntry symbolEntry) {
+    public void setSymbolEntry(StructEntry symbolEntry) {
         this.symbolEntry = symbolEntry;
     }
 
