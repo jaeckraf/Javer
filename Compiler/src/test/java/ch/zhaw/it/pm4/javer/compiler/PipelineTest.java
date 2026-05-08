@@ -1,5 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
+import org.junit.jupiter.api.Test;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -9,23 +13,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 
-@JacocoGenerated("jacoco-ignore")
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 public final class PipelineTest {
 
-    private static final Path DEFAULT_RESOURCE_ROOT =
-            Path.of("Compiler", "src", "test", "resources", "snapshots");
-
-    private static final Path DEFAULT_OUTPUT_ROOT =
-            Path.of("target", "pipeline-test-output");
-
-    private PipelineTest() {
-    }
+    private static final Path DEFAULT_RESOURCE_ROOT = defaultResourceRoot();
+    private static final Path DEFAULT_OUTPUT_ROOT = Path.of("target", "pipeline-test-output");
 
     public static void main(String[] args) throws Exception {
+        int exitCode = run(args);
+        if (exitCode != 0) {
+            System.exit(exitCode);
+        }
+    }
+
+    @Test
+    void runPipelineSnapshotsWithMaven() throws Exception {
+        assertEquals(0, run(new String[0]));
+    }
+
+    public static int run(String[] args) throws Exception {
         disableLogging();
 
         Path resourceRoot = args.length >= 1
@@ -52,13 +60,13 @@ public final class PipelineTest {
         }
 
         List<String> failures = new ArrayList<>();
-        int executed = 0;
+        List<String> executedTests = new ArrayList<>();
 
         for (Path sourceFile : sourceFiles) {
             Fixture fixture = Fixture.from(sourceFile);
 
             if (Files.exists(fixture.tokensFile())) {
-                executed++;
+                executedTests.add("LEXER       " + resourceRoot.relativize(sourceFile));
                 runDumpSnapshotTest(
                         "LEXER",
                         fixture,
@@ -71,7 +79,7 @@ public final class PipelineTest {
             }
 
             if (Files.exists(fixture.astFile())) {
-                executed++;
+                executedTests.add("AST         " + resourceRoot.relativize(sourceFile));
                 runDumpSnapshotTest(
                         "AST",
                         fixture,
@@ -84,7 +92,7 @@ public final class PipelineTest {
             }
 
             if (Files.exists(fixture.symbolsFile())) {
-                executed++;
+                executedTests.add("SYMBOLS     " + resourceRoot.relativize(sourceFile));
                 runDumpSnapshotTest(
                         "SYMBOLS",
                         fixture,
@@ -97,41 +105,52 @@ public final class PipelineTest {
             }
 
             if (Files.exists(fixture.bytecodeFile())) {
-                executed++;
+                executedTests.add("BYTECODE    " + resourceRoot.relativize(sourceFile));
                 runBytecodeSnapshotTest(fixture, outputRoot, failures);
             }
 
             if (Files.exists(fixture.diagnosticsFile())) {
-                executed++;
+                executedTests.add("DIAGNOSTICS " + resourceRoot.relativize(sourceFile));
                 runDiagnosticsSnapshotTest(fixture, outputRoot, failures);
             }
 
             if (Files.exists(fixture.pipelineFile())) {
-                executed++;
+                executedTests.add("PIPELINE    " + resourceRoot.relativize(sourceFile));
                 runPipelineSnapshotTest(fixture, outputRoot, failures);
             }
         }
 
         System.out.println();
-        System.out.println("Pipeline snapshot tests executed: " + executed);
+        System.out.println("Pipeline snapshot tests executed: " + executedTests.size());
+
+        if (executedTests.isEmpty()) {
+            System.out.println("No pipeline snapshot tests were discovered.");
+        } else {
+            System.out.println();
+            System.out.println("Executed pipeline snapshot tests:");
+            for (String executedTest : executedTests) {
+                System.out.println(" - " + executedTest);
+            }
+        }
 
         if (!failures.isEmpty()) {
             System.err.println();
             System.err.println("Pipeline snapshot test failures: " + failures.size());
-            failures.forEach(failure -> System.err.println(" - " + failure));
-            System.exit(1);
+
+            for (int i = 0; i < failures.size(); i++) {
+                System.err.println();
+                System.err.println("────────────────────────────────────────");
+                System.err.println("Failure " + (i + 1) + " of " + failures.size());
+                System.err.println("────────────────────────────────────────");
+                System.err.println(failures.get(i));
+            }
+
+            return 1;
         }
 
+        System.out.println();
         System.out.println("All pipeline snapshot tests passed.");
-    }
-
-    private static void disableLogging() {
-        LoggerContext loggerContext =
-                (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
-
-        loggerContext
-                .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
-                .setLevel(Level.OFF);
+        return 0;
     }
 
     private static void runDumpSnapshotTest(
@@ -159,7 +178,7 @@ public final class PipelineTest {
             String actual = extractSection(result.stdout(), sectionName);
             String expected = readNormalized(expectedFile);
 
-            assertEquals(expected, actual, testName + " snapshot mismatch for " + fixture.sourceFile(), failures);
+            assertSnapshotEquals(expected, actual, testName + " snapshot mismatch for " + fixture.sourceFile(), failures);
         } catch (Exception exception) {
             failures.add(testName + " crashed for " + fixture.sourceFile() + ": " + exception.getMessage());
         }
@@ -195,7 +214,7 @@ public final class PipelineTest {
             String expected = readNormalized(fixture.bytecodeFile());
             String actual = readNormalized(outputFile);
 
-            assertEquals(expected, actual, "BYTECODE snapshot mismatch for " + fixture.sourceFile(), failures);
+            assertSnapshotEquals(expected, actual, "BYTECODE snapshot mismatch for " + fixture.sourceFile(), failures);
         } catch (Exception exception) {
             failures.add("BYTECODE crashed for " + fixture.sourceFile() + ": " + exception.getMessage());
         }
@@ -217,10 +236,10 @@ public final class PipelineTest {
 
             RunResult result = runCompilerInProcess(compilerArgs);
 
-            String expected = readNormalized(fixture.diagnosticsFile());
-            String actual = normalize(result.stderr());
+            String expected = normalizeDiagnostics(readNormalized(fixture.diagnosticsFile()));
+            String actual = normalizeDiagnostics(result.stderr());
 
-            assertEquals(expected, actual, "DIAGNOSTICS snapshot mismatch for " + fixture.sourceFile(), failures);
+            assertSnapshotEquals(expected, actual, "DIAGNOSTICS snapshot mismatch for " + fixture.sourceFile(), failures);
         } catch (Exception exception) {
             failures.add("DIAGNOSTICS crashed for " + fixture.sourceFile() + ": " + exception.getMessage());
         }
@@ -248,7 +267,7 @@ public final class PipelineTest {
             String actual = normalize(result.stdout());
             String expected = readNormalized(fixture.pipelineFile());
 
-            assertEquals(expected, actual, "PIPELINE snapshot mismatch for " + fixture.sourceFile(), failures);
+            assertSnapshotEquals(expected, actual, "PIPELINE snapshot mismatch for " + fixture.sourceFile(), failures);
         } catch (Exception exception) {
             failures.add("PIPELINE crashed for " + fixture.sourceFile() + ": " + exception.getMessage());
         }
@@ -337,7 +356,14 @@ public final class PipelineTest {
                 .strip();
     }
 
-    private static void assertEquals(
+    private static String normalizeDiagnostics(String text) {
+        return normalize(text)
+                .replace("\\", "/")
+                .replaceAll("File: (?:.*/)?Compiler/src/test/resources/", "File: src/test/resources/")
+                .replaceAll("File: src/test/resources/", "File: src/test/resources/");
+    }
+
+    private static void assertSnapshotEquals(
             String expected,
             String actual,
             String message,
@@ -358,10 +384,28 @@ public final class PipelineTest {
                 + actual);
     }
 
-    private record RunResult(String stdout, String stderr, int exitCode) {
+    private static void disableLogging() {
+        LoggerContext loggerContext =
+                (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+
+        loggerContext
+                .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME)
+                .setLevel(Level.OFF);
     }
 
-    private record Fixture(Path sourceFile, String baseName) {
+    private static Path defaultResourceRoot() {
+        Path fromProjectRoot = Path.of("Compiler", "src", "test", "resources", "snapshots");
+        if (Files.isDirectory(fromProjectRoot)) {
+            return fromProjectRoot;
+        }
+
+        return Path.of("src", "test", "resources", "snapshots");
+    }
+
+    record RunResult(String stdout, String stderr, int exitCode) {
+    }
+
+    record Fixture(Path sourceFile, String baseName) {
 
         static Fixture from(Path sourceFile) {
             String fileName = sourceFile.getFileName().toString();
