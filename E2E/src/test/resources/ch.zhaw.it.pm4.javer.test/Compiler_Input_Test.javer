@@ -1,0 +1,17 @@
+
+struct s {}
+enum e {}
+fn void f() {}
+
+fn void main() {
+
+    let int a;
+    {
+        let int b;
+        {
+            let int c;
+        }
+    }
+
+	return;
+}

@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
@@ -8,6 +7,20 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.LabelEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
 
 import java.io.BufferedWriter;
@@ -18,7 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -70,10 +82,7 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
-        List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> symbolTableChild(node.getSymbolTable(), isLast));
-        children.add(isLast -> nodesChild("declarations", node.getDeclarations(), isLast));
-        visitMany(children);
+        nodesChild("declarations", node.getDeclarations(), true);
     }
 
     @Override
@@ -350,43 +359,140 @@ public class AstPrinter extends AstNodeVisitorBase {
         nodesChild("expressions", node.getExpressions(), true);
     }
 
-    private void symbolTableChild(SymbolTable symbolTable, boolean isLast) {
-        Map<String, SymbolTableEntry> entries = symbolTable.getAllEntries();
-        writeBranchLine("symbolTable (" + entries.size() + ")", isLast);
-        withChildren(() -> {
-            List<Map.Entry<String, SymbolTableEntry>> sortedEntries = entries.entrySet().stream()
-                    .sorted(Map.Entry.comparingByKey())
-                    .toList();
-            visitMany(sortedEntries, (entry, childIsLast) -> symbolTableEntryChild(entry.getValue(), childIsLast));
-        }, isLast);
+    protected void globalScopeChild(GlobalScope globalScope, boolean isLast) {
+        Map<String, SymbolEntry> entries = globalScope.getAllEntries();
+        writeBranchLine("globalScope (" + entries.size() + ")", isLast);
+        withChildren(() -> symbolEntriesChildren(entries), isLast);
     }
 
-    private void symbolTableEntryChild(SymbolTableEntry entry, boolean isLast) {
-        writeBranchLine(entry.getName() + ": " + entry.getClass().getSimpleName(), isLast);
+    private void functionScopeChild(FunctionScope scope, boolean isLast) {
+        Map<String, SymbolEntry> entries = scope.getAllEntries();
+        writeBranchLine("functionScope (" + entries.size() + ")", isLast);
         withChildren(() -> {
-            List<Consumer<Boolean>> children = new ArrayList<>();
-            if (entry instanceof VariableSymbolTableEntry variable) {
-                children.add(childIsLast -> labeledNodeChild("type", variable.getType(), childIsLast));
-                if (variable.getInitializer() != null) {
-                    children.add(childIsLast -> labeledNodeChild("initializer", variable.getInitializer(), childIsLast));
-                }
-            } else if (entry instanceof FunctionSymbolTableEntry function) {
-                children.add(childIsLast -> labeledNodeChild("returnType", function.getReturnType(), childIsLast));
-                children.add(childIsLast -> nodesChild("parameters", function.getParameters(), childIsLast));
-            } else if (entry instanceof StructSymbolTableEntry struct) {
-                children.add(childIsLast -> nodesChild("fields", struct.getFields(), childIsLast));
-            } else if (entry instanceof EnumSymbolTableEntry enumEntry) {
-                children.add(childIsLast -> nodesChild("items", enumEntry.getItems(), childIsLast));
+            List<Consumer<Boolean>> children = symbolEntryConsumers(entries);
+            if (hasBlockScopeContent(scope.getRootBlock())) {
+                children.add(childIsLast -> blockScopeChild(scope.getRootBlock(), childIsLast));
             }
             visitMany(children);
         }, isLast);
     }
 
-    private void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
-        writeBranchLine(label + ": " + value + " " + range, isLast);
+    private void blockScopeChild(BlockScope scope, boolean isLast) {
+        Map<String, SymbolEntry> entries = scope.getAllEntries();
+        if (!hasBlockScopeContent(scope)) {
+            return;
+        }
+
+        writeBranchLine("blockScope (" + entries.size() + ")", isLast);
+        withChildren(() -> {
+            List<Consumer<Boolean>> children = symbolEntryConsumers(entries);
+            scope.getChildren().stream()
+                    .filter(this::hasBlockScopeContent)
+                    .forEach(childScope -> children.add(childIsLast -> blockScopeChild(childScope, childIsLast)));
+            visitMany(children);
+        }, isLast);
     }
 
-    private void labeledNodeChild(String label, AstNode node, boolean isLast) {
+    private void structScopeChild(StructScope scope, boolean isLast) {
+        Map<String, SymbolEntry> entries = scope.getAllEntries();
+        if (entries.isEmpty()) {
+            return;
+        }
+
+        writeBranchLine("structScope (" + entries.size() + ")", isLast);
+        withChildren(() -> symbolEntriesChildren(entries), isLast);
+    }
+
+    private void enumScopeChild(EnumScope scope, boolean isLast) {
+        Map<String, SymbolEntry> entries = scope.getAllEntries();
+        if (entries.isEmpty()) {
+            return;
+        }
+
+        writeBranchLine("enumScope (" + entries.size() + ")", isLast);
+        withChildren(() -> symbolEntriesChildren(entries), isLast);
+    }
+
+    private void symbolEntriesChildren(Map<String, SymbolEntry> entries) {
+        visitMany(symbolEntryConsumers(entries));
+    }
+
+    private List<Consumer<Boolean>> symbolEntryConsumers(Map<String, SymbolEntry> entries) {
+        List<Map.Entry<String, SymbolEntry>> sortedEntries = entries.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .toList();
+        List<Consumer<Boolean>> children = new ArrayList<>();
+        sortedEntries.forEach(entry -> children.add(childIsLast -> symbolEntryChild(entry.getValue(), childIsLast)));
+        return children;
+    }
+
+    private void symbolEntryChild(SymbolEntry entry, boolean isLast) {
+        writeBranchLine(entry.getName() + ": " + entry.getClass().getSimpleName(), isLast);
+        withChildren(() -> {
+            List<Consumer<Boolean>> children = new ArrayList<>();
+            if (entry instanceof StorageEntry storage) {
+                children.add(childIsLast -> scalarChild("type", storage.getType(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", storage.getSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
+                if (entry instanceof VariableEntry variable) {
+                    children.add(childIsLast -> scalarChild("hasExplicitInitializer", variable.hasExplicitInitializer(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("defaultValue", quoteValue(variable.getDefaultValue()), null, childIsLast));
+                }
+            } else if (entry instanceof FunctionEntry function) {
+                children.add(childIsLast -> scalarChild("returnType", function.getReturnType(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("label", quote(function.getLabel()), null, childIsLast));
+                children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
+                if (function.getScope() != null) {
+                    children.add(childIsLast -> functionScopeChild(function.getScope(), childIsLast));
+                }
+            } else if (entry instanceof StructEntry struct) {
+                children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
+                if (hasStructScopeContent(struct.getScope())) {
+                    children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
+                }
+            } else if (entry instanceof EnumEntry enumEntry) {
+                children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
+                children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));
+                if (hasEnumScopeContent(enumEntry.getScope())) {
+                    children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
+                }
+            } else if (entry instanceof EnumValueEntry enumValue) {
+                children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
+                children.add(childIsLast -> scalarChild("value", enumValue.getValue(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("sizeBytes", enumValue.getSizeBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
+            } else if (entry instanceof LabelEntry label) {
+                children.add(childIsLast -> scalarChild("label", quote(label.getLabel()), null, childIsLast));
+            } else if (entry instanceof DataEntry dataEntry) {
+                children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
+                children.add(childIsLast -> scalarChild("value", quoteValue(dataEntry.getValue()), null, childIsLast));
+            }
+            visitMany(children);
+        }, isLast);
+    }
+
+    private boolean hasBlockScopeContent(BlockScope scope) {
+        return scope != null
+                && (!scope.getAllEntries().isEmpty() || scope.getChildren().stream().anyMatch(this::hasBlockScopeContent));
+    }
+
+    private boolean hasStructScopeContent(StructScope scope) {
+        return scope != null && !scope.getAllEntries().isEmpty();
+    }
+
+    private boolean hasEnumScopeContent(EnumScope scope) {
+        return scope != null && !scope.getAllEntries().isEmpty();
+    }
+
+    protected void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
+        writeBranchLine(label + ": " + value + (range != null ? " " + range : ""), isLast);
+    }
+
+    protected void labeledNodeChild(String label, AstNode node, boolean isLast) {
         if (node == null) {
             writeBranchLine(label + ": <null>", isLast);
             return;
@@ -401,7 +507,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         withChildren(() -> node.accept(this), isLast);
     }
 
-    private void nodesChild(String label, List<? extends AstNode> nodes, boolean isLast) {
+    protected void nodesChild(String label, List<? extends AstNode> nodes, boolean isLast) {
         int size = nodes == null ? 0 : nodes.size();
         writeBranchLine(label + " (" + size + ")", isLast);
         withChildren(() -> {
@@ -411,7 +517,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         }, isLast);
     }
 
-    private void writeBranchLine(String text, boolean isLast) {
+    protected void writeBranchLine(String text, boolean isLast) {
         for (boolean last : isLastStack) {
             write(last ? "    " : "\u2502   ");
         }
@@ -420,7 +526,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         writeLine();
     }
 
-    private void withChildren(Runnable body, boolean isLast) {
+    protected void withChildren(Runnable body, boolean isLast) {
         isLastStack.add(isLast);
         body.run();
         isLastStack.remove(isLastStack.size() - 1);
@@ -432,7 +538,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         }
     }
 
-    private void visitMany(List<Consumer<Boolean>> children) {
+    protected void visitMany(List<Consumer<Boolean>> children) {
         visitMany(children, Consumer::accept);
     }
 
@@ -448,12 +554,21 @@ public class AstPrinter extends AstNodeVisitorBase {
         return typeName.endsWith("AstNode") ? typeName.substring(0, typeName.length() - "AstNode".length()) : typeName;
     }
 
-    private static String quote(String value) {
+    protected static String quote(String value) {
         return value == null ? "<null>" : "'" + value.replace("'", "\\'") + "'";
     }
 
-    private static String quoteValue(Object value) {
+    protected static String quoteValue(Object value) {
         return value instanceof String stringValue ? quote(stringValue) : String.valueOf(value);
+    }
+
+    protected void writeRawLine(String text) {
+        write(text);
+        writeLine();
+    }
+
+    protected void writeBlankLine() {
+        writeLine();
     }
 
     private void writeLine() {

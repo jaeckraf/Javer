@@ -103,6 +103,51 @@ class VMTest {
     }
 
     @Test
+    void printsStringFromDataReference() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 0
+                PUSHR, hello
+                HPRINTS
+                RET
+                
+                .data
+                hello 2 0048,0065,006C,006C,006F,0000
+                """);
+
+        assertEquals("Hello", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
+    void storesDataReferenceInHeapObjectAndPrintsThroughField() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 4
+                PUSHI, 4
+                NEW
+                FSTORE4, 0
+                FLOAD4, 0
+                PUSHI, 0
+                PUSHR, hello
+                HSTORE4
+                FLOAD4, 0
+                PUSHI, 0
+                HLOAD4
+                HPRINTS
+                RET
+                
+                .data
+                hello 2 0048,0065,006C,006C,006F,0000
+                """);
+
+        assertEquals("Hello", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
     void addsIntegers() throws Exception {
         RunResult result = runProgram("""
                 .code
@@ -322,6 +367,37 @@ class VMTest {
     }
 
     @Test
+    void copiesDataBytesToHeap() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 4
+                PUSHI, 8
+                NEW
+                FSTORE4, 0
+                FLOAD4, 0
+                PUSHI, 0
+                PUSHI, 8
+                DCOPYH, values
+                FLOAD4, 0
+                PUSHI, 0
+                HLOAD4
+                PRINTI
+                FLOAD4, 0
+                PUSHI, 4
+                HLOAD4
+                PRINTI
+                RET
+                
+                .data
+                values 4 0000002A,00000007
+                """);
+
+        assertEquals("427", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
     void reportsMissingCodeSection() throws Exception {
         RunResult result = runMain("""
                 .data
@@ -412,6 +488,29 @@ class VMTest {
 
         assertEquals("", result.stdout());
         assertTrue(result.stderr().contains("Runtime error: Division by zero"));
+    }
+
+    @Test
+    void reportsRuntimeErrorWhenDataCopyToHeapOverflowsRange() throws Exception {
+        RunResult result = runMain("""
+                .code
+                _main:
+                ENTER, 4
+                PUSHI, 4
+                NEW
+                FSTORE4, 0
+                FLOAD4, 0
+                PUSHI, 2147483647
+                PUSHI, 4
+                DCOPYH, values
+                RET
+                
+                .data
+                values 4 0000002A
+                """);
+
+        assertEquals("", result.stdout());
+        assertTrue(result.stderr().contains("Runtime error: heap access out of bounds"));
     }
 
     @Test

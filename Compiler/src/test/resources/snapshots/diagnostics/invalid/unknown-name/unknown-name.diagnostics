@@ -1,0 +1,5 @@
+=== Error Report ===
+File: Compiler\src\test\resources\snapshots\diagnostics\invalid\unknown-name\unknown-name.jv
+Phase: NAME_RESOLUTION
+
+[ERROR] at [5 : 5 : 2]: Undefined symbol: x

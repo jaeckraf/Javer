@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.type;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 @JacocoGenerated("Skeleton only, remove when fully implemented")
@@ -10,6 +11,7 @@ public final class NamedType extends AstNodeBase implements TypeAstNode {
 
     private final NameTypeKind kind;
     private final String name;
+    private SymbolEntry resolvedEntry;
 
     public NamedType(NameTypeKind kind, String name) {
         this.kind = kind;
@@ -22,6 +24,14 @@ public final class NamedType extends AstNodeBase implements TypeAstNode {
 
     public String getName() {
         return name;
+    }
+
+    public SymbolEntry getResolvedEntry() {
+        return resolvedEntry;
+    }
+
+    public void setResolvedEntry(SymbolEntry resolvedEntry) {
+        this.resolvedEntry = resolvedEntry;
     }
 
     @Override

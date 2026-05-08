@@ -2,25 +2,39 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes;
 
 import java.util.List;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.SymbolTable;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.SemanticContext;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 public final class CompilationUnit extends AstNodeBase implements AstNode {
-    private final SymbolTable symbolTable;
+    private final GlobalScope globalScope;
+    private final DataSection dataSection;
+    private final SemanticContext semanticContext;
     private final List<DeclarationAstNode> declarations;
 
     public CompilationUnit(List<DeclarationAstNode> declarations) {
         this.declarations = declarations;
-        symbolTable = new SymbolTable(null);
+        this.globalScope = new GlobalScope();
+        this.dataSection = new DataSection();
+        this.semanticContext = new SemanticContext(globalScope, dataSection);
     }
 
     public List<DeclarationAstNode> getDeclarations() {
         return declarations;
     }
 
-    public SymbolTable getSymbolTable() {
-        return symbolTable;
+    public GlobalScope getGlobalScope() {
+        return globalScope;
+    }
+
+    public DataSection getDataSection() {
+        return dataSection;
+    }
+
+    public SemanticContext getSemanticContext() {
+        return semanticContext;
     }
 
     @Override

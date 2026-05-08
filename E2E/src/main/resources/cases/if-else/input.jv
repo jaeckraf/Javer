@@ -1,9 +1,0 @@
-fn void main() {
-    let int x = 5;
-
-    if (x > 3) {
-        call prints("big");
-    } else {
-        call prints("small");
-    }
-}

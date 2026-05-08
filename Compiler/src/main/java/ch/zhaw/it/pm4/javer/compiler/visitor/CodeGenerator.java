@@ -11,6 +11,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -19,21 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
 
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
-    private final List<DataSection> dataSections = new ArrayList<>();
-    private int ifLabelCounter = 0;
-    private int loopLabelCounter = 0;
-    private final Deque<LoopContext> loopStack = new ArrayDeque<>();
-
-    private record LoopContext(String continueLabel, String endLabel) {}
+    private DataSection dataSection;
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -84,13 +76,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CompilationUnit node) {
+        dataSection = node.getDataSection();
         writeLine(".code");
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
         }
         writeLine("");
         writeLine(".data");
-        dataSections.forEach(dataSection -> writeLine(dataSection.toString()));
+        dataSection.getEntries().values().forEach(entry -> writeLine(entry.toString()));
+        dataSection = null;
     }
 
     @Override
@@ -132,95 +126,22 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IfStatement node) {
-        int currentLabel = ifLabelCounter++;
-        String elseLabel = "if_else_" + currentLabel;
-        String endLabel = "if_end_" + currentLabel;
-
-        node.getCondition().accept(this);
-
-        if (node.getCondition() instanceof LiteralExpression<?> lit && lit.getKind() == LiteralKind.INT) {
-            writeLine("PUSHI, 0");
-            writeLine("IGT");
-        }
-        
-        writeLine("JUMPF, " + elseLabel);
-        node.getThenBranch().accept(this);
-
-        if (node.getElseBranch() != null) {
-            writeLine("JUMP, " + endLabel);
-        }
-
-        writeLine(elseLabel + ":");
-
-        if (node.getElseBranch() != null) {
-            node.getElseBranch().accept(this);
-            writeLine(endLabel + ":");
-        }
+        super.visit(node);
     }
 
     @Override
     public void visit(WhileStatement node) {
-        int label = loopLabelCounter++;
-        String condLabel = "while_cond_" + label;
-        String endLabel = "while_end_" + label;
-
-        loopStack.push(new LoopContext(condLabel, endLabel));
-
-        writeLine(condLabel + ":");
-        node.getCondition().accept(this);
-        writeLine("JUMPF, " + endLabel);
-        node.getBody().accept(this);
-        writeLine("JUMP, " + condLabel);
-        writeLine(endLabel + ":");
-
-        loopStack.pop();
+        super.visit(node);
     }
 
     @Override
     public void visit(DoWhileStatement node) {
-        int label = loopLabelCounter++;
-        String startLabel = "do_start_" + label;
-        String condLabel = "do_cond_" + label;
-        String endLabel = "do_end_" + label;
-
-        loopStack.push(new LoopContext(condLabel, endLabel));
-
-        writeLine(startLabel + ":");
-        node.getBody().accept(this);
-        writeLine(condLabel + ":");
-        node.getCondition().accept(this);
-        writeLine("JUMPT, " + startLabel);
-        writeLine(endLabel + ":");
-
-        loopStack.pop();
+        super.visit(node);
     }
 
     @Override
     public void visit(ForStatement node) {
-        int label = loopLabelCounter++;
-        String condLabel = "for_cond_" + label;
-        String updateLabel = "for_update_" + label;
-        String endLabel = "for_end_" + label;
-
-        loopStack.push(new LoopContext(updateLabel, endLabel));
-
-        if (node.getForInit() != null) {
-            node.getForInit().accept(this);
-        }
-        writeLine(condLabel + ":");
-        if (node.getCondition() != null) {
-            node.getCondition().accept(this);
-            writeLine("JUMPF, " + endLabel);
-        }
-        node.getBody().accept(this);
-        writeLine(updateLabel + ":");
-        if (node.getUpdate() != null) {
-            node.getUpdate().forEach(expr -> expr.accept(this));
-        }
-        writeLine("JUMP, " + condLabel);
-        writeLine(endLabel + ":");
-
-        loopStack.pop();
+        super.visit(node);
     }
 
     @Override
@@ -235,12 +156,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BreakStatement node) {
-        writeLine("JUMP, " + loopStack.peek().endLabel());
+        super.visit(node);
     }
 
     @Override
     public void visit(ContinueStatement node) {
-        writeLine("JUMP, " + loopStack.peek().continueLabel());
+        super.visit(node);
     }
 
     @Override
@@ -280,7 +201,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CallExpression node) {
-        if (node.getFunctionName().equalsIgnoreCase("prints")) {
+        if(node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
             writeLine("DPRINTS, " + "msg");
         }
@@ -314,22 +235,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(LiteralExpression<?> node) {
         if(node.getKind() == LiteralKind.STRING) {
-            List<String> values = new ArrayList<>();
-            String value = (String) node.getValue();
-            for(char c : value.toCharArray()) {
-                values.add(String.format("%04X", (int) c));
-            }
-            values.add(String.format("%04X", 0));
-            dataSections.add(new DataSection("msg", "2", values));
-        } else if (node.getKind() == LiteralKind.NULL) {
-            writeLine("PUSHB, 0");
-        } 
-        else if (node.getKind() == LiteralKind.BOOLEAN) {
-            boolean val = (Boolean) node.getValue();
-            writeLine("PUSHB, " + (val ? "1" : "0"));
-        } else if (node.getKind() == LiteralKind.INT) {
-            int val = (Integer) node.getValue();
-            writeLine("PUSHI, " + val);
+            dataSection.internString((String) node.getValue());
         }
     }
 
@@ -372,14 +278,5 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(ForInitExpressionList node) {
         super.visit(node);
     }
-
-    private record DataSection(String name, String size, List<String> values) {
-
-        @Override
-            public String toString() {
-                return String.format("%s %s %s", name, size, String.join(",", values));
-            }
-        }
-
 
 }

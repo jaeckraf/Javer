@@ -2,6 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
@@ -15,12 +16,16 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
     @Override
     public void visit(CompilationUnit node) {
-        visitDefault(node);
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            declaration.accept(this);
+        }
     }
 
     @Override
     public void visit(EnumDeclaration node) {
-        visitDefault(node);
+        for (EnumItem item : node.getItems()) {
+            item.accept(this);
+        }
     }
 
     @Override
@@ -30,7 +35,12 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
     @Override
     public void visit(FunctionDeclaration node) {
-        visitDefault(node);
+        for (FunctionParameter param : node.getParameters()) {
+            param.accept(this);
+        }
+        if (node.getBody() != null) {
+            node.getBody().accept(this);
+        }
     }
 
     @Override
@@ -40,7 +50,9 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
     @Override
     public void visit(StructDeclaration node) {
-        visitDefault(node);
+        for (StructField field : node.getFields()) {
+            field.accept(this);
+        }
     }
 
     @Override
@@ -50,37 +62,64 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
     @Override
     public void visit(BlockStatement node) {
-        visitDefault(node);
+        for (StatementAstNode statement : node.getStatements()) {
+            statement.accept(this);
+        }
     }
 
     @Override
     public void visit(IfStatement node) {
-        visitDefault(node);
+        node.getCondition().accept(this);
+        node.getThenBranch().accept(this);
+        if (node.getElseBranch() != null) {
+            node.getElseBranch().accept(this);
+        }
     }
 
     @Override
     public void visit(WhileStatement node) {
-        visitDefault(node);
+        node.getCondition().accept(this);
+        node.getBody().accept(this);
     }
 
     @Override
     public void visit(DoWhileStatement node) {
-        visitDefault(node);
+        node.getCondition().accept(this);
+        node.getBody().accept(this);
     }
 
     @Override
     public void visit(ForStatement node) {
-        visitDefault(node);
+        if (node.getForInit() != null) {
+            node.getForInit().accept(this);
+        }
+        if (node.getCondition() != null) {
+            node.getCondition().accept(this);
+        }
+        if (node.getUpdate() != null) {
+            for (ExpressionAstNode updateExpr : node.getUpdate()) {
+                updateExpr.accept(this);
+            }
+        }
+        node.getBody().accept(this);
     }
 
     @Override
     public void visit(SwitchStatement node) {
-        visitDefault(node);
+        node.getCondition().accept(this);
+        for (SwitchCase switchCase : node.getCases()) {
+            switchCase.accept(this);
+        }
     }
 
     @Override
     public void visit(SwitchCase node) {
-        visitDefault(node);
+        for (CaseLabelAstNode caseLabel : node.getCaseLabels()) {
+            caseLabel.accept(this);
+        }
+        if (node.getStatement() != null) {
+            node.getStatement().accept(this);
+        }
     }
 
     @Override
@@ -95,62 +134,88 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
     @Override
     public void visit(ReturnStatement node) {
-        visitDefault(node);
+        if (node.getExpression() != null) {
+            node.getExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(VarDeclarationStatement node) {
-        visitDefault(node);
+        if (node.getInitializer() != null) {
+            node.getInitializer().accept(this);
+        }
     }
 
     @Override
     public void visit(AssignExpression node) {
-        visitDefault(node);
+        if (node.getTarget() != null) {
+            node.getTarget().accept(this);
+        }
+        if (node.getValue() != null) {
+            node.getValue().accept(this);
+        }
     }
 
     @Override
     public void visit(ConditionalExpression node) {
-        visitDefault(node);
+        node.getCondition().accept(this);
+        if (node.getTrueExpression() != null) {
+            node.getTrueExpression().accept(this);
+        }
+        if (node.getFalseExpression() != null) {
+            node.getFalseExpression().accept(this);
+        }
     }
 
     @Override
     public void visit(BinaryExpression node) {
-        visitDefault(node);
+        node.getLeft().accept(this);
+        node.getRight().accept(this);
     }
 
     @Override
     public void visit(UnaryExpression node) {
-        visitDefault(node);
+        node.getOperand().accept(this);
     }
 
     @Override
     public void visit(PostfixExpression node) {
-        visitDefault(node);
+        node.getOperand().accept(this);
     }
 
     @Override
     public void visit(CallExpression node) {
-        visitDefault(node);
+        for (ExpressionAstNode argument : node.getArguments()) {
+            argument.accept(this);
+        }
     }
 
     @Override
     public void visit(IndexExpression node) {
-        visitDefault(node);
+        node.getTarget().accept(this);
+        node.getIndex().accept(this);
     }
 
     @Override
     public void visit(MemberAccessExpression node) {
-        visitDefault(node);
+        node.getTarget().accept(this);
     }
 
     @Override
     public void visit(NewExpression node) {
-        visitDefault(node);
+        for (ExpressionAstNode dimension : node.getDimensions()) {
+            dimension.accept(this);
+        }
+        if (node.getArrayInit() != null) {
+            node.getArrayInit().accept(this);
+        }
     }
 
     @Override
     public void visit(ArrayInitExpression node) {
-        visitDefault(node);
+        for (ExpressionAstNode element : node.getElements()) {
+            element.accept(this);
+        }
     }
 
     @Override
@@ -195,11 +260,13 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
     @Override
     public void visit(ForInitVarDeclaration node) {
-        visitDefault(node);
+        node.getVarDeclaration().accept(this);
     }
 
     @Override
     public void visit(ForInitExpressionList node) {
-        visitDefault(node);
+        for (ExpressionAstNode expr : node.getExpressions()) {
+            expr.accept(this);
+        }
     }
 }
