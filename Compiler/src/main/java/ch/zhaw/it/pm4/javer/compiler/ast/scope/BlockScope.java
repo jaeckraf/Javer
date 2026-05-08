@@ -7,7 +7,6 @@ import java.util.Map;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
 public final class BlockScope {
 
@@ -42,24 +41,16 @@ public final class BlockScope {
         return parent == null ? null : parent.resolveVisibleVariable(name);
     }
 
-    public VariableEntry resolveVisibleVariable(String name, SourceLocation useLocation) {
+    public VariableEntry resolveVisibleVariable(String name, int currentDeclarationOrder) {
         VariableEntry variable = variables.get(name);
-        if (variable != null && isVisibleAt(variable, useLocation)) {
+        if (variable != null && isVisibleAt(variable, currentDeclarationOrder)) {
             return variable;
         }
-        return parent == null ? null : parent.resolveVisibleVariable(name, useLocation);
+        return parent == null ? null : parent.resolveVisibleVariable(name, currentDeclarationOrder);
     }
 
-    private boolean isVisibleAt(VariableEntry variable, SourceLocation useLocation) {
-        SourceLocation visibilityStart = variable.getVisibilityStart();
-        if (visibilityStart == null || useLocation == null) {
-            return true;
-        }
-        if (visibilityStart.lineNumber() < useLocation.lineNumber()) {
-            return true;
-        }
-        return visibilityStart.lineNumber() == useLocation.lineNumber()
-                && visibilityStart.endColumn() <= useLocation.startColumn();
+    private boolean isVisibleAt(VariableEntry variable, int currentDeclarationOrder) {
+        return variable.getDeclarationOrder() < currentDeclarationOrder;
     }
 
     public void addChild(BlockScope scope) {

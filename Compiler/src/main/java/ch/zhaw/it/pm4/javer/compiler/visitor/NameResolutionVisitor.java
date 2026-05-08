@@ -33,12 +33,13 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 public class NameResolutionVisitor extends AstNodeVisitorBase {
 
-    private static final Set<String> BUILT_IN_FUNCTIONS = Set.of("printi", "prints", "println");
+    private static final Set<String> BUILT_IN_FUNCTIONS = Set.of("printb", "printc", "printi", "printd", "prints");
 
     private final DiagnosticBag diagnosticBag;
     private GlobalScope globalScope;
     private FunctionScope currentFunctionScope;
     private BlockScope currentBlock;
+    private int currentVariableDeclarationOrder;
 
     public NameResolutionVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
@@ -56,9 +57,11 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
 
         FunctionScope previousFunctionScope = currentFunctionScope;
         BlockScope previousBlock = currentBlock;
+        int previousVariableDeclarationOrder = currentVariableDeclarationOrder;
 
         currentFunctionScope = node.getFunctionScope();
         currentBlock = currentFunctionScope.getRootBlock();
+        currentVariableDeclarationOrder = 0;
 
         for (FunctionParameter parameter : node.getParameters()) {
             parameter.accept(this);
@@ -69,6 +72,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
 
         currentFunctionScope = previousFunctionScope;
         currentBlock = previousBlock;
+        currentVariableDeclarationOrder = previousVariableDeclarationOrder;
     }
 
     @Override
@@ -121,6 +125,11 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
         if (node.getInitializer() != null) {
             node.getInitializer().accept(this);
         }
+        if (node.getSymbolEntry() != null) {
+            currentVariableDeclarationOrder = Math.max(
+                    currentVariableDeclarationOrder,
+                    node.getSymbolEntry().getDeclarationOrder() + 1);
+        }
     }
 
     @Override
@@ -163,7 +172,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
 
     private StorageEntry resolveStorage(NameExpression node) {
         if (currentBlock != null) {
-            VariableEntry variable = currentBlock.resolveVisibleVariable(node.getName(), node.getSourceRange().start());
+            VariableEntry variable = currentBlock.resolveVisibleVariable(node.getName(), currentVariableDeclarationOrder);
             if (variable != null) {
                 return variable;
             }

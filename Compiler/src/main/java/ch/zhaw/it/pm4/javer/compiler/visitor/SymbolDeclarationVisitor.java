@@ -48,6 +48,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     private FunctionScope currentFunctionScope;
     private FunctionEntry currentFunction;
     private BlockScope currentBlock;
+    private int nextVariableDeclarationOrder;
 
     public SymbolDeclarationVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
@@ -144,20 +145,21 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         FunctionScope previousFunctionScope = currentFunctionScope;
         FunctionEntry previousFunction = currentFunction;
         BlockScope previousBlock = currentBlock;
+        int previousVariableDeclarationOrder = nextVariableDeclarationOrder;
 
         currentFunctionScope = node.getFunctionScope();
         currentFunction = node.getSymbolEntry();
         currentBlock = null;
+        nextVariableDeclarationOrder = 0;
         currentFunction.setReturnType(resolveType(node.getReturnType()));
 
         defineParameters(node, currentFunctionScope, currentFunction);
-        if (node.getBody() != null) {
-            node.getBody().accept(this);
-        }
+        node.getBody().accept(this);
 
         currentFunctionScope = previousFunctionScope;
         currentFunction = previousFunction;
         currentBlock = previousBlock;
+        nextVariableDeclarationOrder = previousVariableDeclarationOrder;
     }
 
     private void defineParameters(FunctionDeclaration node, FunctionScope functionScope, FunctionEntry function) {
@@ -262,7 +264,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                 offsetBytes,
                 node.getInitializer() != null,
                 defaultValueOf(type),
-                node.getSourceRange().end());
+                nextVariableDeclarationOrder++);
         node.setSymbolEntry(entry);
 
         if (currentBlock != null && !currentBlock.defineVariable(entry)) {

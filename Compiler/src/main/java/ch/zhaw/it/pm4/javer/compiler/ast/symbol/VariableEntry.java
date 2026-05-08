@@ -1,13 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
-
 public final class VariableEntry extends StorageEntry {
 
     private final boolean hasExplicitInitializer;
     private final Object defaultValue;
-    private final SourceLocation visibilityStart;
+    private final int declarationOrder;
 
     public VariableEntry(
             String name,
@@ -16,11 +14,11 @@ public final class VariableEntry extends StorageEntry {
             int offsetBytes,
             boolean hasExplicitInitializer,
             Object defaultValue,
-            SourceLocation visibilityStart) {
+            int declarationOrder) {
         super(name, type, sizeBytes, offsetBytes);
         this.hasExplicitInitializer = hasExplicitInitializer;
         this.defaultValue = defaultValue;
-        this.visibilityStart = visibilityStart;
+        this.declarationOrder = declarationOrder;
     }
 
     public boolean hasExplicitInitializer() {
@@ -31,7 +29,7 @@ public final class VariableEntry extends StorageEntry {
         return defaultValue;
     }
 
-    public SourceLocation getVisibilityStart() {
-        return visibilityStart;
+    public int getDeclarationOrder() {
+        return declarationOrder;
     }
 }
