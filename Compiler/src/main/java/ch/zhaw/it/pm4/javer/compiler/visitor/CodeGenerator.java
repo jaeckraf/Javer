@@ -140,7 +140,20 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IfStatement node) {
-        super.visit(node);
+        String elseLabel = nextLabel("if_else");
+        String endLabel = nextLabel("if_end");
+        node.getCondition().accept(this);
+        writeLine("JUMPF, " + elseLabel);
+        node.getThenBranch().accept(this);
+        boolean elseBranchPossible = node.getElseBranch() != null;
+        if(elseBranchPossible) {
+            writeLine("JUMP, " + endLabel);
+        }
+        writeLabel(elseLabel);
+        if(elseBranchPossible) {
+            node.getElseBranch().accept(this);
+            writeLabel(endLabel);
+        }
     }
 
     @Override
@@ -148,15 +161,18 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String conditionLabel = nextLabel("while_condition");
         String endLabel = nextLabel("while_end");
 
+        writeLine("// condition");
         writeLabel(conditionLabel);
         node.getCondition().accept(this);
         writeLine("JUMPF, " + endLabel);
 
         loopContexts.push(new LoopContext(endLabel, conditionLabel));
+        writeLine("// body");
         node.getBody().accept(this);
         loopContexts.pop();
-
+        writeLine("// end of body");
         writeLine("JUMP, " + conditionLabel);
+        writeLine("// end of while loop");
         writeLabel(endLabel);
     }
 
@@ -266,7 +282,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CallExpression node) {
-        if(node.getFunctionName().equalsIgnoreCase("prints")) {
+        if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
             writeLine("DPRINTS, " + "msg");
         }
@@ -299,8 +315,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(LiteralExpression<?> node) {
-        if(node.getKind() == LiteralKind.STRING) {
+        if (node.getKind() == LiteralKind.STRING) {
             dataSection.internString((String) node.getValue());
+        }
+        if (node.getKind() == LiteralKind.BOOLEAN) {
+            Boolean b = (Boolean) node.getValue();
+            if(b) writeLine("PUSHB, 1");
+            else writeLine("PUSHB, 0");
         }
     }
 
