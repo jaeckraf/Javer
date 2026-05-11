@@ -1,0 +1,12 @@
+.code
+_main:
+ENTER, 0
+PUSHI, 1
+PUSHB, 0
+PUSHC, 99
+PUSHI, 0
+PUSHD, 3.14
+RET
+
+.data
+string_0 2 0073,0000

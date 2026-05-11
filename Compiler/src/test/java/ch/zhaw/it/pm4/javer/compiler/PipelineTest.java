@@ -163,7 +163,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, testName.toLowerCase() + ".bytecode");
+            Path outputFile = createOutputPath(outputRoot, fixture, testName.toLowerCase() + ".jbc");
 
             List<String> compilerArgs = new ArrayList<>();
             compilerArgs.add("--in-file");
@@ -190,7 +190,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, "actual.bytecode");
+            Path outputFile = createOutputPath(outputRoot, fixture, "actual.jbc");
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
@@ -226,7 +226,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, "diagnostics.bytecode");
+            Path outputFile = createOutputPath(outputRoot, fixture, "diagnostics.jbc");
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
@@ -251,7 +251,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, "pipeline.bytecode");
+            Path outputFile = createOutputPath(outputRoot, fixture, "pipeline.jbc");
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
@@ -426,7 +426,7 @@ public final class PipelineTest {
         }
 
         Path bytecodeFile() {
-            return sibling(".bytecode");
+            return sibling(".jbc");
         }
 
         Path diagnosticsFile() {
