@@ -1,0 +1,80 @@
+CompilationUnit [1:1][11:2]
+============================================
+| table: global | scope offset: 0          |
+============================================
+| kind | name | type | label   | sizeBytes |
+--------------------------------------------
+| func | abs  | int  | '_abs'  | 0         |
+| func | main | void | '_main' | 4         |
+============================================
+
+============================================================================================================
+| table: function abs | return: int | label: '_abs' | parameter bytes: 4 | local bytes: 0 | frame bytes: 0 |
+============================================================================================================
+| section | scope    | name   | type   | sizeBytes | offsetBytes | details                                 |
+------------------------------------------------------------------------------------------------------------
+| param   | function | value  | int    | 4         | -4          |                                         |
+| block   | #0       | parent | <root> |           |             | locals: 0                               |
+| block   | #1       | parent | #0     |           |             | locals: 0                               |
+============================================================================================================
+
+===============================================================================================================
+| table: function main | return: void | label: '_main' | parameter bytes: 0 | local bytes: 4 | frame bytes: 4 |
+===============================================================================================================
+| section | scope    | name   | type   | sizeBytes | offsetBytes | details                                    |
+---------------------------------------------------------------------------------------------------------------
+| params  | function | <none> |        |           |             |                                            |
+| block   | #0       | parent | <root> |           |             | locals: 1                                  |
+| local   | #0       | result | int    | 4         | 0           | init: true, default: 0                     |
+===============================================================================================================
+
+AST
+===
+└── declarations (2)
+    ├── FunctionDeclaration [1:1][7:1]
+    │   ├── name: 'abs' [1:1][7:1]
+    │   ├── returnType PrimitiveType [1:4][1:6]
+    │   │   └── kind: INT [1:4][1:6]
+    │   ├── parameters (1)
+    │   │   └── FunctionParameter [1:12][1:20]
+    │   │       ├── type PrimitiveType [1:12][1:14]
+    │   │       │   └── kind: INT [1:12][1:14]
+    │   │       └── name: 'value' [1:12][1:20]
+    │   └── body BlockStatement [1:23][7:1]
+    │       └── statements (2)
+    │           ├── IfStatement [2:5][4:5]
+    │           │   ├── condition BinaryExpression [2:9][2:17]
+    │           │   │   ├── left NameExpression [2:9][2:13]
+    │           │   │   │   └── name: 'value' [2:9][2:13]
+    │           │   │   ├── operator: LESS [2:9][2:17]
+    │           │   │   └── right LiteralExpression [2:17][2:17]
+    │           │   │       ├── kind: INT [2:17][2:17]
+    │           │   │       └── value: 0 [2:17][2:17]
+    │           │   └── then BlockStatement [2:20][4:5]
+    │           │       └── statements (1)
+    │           │           └── ReturnStatement [3:9][3:22]
+    │           │               └── expression UnaryExpression [3:16][3:21]
+    │           │                   ├── operator: MINUS [3:16][3:21]
+    │           │                   └── operand NameExpression [3:17][3:21]
+    │           │                       └── name: 'value' [3:17][3:21]
+    │           └── ReturnStatement [6:5][6:17]
+    │               └── expression NameExpression [6:12][6:16]
+    │                   └── name: 'value' [6:12][6:16]
+    └── FunctionDeclaration [9:1][11:1]
+        ├── name: 'main' [9:1][11:1]
+        ├── returnType VoidType [9:4][9:7]
+        ├── parameters (0)
+        └── body BlockStatement [9:16][11:1]
+            └── statements (1)
+                └── VarDeclarationStatement [10:5][10:34]
+                    ├── type PrimitiveType [10:9][10:11]
+                    │   └── kind: INT [10:9][10:11]
+                    ├── name: 'result' [10:5][10:34]
+                    └── initializer CallExpression [10:22][10:33]
+                        ├── functionName: 'abs' [10:22][10:33]
+                        └── arguments (1)
+                            └── UnaryExpression [10:31][10:32]
+                                ├── operator: MINUS [10:31][10:32]
+                                └── operand LiteralExpression [10:32][10:32]
+                                    ├── kind: INT [10:32][10:32]
+                                    └── value: 5 [10:32][10:32]

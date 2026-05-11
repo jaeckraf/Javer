@@ -1,0 +1,5 @@
+=== Error Report ===
+File: Compiler\src\test\resources\pipelinetests\diagnostics\invalid\unknown-enum\unknown-enum.jv
+Phase: NAME_RESOLUTION
+
+[ERROR] at [24 : 28 : 8]: Enum has no value: GREY

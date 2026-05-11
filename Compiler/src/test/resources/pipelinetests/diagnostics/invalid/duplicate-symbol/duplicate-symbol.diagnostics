@@ -1,0 +1,5 @@
+=== Error Report ===
+File: Compiler\src\test\resources\pipelinetests\diagnostics\invalid\duplicate-symbol\duplicate-symbol.jv
+Phase: SYMBOL_TABLE_CREATION
+
+[ERROR] at [5 : 7 : 3]: Duplicate symbol: value

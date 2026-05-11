@@ -1,5 +1,5 @@
 === Error Report ===
-File: Compiler\src\test\resources\snapshots\diagnostics\invalid\syntax-missing-semicolon\syntax-missing-semicolon.jv
+File: Compiler\src\test\resources\pipelinetests\diagnostics\invalid\syntax-missing-semicolon\syntax-missing-semicolon.jv
 Phase: PARSING
 
 [ERROR] at [1 : 1 : 3]: Expected token [SYMBOL_SEMICOLON] but found SYMBOL_RIGHT_BRACE.

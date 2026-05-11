@@ -1,0 +1,5 @@
+=== Error Report ===
+File: Compiler\src\test\resources\pipelinetests\diagnostics\invalid\duplicate-enum-value\duplicate-enum-value.jv
+Phase: SYMBOL_TABLE_CREATION
+
+[ERROR] at [5 : 9 : 3]: Duplicate enum value: 0
