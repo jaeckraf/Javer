@@ -544,22 +544,22 @@ public final class E2EApplicationTest {
     }
 
     private static Path defaultCaseRoot() {
-        Path fromProjectRootMain = Path.of("E2E", "src", "main", "resources", "cases");
+        Path fromProjectRootMain = Path.of("E2E", "src", "main", "resources", "testcases");
         if (Files.isDirectory(fromProjectRootMain)) {
             return fromProjectRootMain;
         }
 
-        Path fromModuleRootMain = Path.of("src", "main", "resources", "cases");
+        Path fromModuleRootMain = Path.of("src", "main", "resources", "testcases");
         if (Files.isDirectory(fromModuleRootMain)) {
             return fromModuleRootMain;
         }
 
-        Path fromProjectRootTest = Path.of("E2E", "src", "test", "resources", "cases");
+        Path fromProjectRootTest = Path.of("E2E", "src", "test", "resources", "testcases");
         if (Files.isDirectory(fromProjectRootTest)) {
             return fromProjectRootTest;
         }
 
-        return Path.of("src", "test", "resources", "cases");
+        return Path.of("src", "test", "resources", "testcases");
     }
 
     private record RunResult(String stdout, String stderr, int exitCode) {

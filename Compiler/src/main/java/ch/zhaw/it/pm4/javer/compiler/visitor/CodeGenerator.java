@@ -160,19 +160,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(WhileStatement node) {
         String conditionLabel = nextLabel("while_condition");
         String endLabel = nextLabel("while_end");
-
-        writeLine("// condition");
         writeLabel(conditionLabel);
         node.getCondition().accept(this);
         writeLine("JUMPF, " + endLabel);
-
         loopContexts.push(new LoopContext(endLabel, conditionLabel));
-        writeLine("// body");
         node.getBody().accept(this);
         loopContexts.pop();
-        writeLine("// end of body");
         writeLine("JUMP, " + conditionLabel);
-        writeLine("// end of while loop");
         writeLabel(endLabel);
     }
 
@@ -322,6 +316,19 @@ public class CodeGenerator extends AstNodeVisitorBase {
             Boolean b = (Boolean) node.getValue();
             if(b) writeLine("PUSHB, 1");
             else writeLine("PUSHB, 0");
+        }
+        if (node.getKind() == LiteralKind.INT) {
+            writeLine("PUSHI, " + node.getValue());
+        }
+        if (node.getKind() == LiteralKind.CHAR) {
+            int i = (int) ((char)node.getValue());
+            writeLine("PUSHC, " + i);
+        }
+        if (node.getKind() == LiteralKind.DOUBLE) {
+            writeLine("PUSHD, " + node.getValue());
+        }
+        if (node.getKind() == LiteralKind.NULL) {
+            writeLine("PUSHI, 0");
         }
     }
 

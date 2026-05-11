@@ -1,0 +1,11 @@
+fn void main() {
+
+    1;
+    false;
+    'c';
+    "s";
+    null;
+    3.14;
+
+	return;
+}
