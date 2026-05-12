@@ -445,7 +445,28 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(PostfixExpression node) {
         super.visit(node);
-        node.setResultingType(node.getOperand().getResultingType());
+
+        TypeInfo operandType = node.getOperand() == null
+                ? UnknownTypeInfo.INSTANCE
+                : node.getOperand().getResultingType();
+
+        TypeInfo result = switch (node.getKind()) {
+            case INCREMENT, DECREMENT -> {
+                if (!isNumeric(operandType)) {
+                    report(node, "Post increment/decrement requires int or double operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                if (!isAssignableTarget(node.getOperand())) {
+                    report(node, "Post increment/decrement requires assignable operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield operandType;
+            }
+
+            case INVALID -> UnknownTypeInfo.INSTANCE;
+        };
+
+        node.setResultingType(result);
     }
 
     @Override
