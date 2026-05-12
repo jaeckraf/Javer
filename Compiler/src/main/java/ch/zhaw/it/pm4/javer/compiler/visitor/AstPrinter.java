@@ -51,9 +51,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         isLastStack.clear();
 
         try {
-            write(nodeTitle(node));
-            writeLine();
-            node.accept(this);
+            writeRoot(node);
         } finally {
             this.output = null;
             isLastStack.clear();
@@ -83,6 +81,12 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(CompilationUnit node) {
         nodesChild("declarations", node.getDeclarations(), true);
+    }
+
+    protected void writeRoot(CompilationUnit node) {
+        write(nodeTitle(node));
+        writeLine();
+        node.accept(this);
     }
 
     @Override

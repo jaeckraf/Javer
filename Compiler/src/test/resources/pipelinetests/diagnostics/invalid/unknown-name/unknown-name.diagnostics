@@ -1,5 +1,9 @@
 === Error Report ===
-File: Compiler\src\test\resources\pipelinetests\diagnostics\invalid\unknown-name\unknown-name.jv
+File: src/test/resources/pipelinetests/diagnostics/invalid/unknown-name/unknown-name.jv
 Phase: NAME_RESOLUTION
 
-[ERROR] at [5 : 5 : 2]: Undefined symbol: x
+[ERROR] Undefined symbol: x
+  --> src/test/resources/pipelinetests/diagnostics/invalid/unknown-name/unknown-name.jv:2:5
+  |
+2 |     x = 1;
+  |     ^

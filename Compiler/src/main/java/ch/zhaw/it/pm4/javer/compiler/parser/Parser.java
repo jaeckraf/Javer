@@ -153,9 +153,10 @@ public class Parser {
             consumeToken();
             return token;
         }
+        SourceLocation missingLocation = expectedTokenLocation();
         reportExpectedToken(expected);
         if (isNotAtEnd()) consumeToken();
-        return new Token(expected, expected.diagnosticName(), token.getPosition());
+        return new Token(expected, expected.diagnosticName(), missingLocation);
     }
 
     private Token expectTokenTypes(Set<TokenType> expected) {
@@ -200,16 +201,32 @@ public class Parser {
         return located(new BlockStatement(List.of()), startToken);
     }
 
-    private void reportExpectedToken(TokenType expected) { reportExpectedTokens(EnumSet.of(expected)); }
+    private void reportExpectedToken(TokenType expected) {
+        reportExpectedTokens(EnumSet.of(expected), expectedTokenLocation());
+    }
 
     private void reportExpectedTokens(Set<TokenType> expected) {
+        reportExpectedTokens(expected, diagnosticLocation(currentToken()));
+    }
+
+    private void reportExpectedTokens(Set<TokenType> expected, SourceLocation location) {
         Token current = currentToken();
-        SourceLocation location = diagnosticLocation(current);
         String message = expected.size() == 1
                 ? String.format("Expected: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current))
                 : String.format("Expected one of: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current));
         JaverLogger.error(message);
         diagnosticBag.add(location, Severity.ERROR, message);
+    }
+
+    private SourceLocation expectedTokenLocation() {
+        Token current = currentToken();
+        if (current.getTokenType() == TokenType.SPECIAL_END_OF_FILE || currentPosition == 0) {
+            return diagnosticLocation(current);
+        }
+
+        SourceLocation previous = previousToken().getPosition();
+        int insertionColumn = previous.endColumn() + 1;
+        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber());
     }
 
     private SourceLocation diagnosticLocation(Token token) {

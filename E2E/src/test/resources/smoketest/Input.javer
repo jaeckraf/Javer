@@ -1,4 +1,9 @@
 fn void main() {
-    while(false){
-    1 + 2 - a
+
+    {
+        {
+            let int a;
+        }
+    }
+
 }

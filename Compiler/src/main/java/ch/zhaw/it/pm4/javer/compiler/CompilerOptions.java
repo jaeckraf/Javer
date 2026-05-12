@@ -9,14 +9,14 @@ public class CompilerOptions {
     // - loggingEnabled
     // - dumpLexer
     // - dumpAst
-    // - dumpAstSymbolTable
+    // - dumpSymbolTable
 
     private final String inputFilePath;
     private final String outputFilePath;
     private final boolean loggingEnabled;
     private final boolean dumpLexer;
     private final boolean dumpAst;
-    private final boolean dumpAstSymbolTable;
+    private final boolean dumpSymbolTable;
 
     private CompilerOptions(
             String inputFilePath,
@@ -24,14 +24,14 @@ public class CompilerOptions {
             boolean loggingEnabled,
             boolean dumpLexer,
             boolean dumpAst,
-            boolean dumpAstSymbolTable) {
+            boolean dumpSymbolTable) {
 
         this.inputFilePath = inputFilePath;
         this.outputFilePath = outputFilePath;
         this.loggingEnabled = loggingEnabled;
         this.dumpLexer = dumpLexer;
         this.dumpAst = dumpAst;
-        this.dumpAstSymbolTable = dumpAstSymbolTable;
+        this.dumpSymbolTable = dumpSymbolTable;
     }
 
     public String getInputFilePath() {
@@ -54,17 +54,17 @@ public class CompilerOptions {
         return dumpAst;
     }
 
-    public boolean isDumpAstSymbolTable() {
-        return dumpAstSymbolTable;
+    public boolean isDumpSymbolTable() {
+        return dumpSymbolTable;
     }
 
-    public static CompilerOptions create(String...args) {
+    public static CompilerOptions create(String... args) {
         String inputFilePath = null;
         String outputFilePath = null;
         boolean loggingEnabled = false;
         boolean dumpLexer = false;
         boolean dumpAst = false;
-        boolean dumpAstSymbolTable = false;
+        boolean dumpSymbolTable = false;
 
         if (args.length == 2 && !args[0].startsWith("-") && !args[1].startsWith("-")) {
             inputFilePath = args[0];
@@ -77,9 +77,8 @@ public class CompilerOptions {
                     case "--out-file", "-o" -> outputFilePath = readRequiredValue(args, ++i, arg);
                     case "--dump-lexer" -> dumpLexer = true;
                     case "--dump-ast" -> dumpAst = true;
-                    case "--dump-ast-symboltable" -> dumpAstSymbolTable = true;
+                    case "--dump-symboltable" -> dumpSymbolTable = true;
                     case "--logging" -> loggingEnabled = true;
-                    case "--no-logging" -> loggingEnabled = false;
                     default -> throw new IllegalArgumentException("Unknown compiler option: " + arg);
                 }
             }
@@ -88,7 +87,7 @@ public class CompilerOptions {
         if (inputFilePath == null || outputFilePath == null) {
             throw new IllegalArgumentException(
                     "Usage: compiler --in-file <path> --out-file <path> " +
-                            "[--dump-lexer] [--dump-ast] [--dump-ast-symboltable] [--logging|--no-logging]");
+                            "[--dump-lexer] [--dump-ast] [--dump-symboltable] [--logging]");
         }
 
         return new CompilerOptions(
@@ -97,7 +96,7 @@ public class CompilerOptions {
                 loggingEnabled,
                 dumpLexer,
                 dumpAst,
-                dumpAstSymbolTable
+                dumpSymbolTable
         );
     }
 

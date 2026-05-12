@@ -1,5 +1,9 @@
 === Error Report ===
-File: Compiler\src\test\resources\pipelinetests\diagnostics\invalid\syntax-unclosed-block\syntax-unclosed-block.jv
+File: src/test/resources/pipelinetests/diagnostics/invalid/syntax-unclosed-block/syntax-unclosed-block.jv
 Phase: PARSING
 
-[ERROR] at [19 : 19 : 2]: Expected token [SYMBOL_RIGHT_BRACE] but found SPECIAL_END_OF_FILE.
+[ERROR] Expected: '}'; but found: end of file.
+  --> src/test/resources/pipelinetests/diagnostics/invalid/syntax-unclosed-block/syntax-unclosed-block.jv:2:19
+  |
+2 |     let int x = 1;
+  |                   ^

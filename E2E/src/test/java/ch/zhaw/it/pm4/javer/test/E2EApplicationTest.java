@@ -271,7 +271,6 @@ public final class E2EApplicationTest {
         command.add(inputFile.toString());
         command.add("--out-file");
         command.add(bytecodeFile.toString());
-        command.add("--no-logging");
 
         return runProcess(command, timeoutSeconds);
     }

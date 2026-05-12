@@ -24,7 +24,7 @@ public final class PipelineTest {
     private static final String DIAGNOSTICS_DIRECTORY = "diagnostics";
     private static final String LEXER_DIRECTORY = "lexer";
     private static final String AST_DIRECTORY = "ast";
-    private static final String AST_SYMBOL_TABLE_DIRECTORY = "astSymboltable";
+    private static final String SYMBOL_TABLE_DIRECTORY = "astSymboltable";
     private static final String COMPLETE_PIPELINE_DIRECTORY = "completePipeline";
 
     public static void main(String[] args) throws Exception {
@@ -156,15 +156,15 @@ public final class PipelineTest {
                     );
                 }
             }
-            case AST_SYMBOL_TABLE_DIRECTORY -> {
-                executedTests.add("AST SYMBOLTABLE  " + relativeSourceFile);
-                if (requireExpectedFile(fixture.symbolsFile(), "AST SYMBOLTABLE", fixture, failures)) {
+            case SYMBOL_TABLE_DIRECTORY -> {
+                executedTests.add("SYMBOLTABLE      " + relativeSourceFile);
+                if (requireExpectedFile(fixture.symbolsFile(), "SYMBOLTABLE", fixture, failures)) {
                     runDumpSnapshotTest(
-                            "AST_SYMBOLTABLE",
+                            "SYMBOLTABLE",
                             fixture,
                             outputRoot,
-                            List.of("--dump-ast-symboltable"),
-                            "AST SYMBOL TABLE",
+                            List.of("--dump-symboltable"),
+                            "SYMBOL TABLE",
                             fixture.symbolsFile(),
                             failures
                     );
@@ -218,7 +218,6 @@ public final class PipelineTest {
             compilerArgs.add(fixture.sourceFile().toString());
             compilerArgs.add("--out-file");
             compilerArgs.add(outputFile.toString());
-            compilerArgs.add("--no-logging");
             compilerArgs.addAll(dumpFlags);
 
             RunResult result = runCompilerInProcess(compilerArgs);
@@ -242,8 +241,7 @@ public final class PipelineTest {
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
-                    "--out-file", outputFile.toString(),
-                    "--no-logging"
+                    "--out-file", outputFile.toString()
             );
 
             RunResult result = runCompilerInProcess(compilerArgs);
@@ -278,8 +276,7 @@ public final class PipelineTest {
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
-                    "--out-file", outputFile.toString(),
-                    "--no-logging"
+                    "--out-file", outputFile.toString()
             );
 
             RunResult result = runCompilerInProcess(compilerArgs);
@@ -304,10 +301,9 @@ public final class PipelineTest {
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
                     "--out-file", outputFile.toString(),
-                    "--no-logging",
                     "--dump-lexer",
                     "--dump-ast",
-                    "--dump-ast-symboltable"
+                    "--dump-symboltable"
             );
 
             RunResult result = runCompilerInProcess(compilerArgs);

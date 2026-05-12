@@ -93,8 +93,7 @@ CompilationUnit [1:1][11:2]
                                     â”œâ”€â”€ kind: INT [10:32][10:32]
                                     â””â”€â”€ value: 5 [10:32][10:32]
 
-=== AST SYMBOL TABLE ===
-CompilationUnit [1:1][11:2]
+=== SYMBOL TABLE ===
 ============================================
 | table: global | scope offset: 0          |
 ============================================
@@ -124,55 +123,5 @@ CompilationUnit [1:1][11:2]
 | local   | #0       | result | int    | 4         | 0           | init: true, default: 0                     |
 ===============================================================================================================
 
-AST
-===
-â””â”€â”€ declarations (2)
-    â”œâ”€â”€ FunctionDeclaration [1:1][7:1]
-    â”‚   â”œâ”€â”€ name: 'abs' [1:1][7:1]
-    â”‚   â”œâ”€â”€ returnType PrimitiveType [1:4][1:6]
-    â”‚   â”‚   â””â”€â”€ kind: INT [1:4][1:6]
-    â”‚   â”œâ”€â”€ parameters (1)
-    â”‚   â”‚   â””â”€â”€ FunctionParameter [1:12][1:20]
-    â”‚   â”‚       â”œâ”€â”€ type PrimitiveType [1:12][1:14]
-    â”‚   â”‚       â”‚   â””â”€â”€ kind: INT [1:12][1:14]
-    â”‚   â”‚       â””â”€â”€ name: 'value' [1:12][1:20]
-    â”‚   â””â”€â”€ body BlockStatement [1:23][7:1]
-    â”‚       â””â”€â”€ statements (2)
-    â”‚           â”œâ”€â”€ IfStatement [2:5][4:5]
-    â”‚           â”‚   â”œâ”€â”€ condition BinaryExpression [2:9][2:17]
-    â”‚           â”‚   â”‚   â”œâ”€â”€ left NameExpression [2:9][2:13]
-    â”‚           â”‚   â”‚   â”‚   â””â”€â”€ name: 'value' [2:9][2:13]
-    â”‚           â”‚   â”‚   â”œâ”€â”€ operator: LESS [2:9][2:17]
-    â”‚           â”‚   â”‚   â””â”€â”€ right LiteralExpression [2:17][2:17]
-    â”‚           â”‚   â”‚       â”œâ”€â”€ kind: INT [2:17][2:17]
-    â”‚           â”‚   â”‚       â””â”€â”€ value: 0 [2:17][2:17]
-    â”‚           â”‚   â””â”€â”€ then BlockStatement [2:20][4:5]
-    â”‚           â”‚       â””â”€â”€ statements (1)
-    â”‚           â”‚           â””â”€â”€ ReturnStatement [3:9][3:22]
-    â”‚           â”‚               â””â”€â”€ expression UnaryExpression [3:16][3:21]
-    â”‚           â”‚                   â”œâ”€â”€ operator: MINUS [3:16][3:21]
-    â”‚           â”‚                   â””â”€â”€ operand NameExpression [3:17][3:21]
-    â”‚           â”‚                       â””â”€â”€ name: 'value' [3:17][3:21]
-    â”‚           â””â”€â”€ ReturnStatement [6:5][6:17]
-    â”‚               â””â”€â”€ expression NameExpression [6:12][6:16]
-    â”‚                   â””â”€â”€ name: 'value' [6:12][6:16]
-    â””â”€â”€ FunctionDeclaration [9:1][11:1]
-        â”œâ”€â”€ name: 'main' [9:1][11:1]
-        â”œâ”€â”€ returnType VoidType [9:4][9:7]
-        â”œâ”€â”€ parameters (0)
-        â””â”€â”€ body BlockStatement [9:16][11:1]
-            â””â”€â”€ statements (1)
-                â””â”€â”€ VarDeclarationStatement [10:5][10:34]
-                    â”œâ”€â”€ type PrimitiveType [10:9][10:11]
-                    â”‚   â””â”€â”€ kind: INT [10:9][10:11]
-                    â”œâ”€â”€ name: 'result' [10:5][10:34]
-                    â””â”€â”€ initializer CallExpression [10:22][10:33]
-                        â”œâ”€â”€ functionName: 'abs' [10:22][10:33]
-                        â””â”€â”€ arguments (1)
-                            â””â”€â”€ UnaryExpression [10:31][10:32]
-                                â”œâ”€â”€ operator: MINUS [10:31][10:32]
-                                â””â”€â”€ operand LiteralExpression [10:32][10:32]
-                                    â”œâ”€â”€ kind: INT [10:32][10:32]
-                                    â””â”€â”€ value: 5 [10:32][10:32]
 
 Compilation Successful

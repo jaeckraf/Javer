@@ -84,8 +84,8 @@ public class Compiler {
         if (stopOnErrors()) {
             return;
         }
-        if (options.isDumpAstSymbolTable()) {
-            printSection("AST SYMBOL TABLE", dumpAstSymbolTable(rootNode));
+        if (options.isDumpSymbolTable()) {
+            printSection("SYMBOL TABLE", dumpSymbolTable(rootNode));
         }
         typeCheck(rootNode);
         if (stopOnErrors()) {
@@ -184,7 +184,7 @@ public class Compiler {
         return new AstPrinter().printToString(rootNode);
     }
 
-    private static String dumpAstSymbolTable(CompilationUnit rootNode) {
+    private static String dumpSymbolTable(CompilationUnit rootNode) {
         return new SymbolTableAstPrinter().printToString(rootNode);
     }
 
