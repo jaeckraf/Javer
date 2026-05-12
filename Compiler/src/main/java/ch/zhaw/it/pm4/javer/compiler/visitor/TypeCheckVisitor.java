@@ -2,23 +2,11 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import java.util.Set;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpressionKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
@@ -38,6 +26,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 public class TypeCheckVisitor extends AstNodeVisitorBase {
 
@@ -45,6 +34,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
     private GlobalScope globalScope;
+    private TypeInfo currentFunctionReturnType = UnknownTypeInfo.INSTANCE;
 
     public TypeCheckVisitor() {
         this(null);
@@ -85,6 +75,73 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         }
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
+
+    //Function Declaration
+
+    public void visit(FunctionDeclaration node) {
+        TypeInfo previous = currentFunctionReturnType;
+
+        currentFunctionReturnType = node.getSymbolEntry() != null
+                ? node.getSymbolEntry().getReturnType()
+                : resolveType(node.getReturnType());
+        super.visit(node);
+        currentFunctionReturnType = previous;
+    }
+
+    public void visit(FunctionParameter node) {
+        node.getType().accept(this);
+    }
+
+    @Override
+    public void visit(ReturnStatement node) {
+        super.visit(node);
+
+        TypeInfo actualReturnType = node.getExpression() == null
+                ? VoidTypeInfo.INSTANCE
+                : node.getExpression().getResultingType();
+
+        TypeInfo expectedReturnType = currentFunctionReturnType == null
+                ? UnknownTypeInfo.INSTANCE
+                : currentFunctionReturnType;
+
+        // void function darf keinen Wert returnen
+        if (expectedReturnType instanceof VoidTypeInfo && node.getExpression() != null) {
+            report(node, "Void function must not return a value.");
+            return;
+        }
+
+        // non-void function muss Wert returnen
+        if (!(expectedReturnType instanceof VoidTypeInfo) && node.getExpression() == null) {
+            report(node, "Missing return value. Expected: " + expectedReturnType);
+            return;
+        }
+
+        // Typprüfung
+        if (!isAssignable(expectedReturnType, actualReturnType)) {
+            report(node, "Return type mismatch. Expected: " + expectedReturnType + ", actual: " + actualReturnType);
+        }
+    }
+
+    private boolean isAssignable(TypeInfo expected, TypeInfo actual) {
+        if (expected instanceof UnknownTypeInfo || actual instanceof UnknownTypeInfo) {
+            return true;
+        }
+
+        if (expected.equals(actual)) {
+            return true;
+        }
+
+        // optionale Promotion: int -> double
+        return PrimitiveTypeInfo.DOUBLE.equals(expected) && PrimitiveTypeInfo.INT.equals(actual);
+    }
+
+    private void report(AstNode node, String message) {
+        if (diagnosticBag != null) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, message);
+        }
+    }
+
+
 
     @Override
     public void visit(CallExpression node) {
