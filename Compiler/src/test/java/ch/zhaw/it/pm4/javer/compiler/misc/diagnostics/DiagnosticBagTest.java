@@ -19,7 +19,7 @@ class DiagnosticBagTest {
 
     @Test
     void dumpReportIncludesSourceLineAndTabAwareMarker() throws Exception {
-        Path sourceFile = tempDir.resolve("input.jv");
+        Path sourceFile = tempDir.resolve("input.javer");
         Files.writeString(sourceFile, "\tif();\n", StandardCharsets.UTF_8);
 
         SourceCache sourceCache = new SourceCache(sourceFile.toString());

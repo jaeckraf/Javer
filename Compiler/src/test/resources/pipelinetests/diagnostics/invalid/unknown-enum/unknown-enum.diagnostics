@@ -1,9 +1,9 @@
 === Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/unknown-enum/unknown-enum.jv
+File: src/test/resources/pipelinetests/diagnostics/invalid/unknown-enum/unknown-enum.javer
 Phase: NAME_RESOLUTION
 
 [ERROR] Enum has no value: GREY
-  --> src/test/resources/pipelinetests/diagnostics/invalid/unknown-enum/unknown-enum.jv:8:24
+  --> src/test/resources/pipelinetests/diagnostics/invalid/unknown-enum/unknown-enum.javer:8:24
   |
 8 |     let enum Color c = Color.GREY;
   |                        ^^^^^

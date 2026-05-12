@@ -1,6 +1,5 @@
 .code
 _main:
 ENTER, 0
-PUSHI, 69
 
 .data

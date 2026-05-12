@@ -21,6 +21,9 @@ public final class PipelineTest {
     private static final Path DEFAULT_RESOURCE_ROOT = defaultResourceRoot();
     private static final Path DEFAULT_OUTPUT_ROOT = Path.of("target", "pipelinetest-output");
 
+    private static final String SOURCE_FILE_EXTENSION = ".javer";
+    private static final String BYTECODE_FILE_EXTENSION = ".jbc";
+
     private static final String DIAGNOSTICS_DIRECTORY = "diagnostics";
     private static final String LEXER_DIRECTORY = "lexer";
     private static final String AST_DIRECTORY = "ast";
@@ -60,7 +63,7 @@ public final class PipelineTest {
         try (Stream<Path> stream = Files.walk(resourceRoot)) {
             sourceFiles = stream
                     .filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".jv"))
+                    .filter(path -> path.getFileName().toString().endsWith(SOURCE_FILE_EXTENSION))
                     .sorted()
                     .toList();
         }
@@ -211,7 +214,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, testName.toLowerCase() + ".jbc");
+            Path outputFile = createOutputPath(outputRoot, fixture, testName.toLowerCase());
 
             List<String> compilerArgs = new ArrayList<>();
             compilerArgs.add("--in-file");
@@ -237,11 +240,12 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, "actual.jbc");
+            Path outputBaseFile = createOutputPath(outputRoot, fixture, "actual");
+            Path outputFile = withBytecodeExtension(outputBaseFile);
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
-                    "--out-file", outputFile.toString()
+                    "--out-file", outputBaseFile.toString()
             );
 
             RunResult result = runCompilerInProcess(compilerArgs);
@@ -272,7 +276,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, "diagnostics.jbc");
+            Path outputFile = createOutputPath(outputRoot, fixture, "diagnostics");
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
@@ -296,7 +300,7 @@ public final class PipelineTest {
             List<String> failures
     ) {
         try {
-            Path outputFile = createOutputPath(outputRoot, fixture, "pipeline.jbc");
+            Path outputFile = createOutputPath(outputRoot, fixture, "pipeline");
 
             List<String> compilerArgs = List.of(
                     "--in-file", fixture.sourceFile().toString(),
@@ -356,7 +360,11 @@ public final class PipelineTest {
         Path directory = outputRoot.resolve(relativeParent);
         Files.createDirectories(directory);
 
-        return directory.resolve(fixture.baseName() + "." + suffix);
+        return directory.resolve(fixture.baseName() + "-" + suffix);
+    }
+
+    private static Path withBytecodeExtension(Path outputBaseFile) {
+        return outputBaseFile.resolveSibling(outputBaseFile.getFileName() + BYTECODE_FILE_EXTENSION);
     }
 
     private static String extractSection(String output, String sectionName) {
@@ -453,7 +461,7 @@ public final class PipelineTest {
 
         static Fixture from(Path sourceFile) {
             String fileName = sourceFile.getFileName().toString();
-            String baseName = fileName.substring(0, fileName.length() - ".jv".length());
+            String baseName = fileName.substring(0, fileName.length() - SOURCE_FILE_EXTENSION.length());
             return new Fixture(sourceFile, baseName);
         }
 

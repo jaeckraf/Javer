@@ -34,6 +34,7 @@ public final class E2EApplicationTest {
     private static final String ACTUAL_BYTECODE_FILE = "output.jbc";
     private static final String EXPECTED_BYTECODE_FILE = "expected_output.jbc";
     private static final String COMPILATION_SUCCESSFUL = "Compilation Successful";
+    private static final String BYTECODE_FILE_EXTENSION = ".jbc";
 
     private static final long DEFAULT_TIMEOUT_SECONDS = 10;
 
@@ -270,7 +271,7 @@ public final class E2EApplicationTest {
         command.add("--in-file");
         command.add(inputFile.toString());
         command.add("--out-file");
-        command.add(bytecodeFile.toString());
+        command.add(bytecodeOutputBasePath(bytecodeFile).toString());
 
         return runProcess(command, timeoutSeconds);
     }
@@ -417,6 +418,16 @@ public final class E2EApplicationTest {
         } catch (Exception exception) {
             return "<could not read file: " + file + ">";
         }
+    }
+
+    private static Path bytecodeOutputBasePath(Path bytecodeFile) {
+        String fileName = bytecodeFile.getFileName().toString();
+        if (!fileName.endsWith(BYTECODE_FILE_EXTENSION)) {
+            return bytecodeFile;
+        }
+
+        String baseName = fileName.substring(0, fileName.length() - BYTECODE_FILE_EXTENSION.length());
+        return bytecodeFile.resolveSibling(baseName);
     }
 
     private static String normalize(String text) {
