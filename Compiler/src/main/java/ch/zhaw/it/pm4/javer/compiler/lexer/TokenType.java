@@ -12,7 +12,7 @@ public enum TokenType {
     LITERAL_OCTAL("Literal: octal"),
     LITERAL_STRING("Literal: string"),
     LITERAL_CHAR("Literal: char"),
-    LITERAL_BOOLEAN("Literal: boolean"),
+    LITERAL_BOOLEAN("Literal: boolean", "true", "false"),
     LITERAL_NULL("null"),
 
     // Identifiers
@@ -100,13 +100,76 @@ public enum TokenType {
     SPECIAL_UNKNOWN("unknown token");
 
     private final String diagnosticName;
+    private final String[] lexemes;
 
-    TokenType(String diagnosticName) {
+    TokenType(String diagnosticName, String... lexemes) {
         this.diagnosticName = diagnosticName;
+        this.lexemes = lexemes;
     }
 
     public String diagnosticName() {
         return diagnosticName;
+    }
+
+    public static TokenType fromWordLexeme(String lexeme) {
+        for (TokenType tokenType : values()) {
+            if (tokenType.isWordToken() && tokenType.matchesLexeme(lexeme)) {
+                return tokenType;
+            }
+        }
+        return ID_IDENTIFIER;
+    }
+
+    public static FixedTokenMatch fixedTokenAt(String source, int startIndex) {
+        FixedTokenMatch bestMatch = null;
+        for (TokenType tokenType : values()) {
+            if (!tokenType.isFixedToken()) {
+                continue;
+            }
+            int length = tokenType.matchLengthAt(source, startIndex);
+            if (length > 0 && (bestMatch == null || length > bestMatch.length())) {
+                bestMatch = new FixedTokenMatch(tokenType, length);
+            }
+        }
+        return bestMatch;
+    }
+
+    private boolean isWordToken() {
+        return name().startsWith("KEYWORD_")
+                || name().startsWith("TYPE_")
+                || this == LITERAL_BOOLEAN
+                || this == LITERAL_NULL;
+    }
+
+    private boolean isFixedToken() {
+        return name().startsWith("OPERATOR_") || name().startsWith("SYMBOL_");
+    }
+
+    private boolean matchesLexeme(String lexeme) {
+        if (lexemes.length == 0) {
+            return diagnosticName.equals(lexeme);
+        }
+        for (String tokenLexeme : lexemes) {
+            if (tokenLexeme.equals(lexeme)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int matchLengthAt(String source, int startIndex) {
+        if (lexemes.length == 0) {
+            return source.startsWith(diagnosticName, startIndex) ? diagnosticName.length() : 0;
+        }
+        for (String tokenLexeme : lexemes) {
+            if (source.startsWith(tokenLexeme, startIndex)) {
+                return tokenLexeme.length();
+            }
+        }
+        return 0;
+    }
+
+    public record FixedTokenMatch(TokenType tokenType, int length) {
     }
 
 }
