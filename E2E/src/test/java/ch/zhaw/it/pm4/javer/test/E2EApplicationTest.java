@@ -26,7 +26,7 @@ public final class E2EApplicationTest {
     private static final String DEFAULT_VM_MAIN_CLASS =
             "ch.zhaw.it.pm4.javer.vm.VM";
 
-    private static final String INPUT_SOURCE_FILE = "input.jv";
+    private static final String INPUT_SOURCE_FILE = "input.javer";
     private static final String COMPILER_STDOUT_FILE = "expected.compiler.stdout";
     private static final String COMPILER_STDERR_FILE = "expected.compiler.stderr";
     private static final String VM_STDOUT_FILE = "expected.vm.stdout";

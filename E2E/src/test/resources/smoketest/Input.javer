@@ -1,9 +1,3 @@
 fn void main() {
-
-    {
-        {
-            let int a;
-        }
-    }
-
+    break;
 }

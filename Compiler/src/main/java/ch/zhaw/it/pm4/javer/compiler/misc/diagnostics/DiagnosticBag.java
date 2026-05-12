@@ -35,15 +35,6 @@ public class DiagnosticBag {
         this.phase = compilationPhase;
     }
 
-    /**
-     * Sets the current compiler phase (e.g., "Lexer", "Parser").
-     *
-     * @param phase The name of the phase.
-     */
-    public void setPhase(String phase) {
-        // TODO: Implement
-    }
-
     public void setPhase(CompilationPhase phase) {
         this.phase = phase;
     }

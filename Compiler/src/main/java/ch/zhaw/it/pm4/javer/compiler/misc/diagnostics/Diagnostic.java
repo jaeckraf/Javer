@@ -42,7 +42,6 @@ public class Diagnostic {
 
     @Override
     public String toString() {
-        // Formats the diagnostic nicely: [ERROR] at [1 : 5 : 2]: Type mismatch. Expected int.
         return String.format("[%s] at %s: %s", severity.name(), location.toString(), message);
     }
 }
