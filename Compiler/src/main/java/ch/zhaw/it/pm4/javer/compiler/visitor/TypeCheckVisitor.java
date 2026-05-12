@@ -323,16 +323,49 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 || target instanceof IndexExpression;
     }
 
-
+    @Override
+    public void visit(IfStatement node) {
+        super.visit(node);
+        checkConditionType(node.getCondition(), node, "If");
+    }
 
 
     @Override
     public void visit(ConditionalExpression node) {
         super.visit(node);
-        TypeInfo trueType = node.getTrueExpression() == null ? UnknownTypeInfo.INSTANCE : node.getTrueExpression().getResultingType();
-        TypeInfo falseType = node.getFalseExpression() == null ? UnknownTypeInfo.INSTANCE : node.getFalseExpression().getResultingType();
+
+        checkConditionType(node.getCondition(), node, "Conditional expression");
+
+        TypeInfo trueType = node.getTrueExpression() == null
+                ? UnknownTypeInfo.INSTANCE
+                : node.getTrueExpression().getResultingType();
+        TypeInfo falseType = node.getFalseExpression() == null
+                ? UnknownTypeInfo.INSTANCE
+                : node.getFalseExpression().getResultingType();
+
         node.setResultingType(trueType.equals(falseType) ? trueType : UnknownTypeInfo.INSTANCE);
     }
+
+
+    private boolean isConditionType(TypeInfo type) {
+        if (type instanceof UnknownTypeInfo) {
+            return true; // vermeidet Fehler-Kaskade
+        }
+        return PrimitiveTypeInfo.BOOL.equals(type)
+                || PrimitiveTypeInfo.INT.equals(type)
+                || PrimitiveTypeInfo.DOUBLE.equals(type);
+    }
+
+    private void checkConditionType(ExpressionAstNode condition, AstNode owner, String context) {
+        if (condition == null) {
+            return;
+        }
+        TypeInfo conditionType = condition.getResultingType();
+        if (!isConditionType(conditionType)) {
+            report(owner, context + " condition must be bool, int, or double, but was: " + conditionType);
+        }
+    }
+
 
     @Override
     public void visit(UnaryExpression node) {
