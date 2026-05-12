@@ -352,7 +352,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     public void visit(ConditionalExpression node) {
         super.visit(node);
 
-        checkConditionType(node.getCondition(), node, "Conditional expression");
+        checkConditionType(node.getCondition(), node, "Conditional expression", false);
 
         TypeInfo trueType = node.getTrueExpression() == null
                 ? UnknownTypeInfo.INSTANCE
