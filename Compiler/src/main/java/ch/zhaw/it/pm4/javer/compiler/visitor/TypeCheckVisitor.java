@@ -190,16 +190,82 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(BinaryExpression node) {
         super.visit(node);
+
         TypeInfo left = node.getLeft().getResultingType();
         TypeInfo right = node.getRight().getResultingType();
 
-        node.setResultingType(switch (node.getOperator()) {
-            case OR, AND, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> PrimitiveTypeInfo.BOOL;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT ->
-                    numericResult(left, right);
+        TypeInfo result = switch (node.getOperator()) {
+            case OR, AND -> {
+                if (!isBoolean(left) || !isBoolean(right)) {
+                    report(node, "Logical operator requires boolean operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.BOOL;
+            }
+
+            case EQUALS, NOT_EQUALS -> {
+                if (!isComparable(left, right)) {
+                    report(node, "Equality operator requires compatible operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.BOOL;
+            }
+
+            case LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> {
+                if (!isNumeric(left) || !isNumeric(right)) {
+                    report(node, "Comparison operator requires numeric operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.BOOL;
+            }
+
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> {
+                if (!isNumeric(left) || !isNumeric(right)) {
+                    report(node, "Arithmetic operator requires numeric operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield numericResult(left, right);
+            }
+
+            case BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> {
+                if (!isInteger(left) || !isInteger(right)) {
+                    report(node, "Bitwise and shift operators require integer operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.INT;
+            }
+
             case INVALID -> UnknownTypeInfo.INSTANCE;
-        });
+        };
+
+        node.setResultingType(result);
     }
+
+    private boolean isBoolean(TypeInfo type) {
+        return PrimitiveTypeInfo.BOOL.equals(type);
+    }
+
+    private boolean isInteger(TypeInfo type) {
+        return PrimitiveTypeInfo.INT.equals(type);
+    }
+
+    private boolean isNumeric(TypeInfo type) {
+        return PrimitiveTypeInfo.INT.equals(type) || PrimitiveTypeInfo.DOUBLE.equals(type);
+    }
+
+    private boolean isComparable(TypeInfo left, TypeInfo right) {
+        if (left instanceof UnknownTypeInfo || right instanceof UnknownTypeInfo) {
+            return true;
+        }
+
+        if (left.equals(right)) {
+            return true;
+        }
+
+        // falls ihr int/double-Mischung erlauben wollt
+        return isNumeric(left) && isNumeric(right);
+    }
+
 
     @Override
     public void visit(AssignExpression node) {
