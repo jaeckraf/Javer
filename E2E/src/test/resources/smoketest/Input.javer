@@ -1,3 +1,4 @@
 fn void main() {
-    break;
+    while(false){
+    1 + 2 - a
 }

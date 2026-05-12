@@ -160,7 +160,7 @@ public class Parser {
         }
         reportExpectedToken(expected);
         if (isNotAtEnd()) consumeToken();
-        return new Token(expected, expected.toString(), token.getPosition());
+        return new Token(expected, expected.diagnosticName(), token.getPosition());
     }
 
     private Token expectTokenTypes(Set<TokenType> expected) {
@@ -172,7 +172,7 @@ public class Parser {
         reportExpectedTokens(expected);
         if (isNotAtEnd()) consumeToken();
         TokenType dummy = expected.iterator().next();
-        return new Token(dummy, dummy.toString(), token.getPosition());
+        return new Token(dummy, dummy.diagnosticName(), token.getPosition());
     }
 
     private boolean skipErrors(Set<TokenType> first, Set<TokenType> follow, boolean epsilonAllowed) {
@@ -209,10 +209,65 @@ public class Parser {
 
     private void reportExpectedTokens(Set<TokenType> expected) {
         Token current = currentToken();
-        SourceLocation location = current.getPosition();
-        String message = String.format("Expected token %s but found %s.", expected, current.getTokenType());
+        SourceLocation location = diagnosticLocation(current);
+        String message = expected.size() == 1
+                ? String.format("Expected: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current))
+                : String.format("Expected one of: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current));
         JaverLogger.error(message);
         diagnosticBag.add(location, Severity.ERROR, message);
+    }
+
+    private SourceLocation diagnosticLocation(Token token) {
+        if (token.getTokenType() != TokenType.SPECIAL_END_OF_FILE || currentPosition == 0) {
+            return token.getPosition();
+        }
+
+        SourceLocation previous = previousToken().getPosition();
+        int insertionColumn = previous.endColumn() + 1;
+        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber());
+    }
+
+    private String formatExpectedTokens(Set<TokenType> expected) {
+        List<String> literalNames = new ArrayList<>();
+        List<String> tokenNames = new ArrayList<>();
+
+        for (TokenType tokenType : expected) {
+            String name = tokenType.diagnosticName();
+            if (name.startsWith("Literal: ")) {
+                literalNames.add(quote(name.substring("Literal: ".length())));
+            } else {
+                tokenNames.add(quote(name));
+            }
+        }
+
+        if (!literalNames.isEmpty()) {
+            tokenNames.add(0, "Literal: (" + String.join(", ", literalNames) + ")");
+        }
+
+        return String.join(", ", tokenNames);
+    }
+
+    private String quote(String value) {
+        return "'" + value + "'";
+    }
+
+    private String formatFoundToken(Token token) {
+        String value = token.getValue();
+        if (value != null && !value.isEmpty()) {
+            return printable(value);
+        }
+        return token.getTokenType().diagnosticName();
+    }
+
+    private String printable(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\0", "\\0");
     }
 
     private CompilationUnit parseCompilationUnit() {

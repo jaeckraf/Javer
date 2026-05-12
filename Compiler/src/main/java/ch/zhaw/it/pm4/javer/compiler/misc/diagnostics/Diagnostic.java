@@ -36,6 +36,10 @@ public class Diagnostic {
         return severity;
     }
 
+    public String getMessage() {
+        return message;
+    }
+
     @Override
     public String toString() {
         // Formats the diagnostic nicely: [ERROR] at [1 : 5 : 2]: Type mismatch. Expected int.
