@@ -13,11 +13,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
@@ -88,8 +84,17 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         currentFunctionReturnType = previous;
     }
 
+    @Override
     public void visit(FunctionParameter node) {
         node.getType().accept(this);
+
+        TypeInfo resolved = resolveType(node.getType());
+        if (resolved instanceof UnknownTypeInfo) {
+            if (diagnosticBag != null) {
+                diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                        "Undefined type for parameter: " + node.getName());
+            }
+        }
     }
 
     @Override
@@ -142,20 +147,45 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     }
 
 
+    //Function Call
 
     @Override
     public void visit(CallExpression node) {
         super.visit(node);
-        if (node.getResolvedFunction() != null) {
-            node.setResultingType(node.getResolvedFunction().getReturnType());
+
+        FunctionEntry function = node.getResolvedFunction();
+        if (function == null) {
+            if (VOID_BUILT_INS.contains(node.getFunctionName())) {
+                node.setResultingType(VoidTypeInfo.INSTANCE);
+                return;
+            }
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
-        if (VOID_BUILT_INS.contains(node.getFunctionName())) {
-            node.setResultingType(VoidTypeInfo.INSTANCE);
+
+        var parameters = function.getScope().getParameters().values();
+
+        if (node.getArguments().size() != parameters.size()) {
+            report(node, "Argument count mismatch for function " + node.getFunctionName());
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
-        node.setResultingType(UnknownTypeInfo.INSTANCE);
+
+        int index = 0;
+        for (var parameter : parameters) {
+            TypeInfo expected = parameter.getType();
+            TypeInfo actual = node.getArguments().get(index).getResultingType();
+
+            if (!isAssignable(expected, actual)) {
+                report(node, "Argument " + (index + 1) + " type mismatch: expected "
+                        + expected + ", got " + actual);
+            }
+            index++;
+        }
+
+        node.setResultingType(function.getReturnType());
     }
+
 
     @Override
     public void visit(BinaryExpression node) {
