@@ -12,6 +12,10 @@ import java.util.Objects;
  * their radix prefix.
  */
 public class Token {
+    private static final int TOKEN_TYPE_WIDTH = 35;
+    private static final int VALUE_WIDTH = 15;
+    private static final int POSITION_WIDTH = 3;
+
     private final TokenType type;
     private final String value;
     private final SourceLocation position;
@@ -60,6 +64,15 @@ public class Token {
     
     @Override
     public String toString() {
-        return String.format("Token{type=%s, value='%s', position=%s}", type, value, position);
+        return String.format(
+                "TokenType: %" + TOKEN_TYPE_WIDTH + "s, value: '%" + VALUE_WIDTH
+                        + "s', position: [%" + POSITION_WIDTH + "d : %" + POSITION_WIDTH
+                        + "d : %" + POSITION_WIDTH + "d ]",
+                type,
+                value,
+                position.lineNumber(),
+                position.startColumn(),
+                position.endColumn()
+        );
     }
 }

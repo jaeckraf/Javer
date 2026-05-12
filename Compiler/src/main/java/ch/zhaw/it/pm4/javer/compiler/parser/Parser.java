@@ -88,11 +88,6 @@ public class Parser {
     private static final Set<TokenType> FOLLOW_EXPRESSION = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COLON, TokenType.SYMBOL_RIGHT_PARENTHESIS, TokenType.SYMBOL_RIGHT_BRACKET, TokenType.SYMBOL_RIGHT_BRACE);
     private static final Set<TokenType> FOLLOW_CASE = EnumSet.of(TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SYMBOL_RIGHT_BRACE);
 
-    /**
-     * Synchronisation, wenn ein Pflicht-Token am Statement-Ende fehlt.
-     * FIRST_STATEMENT ist hier absichtlich nicht enthalten, sonst wird z.B. ein String-Literal
-     * innerhalb eines kaputten Statements direkt als neues Statement akzeptiert.
-     */
     private static final Set<TokenType> FOLLOW_STATEMENT_END = EnumSet.of(
             TokenType.SYMBOL_SEMICOLON,
             TokenType.SYMBOL_RIGHT_BRACE,
