@@ -393,12 +393,54 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(UnaryExpression node) {
         super.visit(node);
-        if (node.getKind() == UnaryExpressionKind.LOGICAL_NOT) {
-            node.setResultingType(PrimitiveTypeInfo.BOOL);
-            return;
-        }
-        node.setResultingType(node.getOperand().getResultingType());
+
+        TypeInfo operandType = node.getOperand() == null
+                ? UnknownTypeInfo.INSTANCE
+                : node.getOperand().getResultingType();
+
+        TypeInfo result = switch (node.getKind()) {
+            case LOGICAL_NOT -> {
+                if (!isBoolean(operandType)) {
+                    report(node, "Logical not requires boolean operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.BOOL;
+            }
+
+            case BITWISE_NOT -> {
+                if (!isInteger(operandType)) {
+                    report(node, "Bitwise not requires integer operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.INT;
+            }
+
+            case MINUS, PLUS -> {
+                if (!isNumeric(operandType)) {
+                    report(node, "Unary " + node.getKind() + " requires int or double operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield operandType; // int bleibt int, double bleibt double
+            }
+
+            case PRE_INCREMENT, PRE_DECREMENT -> {
+                if (!isNumeric(operandType)) {
+                    report(node, "Pre increment/decrement requires int or double operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                if (!isAssignableTarget(node.getOperand())) {
+                    report(node, "Pre increment/decrement requires assignable operand.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield operandType;
+            }
+
+            case INVALID -> UnknownTypeInfo.INSTANCE;
+        };
+
+        node.setResultingType(result);
     }
+
 
     @Override
     public void visit(PostfixExpression node) {
