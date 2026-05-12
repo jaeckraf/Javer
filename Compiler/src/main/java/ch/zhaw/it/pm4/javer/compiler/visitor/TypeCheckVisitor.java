@@ -136,7 +136,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             return true;
         }
 
-        // optionale Promotion: int -> double
         return PrimitiveTypeInfo.DOUBLE.equals(expected) && PrimitiveTypeInfo.INT.equals(actual);
     }
 
@@ -270,8 +269,62 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(AssignExpression node) {
         super.visit(node);
-        node.setResultingType(node.getTarget() == null ? UnknownTypeInfo.INSTANCE : node.getTarget().getResultingType());
+
+        TypeInfo targetType = node.getTarget() == null
+                ? UnknownTypeInfo.INSTANCE
+                : node.getTarget().getResultingType();
+
+        TypeInfo valueType = node.getValue() == null
+                ? UnknownTypeInfo.INSTANCE
+                : node.getValue().getResultingType();
+
+        if (!isAssignableTarget(node.getTarget())) {
+            report(node, "Left side of assignment is not assignable.");
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
+            return;
+        }
+
+        TypeInfo assignedValueType = switch (node.getOperator()) {
+            case ASSIGN -> valueType;
+
+            case ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN -> {
+                if (!isNumeric(targetType) || !isNumeric(valueType)) {
+                    report(node, "Arithmetic assignment requires numeric operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield numericResult(targetType, valueType);
+            }
+
+            case BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN,
+                 LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN -> {
+                if (!isInteger(targetType) || !isInteger(valueType)) {
+                    report(node, "Bitwise/shift assignment requires integer operands.");
+                    yield UnknownTypeInfo.INSTANCE;
+                }
+                yield PrimitiveTypeInfo.INT;
+            }
+
+            case INVALID -> UnknownTypeInfo.INSTANCE;
+        };
+
+        if (!isAssignable(targetType, assignedValueType)) {
+            report(node, "Cannot assign " + assignedValueType + " to " + targetType + ".");
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
+            return;
+        }
+
+        node.setResultingType(targetType);
     }
+
+
+    private boolean isAssignableTarget(ExpressionAstNode target) {
+        return target instanceof NameExpression
+                || target instanceof MemberAccessExpression
+                || target instanceof IndexExpression;
+    }
+
+
+
 
     @Override
     public void visit(ConditionalExpression node) {
