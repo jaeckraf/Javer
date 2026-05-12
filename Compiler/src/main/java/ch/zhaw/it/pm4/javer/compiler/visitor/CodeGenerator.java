@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
@@ -20,12 +21,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
     private DataSection dataSection;
+    private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
+    private int nextLabelId;
 
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
@@ -39,6 +46,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 StandardOpenOption.WRITE)) {
 
             writer = outputWriter;
+            loopContexts.clear();
+            nextLabelId = 0;
             node.accept(this);
         } catch (IOException exception) {
             throw new UncheckedIOException("Could not write generated code to " + outputFile, exception);
@@ -54,6 +63,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
         } catch (IOException exception) {
             throw new UncheckedIOException("Could not write generated code.", exception);
         }
+    }
+
+    private void writeLabel(String label) {
+        writeLine(label + ":");
+    }
+
+    private String nextLabel(String prefix) {
+        return prefix + "_" + nextLabelId++;
     }
 
     private void prepareOutputDirectory(Path outputFile) {
@@ -126,27 +143,125 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IfStatement node) {
-        super.visit(node);
+        String elseLabel = nextLabel("if_else");
+        String endLabel = nextLabel("if_end");
+        node.getCondition().accept(this);
+        writeLine("JUMPF, " + elseLabel);
+        node.getThenBranch().accept(this);
+        boolean elseBranchPossible = node.getElseBranch() != null;
+        if(elseBranchPossible) {
+            writeLine("JUMP, " + endLabel);
+        }
+        writeLabel(elseLabel);
+        if(elseBranchPossible) {
+            node.getElseBranch().accept(this);
+            writeLabel(endLabel);
+        }
     }
 
     @Override
     public void visit(WhileStatement node) {
-        super.visit(node);
+        String conditionLabel = nextLabel("while_condition");
+        String endLabel = nextLabel("while_end");
+        writeLabel(conditionLabel);
+        node.getCondition().accept(this);
+        writeLine("JUMPF, " + endLabel);
+        loopContexts.push(new LoopContext(endLabel, conditionLabel));
+        node.getBody().accept(this);
+        loopContexts.pop();
+        writeLine("JUMP, " + conditionLabel);
+        writeLabel(endLabel);
     }
 
     @Override
     public void visit(DoWhileStatement node) {
-        super.visit(node);
+        String bodyLabel = nextLabel("do_body");
+        String conditionLabel = nextLabel("do_condition");
+        String endLabel = nextLabel("do_end");
+        writeLabel(bodyLabel);
+        loopContexts.push(new LoopContext(endLabel, conditionLabel));
+        node.getBody().accept(this);
+        loopContexts.pop();
+        writeLabel(conditionLabel);
+        node.getCondition().accept(this);
+        writeLine("JUMPT, " + bodyLabel);
+        writeLabel(endLabel);
     }
 
     @Override
     public void visit(ForStatement node) {
-        super.visit(node);
+        String conditionLabel = nextLabel("for_condition");
+        String updateLabel = nextLabel("for_update");
+        String endLabel = nextLabel("for_end");
+        if (node.getForInit() != null) {
+            node.getForInit().accept(this);
+        }
+        writeLabel(conditionLabel);
+        if (node.getCondition() != null) {
+            node.getCondition().accept(this);
+        } else {
+            writeLine("PUSHB, 1");
+        }
+        writeLine("JUMPF, " + endLabel);
+        loopContexts.push(new LoopContext(endLabel, updateLabel));
+        node.getBody().accept(this);
+        loopContexts.pop();
+        writeLabel(updateLabel);
+        if (node.getUpdate() != null) {
+            node.getUpdate().forEach(expression -> expression.accept(this));
+        }
+        writeLine("JUMP, " + conditionLabel);
+        writeLabel(endLabel);
     }
-
+    
     @Override
     public void visit(SwitchStatement node) {
-        super.visit(node);
+        String endLabel = nextLabel("switch_end");
+        String continueLabel = loopContexts.isEmpty() ? null : loopContexts.peek().continueLabel();
+        loopContexts.push(new LoopContext(endLabel, continueLabel));
+
+        node.getCondition().accept(this);
+
+        Map<SwitchCase, String> caseBodyLabels = new LinkedHashMap<>();
+        SwitchCase defaultCase = null;
+
+        for (SwitchCase switchCase : node.getCases()) {
+            if (switchCase.isDefault()) {
+                defaultCase = switchCase;
+            }
+            caseBodyLabels.put(switchCase, nextLabel("case_body"));
+        }
+
+        for (SwitchCase switchCase : node.getCases()) {
+            if (switchCase.isDefault()) {
+                continue;
+            }
+
+            String caseBodyLabel = caseBodyLabels.get(switchCase);
+            for (CaseLabelAstNode caseLabel : switchCase.getCaseLabels()) {
+                writeLine("DUPI");
+                caseLabel.accept(this);
+                writeLine("IEQ");
+                writeLine("JUMPT, " + caseBodyLabel);
+            }
+        }
+
+        if (defaultCase != null) {
+            writeLine("JUMP, " + caseBodyLabels.get(defaultCase));
+        } else {
+            writeLine("POPI");
+            writeLine("JUMP, " + endLabel);
+        }
+
+        for (SwitchCase switchCase : node.getCases()) {
+            writeLabel(caseBodyLabels.get(switchCase));
+            writeLine("POPI");
+            switchCase.getStatement().accept(this);
+            writeLine("JUMP, " + endLabel);
+        }
+
+        writeLabel(endLabel);
+        loopContexts.pop();
     }
 
     @Override
@@ -156,12 +271,16 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BreakStatement node) {
-        super.visit(node);
+        if (!loopContexts.isEmpty()) {
+            writeLine("JUMP, " + loopContexts.peek().breakLabel());
+        }
     }
 
     @Override
     public void visit(ContinueStatement node) {
-        super.visit(node);
+        if (!loopContexts.isEmpty()) {
+            writeLine("JUMP, " + loopContexts.peek().continueLabel());
+        }
     }
 
     @Override
@@ -201,9 +320,21 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(CallExpression node) {
-        if(node.getFunctionName().equalsIgnoreCase("prints")) {
+        if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
             writeLine("DPRINTS, " + "msg");
+        } else if (node.getFunctionName().equalsIgnoreCase("printi")) {
+            node.getArguments().getFirst().accept(this);
+            writeLine("PRINTI");
+        } else if (node.getFunctionName().equalsIgnoreCase("printd")) {
+            node.getArguments().getFirst().accept(this);
+            writeLine("PRINTD");
+        } else if (node.getFunctionName().equalsIgnoreCase("printc")) {
+            node.getArguments().getFirst().accept(this);
+            writeLine("PRINTC");
+        } else if (node.getFunctionName().equalsIgnoreCase("printb")) {
+            node.getArguments().getFirst().accept(this);
+            writeLine("PRINTB");
         }
     }
 
@@ -234,19 +365,37 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(LiteralExpression<?> node) {
-        if(node.getKind() == LiteralKind.STRING) {
+        if (node.getKind() == LiteralKind.STRING) {
             dataSection.internString((String) node.getValue());
+        }
+        if (node.getKind() == LiteralKind.BOOLEAN) {
+            Boolean b = (Boolean) node.getValue();
+            if(b) writeLine("PUSHB, 1");
+            else writeLine("PUSHB, 0");
+        }
+        if (node.getKind() == LiteralKind.INT) {
+            writeLine("PUSHI, " + node.getValue());
+        }
+        if (node.getKind() == LiteralKind.CHAR) {
+            int i = (int) ((char)node.getValue());
+            writeLine("PUSHC, " + i);
+        }
+        if (node.getKind() == LiteralKind.DOUBLE) {
+            writeLine("PUSHD, " + node.getValue());
+        }
+        if (node.getKind() == LiteralKind.NULL) {
+            writeLine("PUSHI, 0");
         }
     }
 
     @Override
     public void visit(LiteralCaseLabel node) {
-        super.visit(node);
+        node.getLiteral().accept(this);
     }
 
     @Override
     public void visit(EnumCaseLabel node) {
-        super.visit(node);
+        writeLine("PUSHI, " + node.getResolvedEnumValue().getValue());
     }
 
     @Override
@@ -276,7 +425,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(ForInitExpressionList node) {
-        super.visit(node);
+        node.getExpressions().forEach(expressionAstNode -> expressionAstNode.accept(this));
+    }
+
+    private record LoopContext(String breakLabel, String continueLabel) {
     }
 
 }
