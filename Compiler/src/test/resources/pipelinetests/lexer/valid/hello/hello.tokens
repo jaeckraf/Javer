@@ -8,7 +8,7 @@ Token{type=KEYWORD_LET, value='let', position=[5 : 7 : 2]}
 Token{type=TYPE_STRING, value='string', position=[9 : 14 : 2]}
 Token{type=ID_IDENTIFIER, value='message', position=[16 : 22 : 2]}
 Token{type=OPERATOR_ASSIGN, value='=', position=[24 : 24 : 2]}
-Token{type=LITERAL_STRING, value='"Hello, world!"', position=[26 : 40 : 2]}
+Token{type=LITERAL_STRING, value='Hello, world!', position=[26 : 40 : 2]}
 Token{type=SYMBOL_SEMICOLON, value=';', position=[41 : 41 : 2]}
 Token{type=KEYWORD_LET, value='let', position=[5 : 7 : 3]}
 Token{type=TYPE_INTEGER, value='int', position=[9 : 11 : 3]}

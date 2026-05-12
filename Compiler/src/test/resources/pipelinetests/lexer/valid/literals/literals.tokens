@@ -26,13 +26,13 @@ Token{type=KEYWORD_LET, value='let', position=[5 : 7 : 5]}
 Token{type=TYPE_STRING, value='string', position=[9 : 14 : 5]}
 Token{type=ID_IDENTIFIER, value='s', position=[16 : 16 : 5]}
 Token{type=OPERATOR_ASSIGN, value='=', position=[18 : 18 : 5]}
-Token{type=LITERAL_STRING, value='"text"', position=[20 : 25 : 5]}
+Token{type=LITERAL_STRING, value='text', position=[20 : 25 : 5]}
 Token{type=SYMBOL_SEMICOLON, value=';', position=[26 : 26 : 5]}
 Token{type=KEYWORD_LET, value='let', position=[5 : 7 : 6]}
 Token{type=TYPE_CHARACTER, value='char', position=[9 : 12 : 6]}
 Token{type=ID_IDENTIFIER, value='c', position=[14 : 14 : 6]}
 Token{type=OPERATOR_ASSIGN, value='=', position=[16 : 16 : 6]}
-Token{type=LITERAL_CHAR, value=''x'', position=[18 : 20 : 6]}
+Token{type=LITERAL_CHAR, value='x', position=[18 : 20 : 6]}
 Token{type=SYMBOL_SEMICOLON, value=';', position=[21 : 21 : 6]}
 Token{type=SYMBOL_RIGHT_BRACE, value='}', position=[1 : 1 : 7]}
 Token{type=SPECIAL_END_OF_FILE, value='', position=[2 : 2 : 7]}

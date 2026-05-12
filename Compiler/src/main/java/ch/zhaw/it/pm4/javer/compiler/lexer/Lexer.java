@@ -153,7 +153,10 @@ public class Lexer {
      * in the source code.
      */
     private Token makeToken(TokenType tokenType) {
-        String value = sourceCode.substring(tokenStartIndex, indexInSourceCode);
+        return makeToken(tokenType, sourceCode.substring(tokenStartIndex, indexInSourceCode));
+    }
+
+    private Token makeToken(TokenType tokenType, String value) {
         SourceLocation location = defineSourceLocation();
         Token token = new Token(tokenType, value, location);
         JaverLogger.debug(String.format("Lexer: Produced token %10s %50s at %20s", tokenType, value, location));
@@ -253,29 +256,32 @@ public class Lexer {
         if (currentChar() == '0' && (peek(1) == 'x' || peek(1) == 'X')) {
             advance();
             advance();
+            int digitsStartIndex = indexInSourceCode;
             if (!isHexDigit(currentChar())) {
                 error("Hexadecimal literal must have at least one digit");
             }
             consumeDigitsForBase(16);
-            return makeToken(TokenType.LITERAL_HEX);
+            return makeToken(TokenType.LITERAL_HEX, sourceCode.substring(digitsStartIndex, indexInSourceCode));
         }
         if (currentChar() == '0' && (peek(1) == 'o' || peek(1) == 'O')) {
             advance();
             advance();
+            int digitsStartIndex = indexInSourceCode;
             if (!isOctalDigit(currentChar())) {
                 error("Octal literal must have at least one digit");
             }
             consumeDigitsForBase(8);
-            return makeToken(TokenType.LITERAL_OCTAL);
+            return makeToken(TokenType.LITERAL_OCTAL, sourceCode.substring(digitsStartIndex, indexInSourceCode));
         }
         if (currentChar() == '0' && (peek(1) == 'b' || peek(1) == 'B')) {
             advance();
             advance();
+            int digitsStartIndex = indexInSourceCode;
             if (!isBinaryDigit(currentChar())) {
                 error("Binary literal must have at least one digit");
             }
             consumeDigitsForBase(2);
-            return makeToken(TokenType.LITERAL_BINARY);
+            return makeToken(TokenType.LITERAL_BINARY, sourceCode.substring(digitsStartIndex, indexInSourceCode));
         }
 
         // Decimal integer / double
@@ -315,12 +321,13 @@ public class Lexer {
      * Handles common escape sequences (\n, \t, \r, \\, \", \', \0, \b, \f).
      */
     private Token lexString() {
+        StringBuilder value = new StringBuilder();
         advance();
         while (indexInSourceCode < sourceCode.length()) {
             char currentChar = currentChar();
             if (currentChar == '"') {
                 advance();
-                return makeToken(TokenType.LITERAL_STRING);
+                return makeToken(TokenType.LITERAL_STRING, value.toString());
             }
             if (isLineTerminator(currentChar)) {
                 error("Unterminated string literal");
@@ -334,10 +341,14 @@ public class Lexer {
                 char esc = currentChar();
                 if (!isValidEscape(esc)) {
                     error("Invalid escape sequence: \\" + esc);
+                    value.append(esc);
+                } else {
+                    value.append(resolveEscape(esc));
                 }
                 advance();
                 continue;
             }
+            value.append(currentChar);
             advance();
         }
         error("Unterminated string literal");
@@ -351,6 +362,7 @@ public class Lexer {
      * quotes.
      */
     private Token lexChar() {
+        String value;
         advance();
         if (indexInSourceCode >= sourceCode.length() || isLineTerminator(currentChar())) {
             error("Unterminated char literal");
@@ -370,9 +382,13 @@ public class Lexer {
             char esc = currentChar();
             if (!isValidEscape(esc)) {
                 error("Invalid escape sequence: \\" + esc);
+                value = String.valueOf(esc);
+            } else {
+                value = String.valueOf(resolveEscape(esc));
             }
             advance();
         } else {
+            value = String.valueOf(currentChar());
             advance();
         }
         if (indexInSourceCode >= sourceCode.length() || currentChar() != '\'') {
@@ -389,7 +405,7 @@ public class Lexer {
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
         advance();
-        return makeToken(TokenType.LITERAL_CHAR);
+        return makeToken(TokenType.LITERAL_CHAR, value);
     }
 
     /**
@@ -545,15 +561,11 @@ public class Lexer {
         if (keywordType != null) {
             return makeToken(keywordType);
         }
-        switch (keywordText) {
-            case "true":
-            case "false":
-                return makeToken(TokenType.LITERAL_BOOLEAN);
-            case "null":
-                return makeToken(TokenType.LITERAL_NULL);
-            default:
-                return makeToken(TokenType.ID_IDENTIFIER);
-        }
+        return switch (keywordText) {
+            case "true", "false" -> makeToken(TokenType.LITERAL_BOOLEAN);
+            case "null" -> makeToken(TokenType.LITERAL_NULL);
+            default -> makeToken(TokenType.ID_IDENTIFIER);
+        };
     }
 
     /**
@@ -743,6 +755,21 @@ public class Lexer {
     private boolean isValidEscape(char c) {
         return c == 'n' || c == 'r' || c == 't' || c == 'b' || c == 'f'
                 || c == '0' || c == '"' || c == '\'' || c == '\\';
+    }
+
+    private char resolveEscape(char c) {
+        return switch (c) {
+            case 'n' -> '\n';
+            case 'r' -> '\r';
+            case 't' -> '\t';
+            case 'b' -> '\b';
+            case 'f' -> '\f';
+            case '0' -> '\0';
+            case '"' -> '"';
+            case '\'' -> '\'';
+            case '\\' -> '\\';
+            default -> c;
+        };
     }
 
     /**

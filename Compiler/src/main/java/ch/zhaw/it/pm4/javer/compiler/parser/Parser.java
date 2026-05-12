@@ -774,9 +774,8 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_HEX)) {
             Token token = expectTokenType(TokenType.LITERAL_HEX);
-            String v = token.getValue();
             try {
-                int parsed = Integer.parseInt(v.startsWith("0x") || v.startsWith("0X") ? v.substring(2) : v, 16);
+                int parsed = Integer.parseInt(token.getValue(), 16);
                 return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
             } catch (NumberFormatException ex) {
                 return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
@@ -784,9 +783,8 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_BINARY)) {
             Token token = expectTokenType(TokenType.LITERAL_BINARY);
-            String v = token.getValue();
             try {
-                int parsed = Integer.parseInt(v.startsWith("0b") || v.startsWith("0B") ? v.substring(2) : v, 2);
+                int parsed = Integer.parseInt(token.getValue(), 2);
                 return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
             } catch (NumberFormatException ex) {
                 return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
@@ -794,9 +792,8 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_OCTAL)) {
             Token token = expectTokenType(TokenType.LITERAL_OCTAL);
-            String v = token.getValue();
             try {
-                int parsed = Integer.parseInt(v.startsWith("0o") || v.startsWith("0O") ? v.substring(2) : v, 8);
+                int parsed = Integer.parseInt(token.getValue(), 8);
                 return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
             } catch (NumberFormatException ex) {
                 return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
@@ -813,36 +810,13 @@ public class Parser {
 
     private LiteralExpression<String> parseStringLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_STRING);
-        return located(new LiteralExpression<>(LiteralKind.STRING, unescapeString(stripQuotes(token.getValue()))), token);
+        return located(new LiteralExpression<>(LiteralKind.STRING, token.getValue()), token);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_CHAR);
-        String value = unescapeString(stripQuotes(token.getValue()));
+        String value = token.getValue();
         return located(new LiteralExpression<>(LiteralKind.CHAR, value.isEmpty() ? '\0' : value.charAt(0)), token);
-    }
-
-    private String unescapeString(String s) {
-        if (s == null || s.indexOf('\\') < 0) return s == null ? "" : s;
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c != '\\') { sb.append(c); continue; }
-            if (i + 1 >= s.length()) { sb.append('\\'); break; }
-            char next = s.charAt(++i);
-            switch (next) {
-                case 'n' -> sb.append('\n');
-                case 't' -> sb.append('\t');
-                case 'r' -> sb.append('\r');
-                case 'b' -> sb.append('\b');
-                case 'f' -> sb.append('\f');
-                case '\\' -> sb.append('\\');
-                case '\'' -> sb.append('\'');
-                case '"' -> sb.append('"');
-                default -> sb.append(next);
-            }
-        }
-        return sb.toString();
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
@@ -862,11 +836,6 @@ public class Parser {
     private double parseDouble(Token token) {
         try { return Double.parseDouble(token.getValue()); }
         catch (NumberFormatException ignored) { return 0.0; }
-    }
-
-    private String stripQuotes(String value) {
-        if (value == null || value.length() < 2) return value == null ? "" : value;
-        return value.substring(1, value.length() - 1);
     }
 
     private BinaryExpressionKind toBinaryExpressionKind(Token token) {

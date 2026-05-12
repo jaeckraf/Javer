@@ -101,7 +101,7 @@ class LexerTest {
     void emptySource() {
         List<Token> tokens = lex("");
         assertEquals(1, tokens.size());
-        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.getFirst().getTokenType());
         verifyNoInteractions(diagnosticBag);
     }
 
@@ -110,7 +110,7 @@ class LexerTest {
     void nullSource() {
         List<Token> tokens = new Lexer(null, diagnosticBag).lexSourcecode();
         assertEquals(1, tokens.size());
-        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.getFirst().getTokenType());
         verifyNoInteractions(diagnosticBag);
     }
 
@@ -125,7 +125,7 @@ class LexerTest {
     void onlyWhitespace() {
         List<Token> tokens = lex("   \t\n\r  \n");
         assertEquals(1, tokens.size());
-        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.getFirst().getTokenType());
         verifyNoInteractions(diagnosticBag);
     }
 
@@ -240,10 +240,11 @@ class LexerTest {
     void hexLiteral() {
         Token lower = single("0xFF");
         assertEquals(TokenType.LITERAL_HEX, lower.getTokenType());
-        assertEquals("0xFF", lower.getValue());
+        assertEquals("FF", lower.getValue());
 
         Token upper = single("0X1a2B");
         assertEquals(TokenType.LITERAL_HEX, upper.getTokenType());
+        assertEquals("1a2B", upper.getValue());
     }
 
     @Test
@@ -251,8 +252,11 @@ class LexerTest {
     void octalLiteral() {
         Token t = single("0o755");
         assertEquals(TokenType.LITERAL_OCTAL, t.getTokenType());
-        assertEquals("0o755", t.getValue());
-        assertEquals(TokenType.LITERAL_OCTAL, single("0O17").getTokenType());
+        assertEquals("755", t.getValue());
+
+        Token upper = single("0O17");
+        assertEquals(TokenType.LITERAL_OCTAL, upper.getTokenType());
+        assertEquals("17", upper.getValue());
     }
 
     @Test
@@ -260,8 +264,11 @@ class LexerTest {
     void binaryLiteral() {
         Token t = single("0b1010");
         assertEquals(TokenType.LITERAL_BINARY, t.getTokenType());
-        assertEquals("0b1010", t.getValue());
-        assertEquals(TokenType.LITERAL_BINARY, single("0B11000011").getTokenType());
+        assertEquals("1010", t.getValue());
+
+        Token upper = single("0B11000011");
+        assertEquals(TokenType.LITERAL_BINARY, upper.getTokenType());
+        assertEquals("11000011", upper.getValue());
     }
 
     // ---------------------------------------------------------------------
@@ -273,7 +280,7 @@ class LexerTest {
     void simpleString() {
         Token t = single("\"hello\"");
         assertEquals(TokenType.LITERAL_STRING, t.getTokenType());
-        assertEquals("\"hello\"", t.getValue());
+        assertEquals("hello", t.getValue());
     }
 
     @Test
@@ -281,23 +288,38 @@ class LexerTest {
     void emptyString() {
         Token t = single("\"\"");
         assertEquals(TokenType.LITERAL_STRING, t.getTokenType());
+        assertEquals("", t.getValue());
     }
 
     @Test
     @DisplayName("Every valid escape sequence in a string is accepted with no error diagnostics")
     void everyValidEscapeSequenceInString() {
         // \n \r \t \b \f \0 \" \' \\
-        String[] escapes = {
-                "\\n", "\\r", "\\t", "\\b", "\\f", "\\0", "\\\"", "\\'", "\\\\"
+        String[][] escapes = {
+                {"\\n", "\n"},
+                {"\\r", "\r"},
+                {"\\t", "\t"},
+                {"\\b", "\b"},
+                {"\\f", "\f"},
+                {"\\0", "\0"},
+                {"\\\"", "\""},
+                {"\\'", "'"},
+                {"\\\\", "\\"}
         };
-        for (String esc : escapes) {
+        for (String[] escape : escapes) {
+            String esc = escape[0];
+            String expectedValue = escape[1];
             DiagnosticBag scopedBag = mock(DiagnosticBag.class);
             String source = "\"" + esc + "\"";
             List<Token> tokens = new Lexer(source, scopedBag).lexSourcecode();
 
             assertEquals(2, tokens.size(), "escape " + esc + " produced wrong token count");
-            assertEquals(TokenType.LITERAL_STRING, tokens.get(0).getTokenType(),
+            assertEquals(TokenType.LITERAL_STRING, tokens.getFirst().getTokenType(),
                     "escape " + esc + " did not produce LITERAL_STRING");
+            assertEquals(expectedValue, tokens.getFirst().getValue(),
+                    "escape " + esc + " was not resolved in the token value");
+            assertEquals(1, tokens.getFirst().getValue().length(),
+                    "escape " + esc + " should be stored as one character");
             verify(scopedBag, never())
                     .add(any(SourceLocation.class), eq(Severity.ERROR), anyString());
         }
@@ -312,7 +334,7 @@ class LexerTest {
     void simpleChar() {
         Token t = single("'a'");
         assertEquals(TokenType.LITERAL_CHAR, t.getTokenType());
-        assertEquals("'a'", t.getValue());
+        assertEquals("a", t.getValue());
     }
 
     @Test
@@ -320,6 +342,8 @@ class LexerTest {
     void escapedChar() {
         Token t = single("'\\n'");
         assertEquals(TokenType.LITERAL_CHAR, t.getTokenType());
+        assertEquals("\n", t.getValue());
+        assertEquals(1, t.getValue().length());
     }
 
     // ---------------------------------------------------------------------
@@ -415,7 +439,7 @@ class LexerTest {
     void lineCommentAtEof() {
         List<Token> tokens = lex("// last line");
         assertEquals(1, tokens.size());
-        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(0).getTokenType());
+        assertEquals(TokenType.SPECIAL_END_OF_FILE, tokens.getFirst().getTokenType());
         assertNoErrorDiagnostics();
     }
 
@@ -489,7 +513,7 @@ class LexerTest {
         // "ab cd" -> "ab" at columns 1..2, space at 3, "cd" at columns 4..5
         List<Token> tokens = lex("ab cd");
 
-        SourceLocation first = tokens.get(0).getPosition();
+        SourceLocation first = tokens.getFirst().getPosition();
         assertEquals(1, first.lineNumber());
         assertEquals(1, first.startColumn(), "'ab' should start at column 1");
         assertEquals(2, first.endColumn(), "'ab' should end at column 2 (inclusive)");
@@ -504,15 +528,15 @@ class LexerTest {
     @DisplayName("Tab always snaps the next token to the next tab stop (width 4)")
     void tabAlwaysSnapsToNextTabStop() {
         // regardless of starting character tab mus be same
-        assertEquals(5, lex("\ta").get(0).getPosition().startColumn(),
+        assertEquals(5, lex("\ta").getFirst().getPosition().startColumn(),
                 "tab at col 1 should land 'a' at col 5");
-        assertEquals(5, lex(" \ta").get(0).getPosition().startColumn(),
+        assertEquals(5, lex(" \ta").getFirst().getPosition().startColumn(),
                 "tab at col 2 should land 'a' at col 5");
-        assertEquals(5, lex("  \ta").get(0).getPosition().startColumn(),
+        assertEquals(5, lex("  \ta").getFirst().getPosition().startColumn(),
                 "tab at col 3 should land 'a' at col 5");
-        assertEquals(5, lex("   \ta").get(0).getPosition().startColumn(),
+        assertEquals(5, lex("   \ta").getFirst().getPosition().startColumn(),
                 "tab at col 4 should land 'a' at col 5");
-        assertEquals(9, lex("    \ta").get(0).getPosition().startColumn(),
+        assertEquals(9, lex("    \ta").getFirst().getPosition().startColumn(),
                 "tab at col 5 should land 'a' at col 9");
     }
 
@@ -530,7 +554,7 @@ class LexerTest {
     void singleEofAtEnd() {
         List<Token> tokens = lex("a b c");
         assertEquals(TokenType.SPECIAL_END_OF_FILE,
-                tokens.get(tokens.size() - 1).getTokenType());
+                tokens.getLast().getTokenType());
         for (int i = 0; i < tokens.size() - 1; i++) {
             assertNotEquals(TokenType.SPECIAL_END_OF_FILE, tokens.get(i).getTokenType());
         }
@@ -552,7 +576,7 @@ class LexerTest {
     @DisplayName("Newline inside a string reports an error diagnostic")
     void newlineInStringReportsError() {
         List<Token> tokens = lex("\"oh\nno\"");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, tokens.get(0).getTokenType());
+        assertEquals(TokenType.SPECIAL_UNKNOWN, tokens.getFirst().getTokenType());
         assertErrorDiagnosticContains("Unterminated string");
     }
 
@@ -565,7 +589,7 @@ class LexerTest {
             String source = "\"" + esc + "\"";
             List<Token> tokens = new Lexer(source, scopedBag).lexSourcecode();
 
-            assertEquals(TokenType.LITERAL_STRING, tokens.get(0).getTokenType(),
+            assertEquals(TokenType.LITERAL_STRING, tokens.getFirst().getTokenType(),
                     "escape " + esc + " did not recover to LITERAL_STRING");
             verify(scopedBag, atLeastOnce()).add(
                     any(SourceLocation.class),

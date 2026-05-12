@@ -7,6 +7,9 @@ import java.util.Objects;
 /**
  * Immutable class representing a token extracted from source code.
  * A token consists of a type, its string value, and its position in the source.
+ * String and char literal values are stored without delimiters and with escape
+ * sequences already resolved. Based integer literal values are stored without
+ * their radix prefix.
  */
 public class Token {
     private final TokenType type;
@@ -17,7 +20,7 @@ public class Token {
      * Creates a new Token with the specified type, value, and position.
      * 
      * @param type the type of the token (must not be null)
-     * @param value the string value of the token as read from the file
+     * @param value the string value of the token
      * @param position the position of the token in the source (must not be null)
      * @throws NullPointerException if type or position is null
      */
@@ -37,7 +40,7 @@ public class Token {
     }
     
     /**
-     * Gets the string value of this token as read from the file.
+     * Gets the string value of this token.
      * 
      * @return the token's value
      */
