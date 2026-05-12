@@ -175,12 +175,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String bodyLabel = nextLabel("do_body");
         String conditionLabel = nextLabel("do_condition");
         String endLabel = nextLabel("do_end");
-
         writeLabel(bodyLabel);
         loopContexts.push(new LoopContext(endLabel, conditionLabel));
         node.getBody().accept(this);
         loopContexts.pop();
-
         writeLabel(conditionLabel);
         node.getCondition().accept(this);
         writeLine("JUMPT, " + bodyLabel);
@@ -192,21 +190,19 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String conditionLabel = nextLabel("for_condition");
         String updateLabel = nextLabel("for_update");
         String endLabel = nextLabel("for_end");
-
         if (node.getForInit() != null) {
             node.getForInit().accept(this);
         }
-
         writeLabel(conditionLabel);
         if (node.getCondition() != null) {
             node.getCondition().accept(this);
-            writeLine("JUMPF, " + endLabel);
+        } else {
+            writeLine("PUSHB, 1");
         }
-
+        writeLine("JUMPF, " + endLabel);
         loopContexts.push(new LoopContext(endLabel, updateLabel));
         node.getBody().accept(this);
         loopContexts.pop();
-
         writeLabel(updateLabel);
         if (node.getUpdate() != null) {
             node.getUpdate().forEach(expression -> expression.accept(this));
@@ -369,7 +365,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(ForInitExpressionList node) {
-        super.visit(node);
+        node.getExpressions().forEach(expressionAstNode -> expressionAstNode.accept(this));
     }
 
     private record LoopContext(String breakLabel, String continueLabel) {
