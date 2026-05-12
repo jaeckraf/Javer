@@ -93,9 +93,9 @@ public final class PipelineTest {
 
             for (int i = 0; i < failures.size(); i++) {
                 System.err.println();
-                System.err.println("────────────────────────────────────────");
+                System.err.println("========================================");
                 System.err.println("Failure " + (i + 1) + " of " + failures.size());
-                System.err.println("────────────────────────────────────────");
+                System.err.println("========================================");
                 System.err.println(failures.get(i));
             }
 

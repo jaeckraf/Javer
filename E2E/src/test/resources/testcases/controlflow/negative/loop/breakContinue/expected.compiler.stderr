@@ -1,0 +1,5 @@
+=== Error Report ===
+File: E2E\src\test\resources\smoketest\Input.javer
+Phase: SEMANTIC_ANALYSIS
+
+[ERROR] at [5 : 9 : 2]: 'break' used outside of a loop

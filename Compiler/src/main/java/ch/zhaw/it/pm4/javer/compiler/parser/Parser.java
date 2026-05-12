@@ -142,7 +142,6 @@ public class Parser {
         return node;
     }
 
-    /** Terminal-match nach Folienlogik: Fehler melden und falsches Terminal konsumieren. */
     private boolean match(TokenType expected) {
         if (matchCurrentToken(expected)) {
             consumeToken();
@@ -153,7 +152,6 @@ public class Parser {
         return false;
     }
 
-    /** Wie match(...), aber gibt echten oder synthetischen Token für AST-Werte zurück. */
     private Token expectTokenType(TokenType expected) {
         Token token = currentToken();
         if (token.getTokenType() == expected) {
