@@ -326,7 +326,25 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(IfStatement node) {
         super.visit(node);
-        checkConditionType(node.getCondition(), node, "If");
+        checkConditionType(node.getCondition(), node, "If", false);
+    }
+
+    @Override
+    public void visit(WhileStatement node) {
+        super.visit(node);
+        checkConditionType(node.getCondition(), node, "While", false);
+    }
+
+    @Override
+    public void visit(DoWhileStatement node) {
+        super.visit(node);
+        checkConditionType(node.getCondition(), node, "Do-while", false);
+    }
+
+    @Override
+    public void visit(ForStatement node) {
+        super.visit(node);
+        checkConditionType(node.getCondition(), node, "For", true);
     }
 
 
@@ -356,15 +374,20 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 || PrimitiveTypeInfo.DOUBLE.equals(type);
     }
 
-    private void checkConditionType(ExpressionAstNode condition, AstNode owner, String context) {
+    private void checkConditionType(ExpressionAstNode condition, AstNode owner, String context, boolean allowMissingCondition) {
         if (condition == null) {
+            if (!allowMissingCondition) {
+                report(owner, context + " condition is missing.");
+            }
             return;
         }
+
         TypeInfo conditionType = condition.getResultingType();
         if (!isConditionType(conditionType)) {
             report(owner, context + " condition must be bool, int, or double, but was: " + conditionType);
         }
     }
+
 
 
     @Override
