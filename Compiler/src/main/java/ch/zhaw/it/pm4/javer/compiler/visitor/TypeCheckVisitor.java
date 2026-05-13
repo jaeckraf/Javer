@@ -472,12 +472,25 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(IndexExpression node) {
         super.visit(node);
-        if (node.getTarget().getResultingType() instanceof ArrayTypeInfo arrayType) {
-            node.setResultingType(arrayType.elementType());
+
+        TypeInfo targetType = node.getTarget().getResultingType();
+        TypeInfo indexType = node.getIndex().getResultingType();
+
+        if (!(targetType instanceof ArrayTypeInfo arrayType)) {
+            report(node, "Indexing is only allowed on arrays.");
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
-        node.setResultingType(UnknownTypeInfo.INSTANCE);
+
+        if (!PrimitiveTypeInfo.INT.equals(indexType) && !(indexType instanceof UnknownTypeInfo)) {
+            report(node, "Array index must be of type int.");
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
+            return;
+        }
+
+        node.setResultingType(arrayType.elementType());
     }
+
 
     @Override
     public void visit(MemberAccessExpression node) {
