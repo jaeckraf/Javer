@@ -518,21 +518,53 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     public void visit(NewExpression node) {
         super.visit(node);
         TypeInfo type = resolveType(node.getType());
-        if (!node.getDimensions().isEmpty() || node.getArrayInit() != null) {
+
+        boolean isArray = !node.getDimensions().isEmpty() || node.getArrayInit() != null;
+        boolean isStruct = type instanceof StructTypeInfo;
+
+        if (isArray) {
             node.setResultingType(new ArrayTypeInfo(type));
             return;
         }
+
+        if (!isStruct) {
+            report(node, "'new' can only be used with struct types.");
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
+            return;
+        }
+
         node.setResultingType(type);
     }
+
 
     @Override
     public void visit(ArrayInitExpression node) {
         super.visit(node);
-        TypeInfo elementType = node.getElements().isEmpty()
-                ? UnknownTypeInfo.INSTANCE
-                : node.getElements().getFirst().getResultingType();
-        node.setResultingType(new ArrayTypeInfo(elementType));
+
+        boolean isEmpty = node.getElements().isEmpty();
+        if (isEmpty) {
+            node.setResultingType(new ArrayTypeInfo(UnknownTypeInfo.INSTANCE));
+            return;
+        }
+
+        TypeInfo firstElementType = node.getElements().getFirst().getResultingType();
+        boolean allSameType = true;
+
+        for (ExpressionAstNode element : node.getElements()) {
+            TypeInfo currentType = element.getResultingType();
+            boolean isSameType = firstElementType.equals(currentType);
+            if (!isSameType) {
+                report(node, "All array elements must have the same type. Found: " + firstElementType + " and " + currentType);
+                allSameType = false;
+                break;
+            }
+        }
+
+        TypeInfo arrayType = allSameType ? firstElementType : UnknownTypeInfo.INSTANCE;
+        node.setResultingType(new ArrayTypeInfo(arrayType));
     }
+
+
 
     private TypeInfo numericResult(TypeInfo left, TypeInfo right) {
         if (PrimitiveTypeInfo.DOUBLE.equals(left) || PrimitiveTypeInfo.DOUBLE.equals(right)) {
