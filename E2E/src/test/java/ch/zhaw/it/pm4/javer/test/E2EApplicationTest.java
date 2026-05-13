@@ -435,11 +435,75 @@ public final class E2EApplicationTest {
             return "";
         }
 
-        return text
+        return normalizePathReferences(text
                 .replace("\r\n", "\n")
                 .replace('\r', '\n')
-                .replaceAll("[ \t]+\\n", "\n")
+                .replaceAll("[ \t]+\\n", "\n"))
                 .strip();
+    }
+
+    private static String normalizePathReferences(String text) {
+        String[] lines = text.split("\n", -1);
+        StringBuilder normalized = new StringBuilder(text.length());
+
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                normalized.append('\n');
+            }
+
+            normalized.append(normalizePathReferenceLine(lines[i]));
+        }
+
+        return normalized.toString();
+    }
+
+    private static String normalizePathReferenceLine(String line) {
+        String normalized = normalizePathReferenceLine(line, "File: ");
+        normalized = normalizePathReferenceLine(normalized, "  --> ");
+        normalized = normalizePathReferenceLine(normalized, "Error reading file: ");
+        return normalized;
+    }
+
+    private static String normalizePathReferenceLine(String line, String prefix) {
+        if (!line.startsWith(prefix)) {
+            return line;
+        }
+
+        return prefix + normalizePathReference(line.substring(prefix.length()));
+    }
+
+    private static String normalizePathReference(String pathReference) {
+        String normalized = pathReference.replace('\\', '/');
+
+        for (Path stableRoot : stablePathRoots()) {
+            String root = stableRoot.toAbsolutePath().normalize().toString().replace('\\', '/');
+            normalized = normalized.replace(root + "/", "");
+        }
+
+        if (normalized.startsWith("./")) {
+            normalized = normalized.substring(2);
+        }
+
+        return normalized
+                .replace("E2E/src/test/resources/", "src/test/resources/")
+                .replace("E2E/target/", "target/");
+    }
+
+    private static List<Path> stablePathRoots() {
+        Path userDirectory = Path.of("").toAbsolutePath().normalize();
+        List<Path> roots = new ArrayList<>();
+        roots.add(userDirectory);
+
+        if (userDirectory.getFileName() != null && userDirectory.getFileName().toString().equals("E2E")) {
+            roots.add(userDirectory.getParent());
+        } else {
+            roots.add(userDirectory.resolve("E2E"));
+        }
+
+        return roots.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private static String javaExecutable() {
