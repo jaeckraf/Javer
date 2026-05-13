@@ -495,16 +495,24 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(MemberAccessExpression node) {
         super.visit(node);
-        if (node.getResolvedField() != null) {
+
+        boolean isStructField = node.getResolvedField() != null;
+        boolean isEnumValue = node.getResolvedEnumValue() != null;
+
+        if (isStructField) {
             node.setResultingType(node.getResolvedField().getType());
             return;
         }
-        if (node.getResolvedEnumValue() != null) {
+
+        if (isEnumValue) {
             node.setResultingType(new EnumTypeInfo(node.getResolvedEnumValue().getOwnerEnum()));
             return;
         }
+
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
+
+
 
     @Override
     public void visit(NewExpression node) {
