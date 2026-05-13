@@ -10,8 +10,19 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -21,13 +32,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
+import java.util.Locale;
 
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private BufferedWriter writer;
     private DataSection dataSection;
+    private FunctionEntry currentFunction;
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
 
@@ -113,9 +128,28 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(FunctionDeclaration node) {
+        FunctionEntry function = node.getSymbolEntry();
+        currentFunction = function;
+
         writeLine("_" + node.getName() + ":");
-        writeLine("ENTER, 0");
-        node.getBody().accept(this);
+        writeLine("ENTER, " + (function == null ? 0 : function.getFrameSizeBytes()));
+
+        if (node.getBody() != null) {
+            node.getBody().accept(this);
+        }
+
+        emitFallthroughReturn(function);
+        currentFunction = null;
+    }
+
+    private void emitFallthroughReturn(FunctionEntry function) {
+        TypeInfo returnType = function == null ? VoidTypeInfo.INSTANCE : function.getReturnType();
+        if (isVoidLike(returnType)) {
+            writeLine("RET");
+            return;
+        }
+        emitZeroFor(returnType);
+        emitReturn(returnType);
     }
 
     @Override
@@ -135,7 +169,44 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BlockStatement node) {
-        node.getStatements().forEach(statement -> statement.accept(this));
+        for (StatementAstNode statement : node.getStatements()) {
+            emitStatement(statement);
+        }
+    }
+
+    private void emitStatement(StatementAstNode statement) {
+        if (statement instanceof ExpressionAstNode expression) {
+            expression.accept(this);
+            discardExpressionResult(expression);
+            return;
+        }
+        statement.accept(this);
+    }
+
+    private void discardExpressionResult(ExpressionAstNode expression) {
+        TypeInfo type = expression.getResultingType();
+        if (!leavesValueOnStack(expression, type)) {
+            return;
+        }
+        emitPop(type);
+    }
+
+    private boolean leavesValueOnStack(ExpressionAstNode expression, TypeInfo type) {
+        if (isVoidLike(type)) {
+            return false;
+        }
+        if (expression instanceof CallExpression call && isVoidReturningCall(call)) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isVoidReturningCall(CallExpression call) {
+        FunctionEntry function = call.getResolvedFunction();
+        if (function != null) {
+            return isVoidLike(function.getReturnType());
+        }
+        return isPrintBuiltin(call.getFunctionName());
     }
 
     @Override
@@ -205,7 +276,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
         loopContexts.pop();
         writeLabel(updateLabel);
         if (node.getUpdate() != null) {
-            node.getUpdate().forEach(expression -> expression.accept(this));
+            for (ExpressionAstNode update : node.getUpdate()) {
+                emitStatement(update);
+            }
         }
         writeLine("JUMP, " + conditionLabel);
         writeLabel(endLabel);
@@ -237,45 +310,240 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(ReturnStatement node) {
-        writeLine("RET");
+        ExpressionAstNode expression = node.getExpression();
+        TypeInfo returnType = currentFunction == null ? VoidTypeInfo.INSTANCE : currentFunction.getReturnType();
+
+        if (expression == null || isVoidLike(returnType)) {
+            writeLine("RET");
+            return;
+        }
+
+        emitTyped(expression, returnType);
+        emitReturn(returnType);
     }
 
     @Override
     public void visit(VarDeclarationStatement node) {
-        super.visit(node);
+        if (node.getInitializer() == null || node.getSymbolEntry() == null) {
+            return;
+        }
+        StorageEntry storage = node.getSymbolEntry();
+        emitTyped(node.getInitializer(), storage.getType());
+        emitFrameStore(storage);
     }
 
     @Override
     public void visit(AssignExpression node) {
-        super.visit(node);
+        StorageEntry storage = storageOf(node.getTarget());
+        if (storage == null) {
+            return;
+        }
+        TypeInfo type = storage.getType();
+        AssignOperator operator = node.getOperator();
+
+        if (operator == AssignOperator.ASSIGN) {
+            emitTyped(node.getValue(), type);
+        } else {
+            emitFrameLoad(storage);
+            emitTyped(node.getValue(), type);
+            emitBinaryOp(compoundAssignToBinary(operator), type);
+        }
+        emitDup(type);
+        emitFrameStore(storage);
+    }
+
+    private BinaryExpressionKind compoundAssignToBinary(AssignOperator operator) {
+        return switch (operator) {
+            case ADD_ASSIGN -> BinaryExpressionKind.ADD;
+            case SUB_ASSIGN -> BinaryExpressionKind.SUBTRACT;
+            case MUL_ASSIGN -> BinaryExpressionKind.MULTIPLY;
+            case DIV_ASSIGN -> BinaryExpressionKind.DIVIDE;
+            case MOD_ASSIGN -> BinaryExpressionKind.MODULO;
+            case BITWISE_OR_ASSIGN -> BinaryExpressionKind.BITWISE_OR;
+            case BITWISE_AND_ASSIGN -> BinaryExpressionKind.BITWISE_AND;
+            case BITWISE_XOR_ASSIGN -> BinaryExpressionKind.BITWISE_XOR;
+            case LEFT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_LEFT;
+            case RIGHT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_RIGHT;
+            case ASSIGN, INVALID -> BinaryExpressionKind.INVALID;
+        };
     }
 
     @Override
     public void visit(ConditionalExpression node) {
-        super.visit(node);
+        String falseLabel = nextLabel("cond_false");
+        String endLabel = nextLabel("cond_end");
+        TypeInfo resultType = node.getResultingType();
+
+        emitAsBoolean(node.getCondition());
+        writeLine("JUMPF, " + falseLabel);
+        emitTyped(node.getTrueExpression(), resultType);
+        writeLine("JUMP, " + endLabel);
+        writeLabel(falseLabel);
+        emitTyped(node.getFalseExpression(), resultType);
+        writeLabel(endLabel);
     }
 
     @Override
     public void visit(BinaryExpression node) {
-        super.visit(node);
+        BinaryExpressionKind operator = node.getOperator();
+        if (operator == BinaryExpressionKind.AND) {
+            emitLogicalAnd(node);
+            return;
+        }
+        if (operator == BinaryExpressionKind.OR) {
+            emitLogicalOr(node);
+            return;
+        }
+
+        TypeInfo operandType = binaryOperandType(operator, node);
+        emitTyped(node.getLeft(), operandType);
+        emitTyped(node.getRight(), operandType);
+        emitBinaryOp(operator, operandType);
+        emitConversion(binaryResultType(operator, operandType), node.getResultingType());
+    }
+
+    private TypeInfo binaryOperandType(BinaryExpressionKind operator, BinaryExpression node) {
+        if (isIntegerOnlyBinary(operator)) {
+            return PrimitiveTypeInfo.INT;
+        }
+        TypeInfo left = node.getLeft().getResultingType();
+        TypeInfo right = node.getRight().getResultingType();
+        if (PrimitiveTypeInfo.DOUBLE.equals(left) || PrimitiveTypeInfo.DOUBLE.equals(right)) {
+            return PrimitiveTypeInfo.DOUBLE;
+        }
+        return PrimitiveTypeInfo.INT;
+    }
+
+    private TypeInfo binaryResultType(BinaryExpressionKind operator, TypeInfo operandType) {
+        if (isComparison(operator)) {
+            return PrimitiveTypeInfo.BOOL;
+        }
+        return operandType;
+    }
+
+    private boolean isIntegerOnlyBinary(BinaryExpressionKind operator) {
+        return switch (operator) {
+            case MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> true;
+            default -> false;
+        };
+    }
+
+    private boolean isComparison(BinaryExpressionKind operator) {
+        return switch (operator) {
+            case EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> true;
+            default -> false;
+        };
+    }
+
+    private void emitLogicalAnd(BinaryExpression node) {
+        String falseLabel = nextLabel("and_false");
+        String endLabel = nextLabel("and_end");
+        emitAsBoolean(node.getLeft());
+        writeLine("JUMPF, " + falseLabel);
+        emitAsBoolean(node.getRight());
+        writeLine("JUMP, " + endLabel);
+        writeLabel(falseLabel);
+        writeLine("PUSHB, 0");
+        writeLabel(endLabel);
+    }
+
+    private void emitLogicalOr(BinaryExpression node) {
+        String trueLabel = nextLabel("or_true");
+        String endLabel = nextLabel("or_end");
+        emitAsBoolean(node.getLeft());
+        writeLine("JUMPT, " + trueLabel);
+        emitAsBoolean(node.getRight());
+        writeLine("JUMP, " + endLabel);
+        writeLabel(trueLabel);
+        writeLine("PUSHB, 1");
+        writeLabel(endLabel);
     }
 
     @Override
     public void visit(UnaryExpression node) {
-        super.visit(node);
+        switch (node.getKind()) {
+            case PLUS -> node.getOperand().accept(this);
+            case MINUS -> {
+                node.getOperand().accept(this);
+                TypeInfo type = node.getOperand().getResultingType();
+                writeLine(PrimitiveTypeInfo.DOUBLE.equals(type) ? "DNEG" : "INEG");
+            }
+            case BITWISE_NOT -> {
+                node.getOperand().accept(this);
+                writeLine("IINV");
+            }
+            case LOGICAL_NOT -> {
+                emitAsBoolean(node.getOperand());
+                String falseLabel = nextLabel("not_false");
+                String endLabel = nextLabel("not_end");
+                writeLine("JUMPF, " + falseLabel);
+                writeLine("PUSHB, 0");
+                writeLine("JUMP, " + endLabel);
+                writeLabel(falseLabel);
+                writeLine("PUSHB, 1");
+                writeLabel(endLabel);
+            }
+            case PRE_INCREMENT -> emitPrefixStep(node.getOperand(), 1);
+            case PRE_DECREMENT -> emitPrefixStep(node.getOperand(), -1);
+            case INVALID -> {
+            }
+        }
+    }
+
+    private void emitPrefixStep(ExpressionAstNode target, int delta) {
+        StorageEntry storage = storageOf(target);
+        if (storage == null) {
+            return;
+        }
+        TypeInfo type = storage.getType();
+        emitFrameLoad(storage);
+        emitNumericLiteralPush(type, delta);
+        emitBinaryOp(BinaryExpressionKind.ADD, type);
+        emitDup(type);
+        emitFrameStore(storage);
     }
 
     @Override
     public void visit(PostfixExpression node) {
-        super.visit(node);
+        StorageEntry storage = storageOf(node.getOperand());
+        if (storage == null) {
+            return;
+        }
+        int delta = node.getKind() == PostfixOperationKind.INCREMENT ? 1 : -1;
+        TypeInfo type = storage.getType();
+        emitFrameLoad(storage);
+        emitDup(type);
+        emitNumericLiteralPush(type, delta);
+        emitBinaryOp(BinaryExpressionKind.ADD, type);
+        emitFrameStore(storage);
     }
 
     @Override
     public void visit(CallExpression node) {
-        if (node.getFunctionName().equalsIgnoreCase("prints")) {
-            node.getArguments().getFirst().accept(this);
-            writeLine("DPRINTS, " + "msg");
+        if (isPrintBuiltin(node.getFunctionName())) {
+            emitPrintBuiltin(node);
+            return;
         }
+
+        FunctionEntry function = node.getResolvedFunction();
+        if (function == null) {
+            return;
+        }
+
+        int argBytes = 0;
+        List<ParameterEntry> parameters = function.getScope() == null
+                ? List.of()
+                : new ArrayList<>(function.getScope().getParameters().values());
+        for (int i = 0; i < node.getArguments().size(); i++) {
+            ExpressionAstNode argument = node.getArguments().get(i);
+            TypeInfo expected = i < parameters.size()
+                    ? parameters.get(i).getType()
+                    : argument.getResultingType();
+            emitTyped(argument, expected);
+            argBytes += sizeOf(expected);
+        }
+
+        writeLine("CALL, " + function.getLabel() + ", " + argBytes);
     }
 
     @Override
@@ -285,7 +553,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(MemberAccessExpression node) {
-        super.visit(node);
+        if (node.getResolvedEnumValue() != null) {
+            writeLine("PUSHI, " + node.getResolvedEnumValue().getValue());
+        }
     }
 
     @Override
@@ -300,32 +570,19 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(NameExpression node) {
-        super.visit(node);
+        SymbolEntry entry = node.getSymbolEntry();
+        if (entry instanceof StorageEntry storage) {
+            emitFrameLoad(storage);
+            return;
+        }
+        if (entry instanceof EnumValueEntry enumValue) {
+            writeLine("PUSHI, " + enumValue.getValue());
+        }
     }
 
     @Override
     public void visit(LiteralExpression<?> node) {
-        if (node.getKind() == LiteralKind.STRING) {
-            dataSection.internString((String) node.getValue());
-        }
-        if (node.getKind() == LiteralKind.BOOLEAN) {
-            Boolean b = (Boolean) node.getValue();
-            if(b) writeLine("PUSHB, 1");
-            else writeLine("PUSHB, 0");
-        }
-        if (node.getKind() == LiteralKind.INT) {
-            writeLine("PUSHI, " + node.getValue());
-        }
-        if (node.getKind() == LiteralKind.CHAR) {
-            int i = (int) ((char)node.getValue());
-            writeLine("PUSHC, " + i);
-        }
-        if (node.getKind() == LiteralKind.DOUBLE) {
-            writeLine("PUSHD, " + node.getValue());
-        }
-        if (node.getKind() == LiteralKind.NULL) {
-            writeLine("PUSHI, 0");
-        }
+        emitLiteralPush(node);
     }
 
     @Override
@@ -360,12 +617,258 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(ForInitVarDeclaration node) {
-        super.visit(node);
+        node.getVarDeclaration().accept(this);
     }
 
     @Override
     public void visit(ForInitExpressionList node) {
-        node.getExpressions().forEach(expressionAstNode -> expressionAstNode.accept(this));
+        for (ExpressionAstNode expression : node.getExpressions()) {
+            emitStatement(expression);
+        }
+    }
+
+    private void emitPrintBuiltin(CallExpression node) {
+        if (node.getArguments().isEmpty()) {
+            return;
+        }
+        ExpressionAstNode argument = node.getArguments().get(0);
+        switch (node.getFunctionName().toLowerCase()) {
+            case "printb" -> {
+                emitTyped(argument, PrimitiveTypeInfo.BOOL);
+                writeLine("PRINTB");
+            }
+            case "printc" -> {
+                emitTyped(argument, PrimitiveTypeInfo.CHAR);
+                writeLine("PRINTC");
+            }
+            case "printi" -> {
+                emitTyped(argument, PrimitiveTypeInfo.INT);
+                writeLine("PRINTI");
+            }
+            case "printd" -> {
+                emitTyped(argument, PrimitiveTypeInfo.DOUBLE);
+                writeLine("PRINTD");
+            }
+            case "prints" -> emitPrintString(argument);
+            default -> {
+            }
+        }
+    }
+
+    private void emitPrintString(ExpressionAstNode argument) {
+        if (argument instanceof LiteralExpression<?> literal && literal.getKind() == LiteralKind.STRING) {
+            DataEntry entry = dataSection.internString((String) literal.getValue());
+            writeLine("DPRINTS, " + entry.getLabel());
+            return;
+        }
+        argument.accept(this);
+        writeLine("HPRINTS");
+    }
+
+    private boolean isPrintBuiltin(String name) {
+        return switch (name.toLowerCase()) {
+            case "printb", "printc", "printi", "printd", "prints" -> true;
+            default -> false;
+        };
+    }
+
+    private void emitTyped(ExpressionAstNode expression, TypeInfo expectedType) {
+        if (expression == null) {
+            return;
+        }
+        expression.accept(this);
+        emitConversion(expression.getResultingType(), expectedType);
+    }
+
+    private void emitConversion(TypeInfo from, TypeInfo to) {
+        if (from == null || to == null || from.equals(to)) {
+            return;
+        }
+        if (!(from instanceof PrimitiveTypeInfo fromPrim) || !(to instanceof PrimitiveTypeInfo toPrim)) {
+            return;
+        }
+        if (fromPrim.kind() == toPrim.kind()) {
+            return;
+        }
+        switch (fromPrim.kind()) {
+            case INT -> {
+                if (toPrim.kind() == PrimitiveTypeKind.DOUBLE) {
+                    writeLine("I2D");
+                } else if (toPrim.kind() == PrimitiveTypeKind.BOOL) {
+                    writeLine("I2B");
+                } else if (toPrim.kind() == PrimitiveTypeKind.CHAR) {
+                    writeLine("I2C");
+                }
+            }
+            case DOUBLE -> {
+                if (toPrim.kind() == PrimitiveTypeKind.INT) {
+                    writeLine("D2I");
+                }
+            }
+            case BOOL -> {
+                if (toPrim.kind() == PrimitiveTypeKind.INT) {
+                    writeLine("B2I");
+                }
+            }
+            case CHAR -> {
+                if (toPrim.kind() == PrimitiveTypeKind.INT) {
+                    writeLine("C2I");
+                }
+            }
+            default -> {
+            }
+        }
+    }
+
+    private void emitAsBoolean(ExpressionAstNode expression) {
+        if (expression == null) {
+            writeLine("PUSHB, 0");
+            return;
+        }
+        expression.accept(this);
+        TypeInfo type = expression.getResultingType();
+        if (type instanceof PrimitiveTypeInfo primitive && primitive.kind() == PrimitiveTypeKind.INT) {
+            writeLine("I2B");
+        }
+    }
+
+    private void emitLiteralPush(LiteralExpression<?> node) {
+        switch (node.getKind()) {
+            case INT -> writeLine("PUSHI, " + node.getValue());
+            case DOUBLE -> writeLine("PUSHD, " + formatDouble((Double) node.getValue()));
+            case BOOLEAN -> writeLine("PUSHB, " + (Boolean.TRUE.equals(node.getValue()) ? "1" : "0"));
+            case CHAR -> writeLine("PUSHC, " + (int) (Character) node.getValue());
+            case STRING -> {
+                DataEntry entry = dataSection.internString((String) node.getValue());
+                writeLine("PUSHR, " + entry.getLabel());
+            }
+            case NULL -> writeLine("PUSHI, 0");
+        }
+    }
+
+    private String formatDouble(double value) {
+        if (value == Math.floor(value) && !Double.isInfinite(value)) {
+            return String.format(Locale.ROOT, "%.1f", value);
+        }
+        return Double.toString(value);
+    }
+
+    private void emitNumericLiteralPush(TypeInfo type, int value) {
+        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
+            writeLine("PUSHD, " + formatDouble(value));
+            return;
+        }
+        writeLine("PUSHI, " + value);
+    }
+
+    private void emitBinaryOp(BinaryExpressionKind operator, TypeInfo operandType) {
+        boolean isDouble = PrimitiveTypeInfo.DOUBLE.equals(operandType);
+        switch (operator) {
+            case ADD -> writeLine(isDouble ? "DADD" : "IADD");
+            case SUBTRACT -> writeLine(isDouble ? "DSUB" : "ISUB");
+            case MULTIPLY -> writeLine(isDouble ? "DMUL" : "IMUL");
+            case DIVIDE -> writeLine(isDouble ? "DDIV" : "IDIV");
+            case MODULO -> writeLine("IMOD");
+            case BITWISE_AND -> writeLine("IAND");
+            case BITWISE_OR -> writeLine("IOR");
+            case BITWISE_XOR -> writeLine("IXOR");
+            case SHIFT_LEFT -> writeLine("ISHL");
+            case SHIFT_RIGHT -> writeLine("ISHR");
+            case LESS -> writeLine(isDouble ? "DLT" : "ILT");
+            case LESS_EQUALS -> writeLine(isDouble ? "DLE" : "ILE");
+            case GREATER -> writeLine(isDouble ? "DGT" : "IGT");
+            case GREATER_EQUALS -> writeLine(isDouble ? "DGE" : "IGE");
+            case EQUALS -> writeLine(isDouble ? "DEQ" : "IEQ");
+            case NOT_EQUALS -> writeLine(isDouble ? "DNE" : "INE");
+            case AND, OR, INVALID -> {
+            }
+        }
+    }
+
+    private void emitFrameLoad(StorageEntry storage) {
+        int size = sizeOf(storage.getType());
+        writeLine(switch (size) {
+            case 1 -> "FLOAD1, " + storage.getOffsetBytes();
+            case 2 -> "FLOAD2, " + storage.getOffsetBytes();
+            case 8 -> "FLOAD8, " + storage.getOffsetBytes();
+            default -> "FLOAD4, " + storage.getOffsetBytes();
+        });
+    }
+
+    private void emitFrameStore(StorageEntry storage) {
+        int size = sizeOf(storage.getType());
+        writeLine(switch (size) {
+            case 1 -> "FSTORE1, " + storage.getOffsetBytes();
+            case 2 -> "FSTORE2, " + storage.getOffsetBytes();
+            case 8 -> "FSTORE8, " + storage.getOffsetBytes();
+            default -> "FSTORE4, " + storage.getOffsetBytes();
+        });
+    }
+
+    private void emitDup(TypeInfo type) {
+        int size = sizeOf(type);
+        writeLine(switch (size) {
+            case 1 -> "DUPB";
+            case 2 -> "DUPC";
+            case 8 -> "DUPD";
+            default -> "DUPI";
+        });
+    }
+
+    private void emitPop(TypeInfo type) {
+        int size = sizeOf(type);
+        writeLine(switch (size) {
+            case 1 -> "POPB";
+            case 2 -> "POPC";
+            case 8 -> "POPD";
+            default -> "POPI";
+        });
+    }
+
+    private void emitReturn(TypeInfo type) {
+        if (isVoidLike(type)) {
+            writeLine("RET");
+            return;
+        }
+        int size = sizeOf(type);
+        writeLine(switch (size) {
+            case 1 -> "RETB";
+            case 2 -> "RETC";
+            case 8 -> "RETD";
+            default -> "RETI";
+        });
+    }
+
+    private void emitZeroFor(TypeInfo type) {
+        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
+            writeLine("PUSHD, 0.0");
+            return;
+        }
+        int size = sizeOf(type);
+        writeLine(switch (size) {
+            case 1 -> "PUSHB, 0";
+            case 2 -> "PUSHC, 0";
+            default -> "PUSHI, 0";
+        });
+    }
+
+    private StorageEntry storageOf(ExpressionAstNode expression) {
+        if (expression instanceof NameExpression name && name.getSymbolEntry() instanceof StorageEntry storage) {
+            return storage;
+        }
+        return null;
+    }
+
+    private int sizeOf(TypeInfo type) {
+        if (type == null) {
+            return 4;
+        }
+        int size = type.sizeBytes();
+        return size <= 0 ? 4 : size;
+    }
+
+    private boolean isVoidLike(TypeInfo type) {
+        return type instanceof VoidTypeInfo || type instanceof UnknownTypeInfo || type == null;
     }
 
     private record LoopContext(String breakLabel, String continueLabel) {
