@@ -158,6 +158,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 node.setResultingType(VoidTypeInfo.INSTANCE);
                 return;
             }
+            report(node, "Unknown function: " + node.getFunctionName());
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
