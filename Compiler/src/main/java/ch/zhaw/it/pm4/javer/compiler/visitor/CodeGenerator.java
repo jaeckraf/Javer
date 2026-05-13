@@ -13,6 +13,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -217,10 +220,17 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(SwitchStatement node) {
         String endLabel = nextLabel("switch_end");
-        String continueLabel = loopContexts.isEmpty() ? null : loopContexts.peek().continueLabel();
-        loopContexts.push(new LoopContext(endLabel, continueLabel));
-
         node.getCondition().accept(this);
+
+        TypeInfo conditionType = node.getCondition().getResultingType();
+        
+        if (conditionType instanceof PrimitiveTypeInfo(var kind)) {
+            if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.CHAR) {
+                writeLine("C2I");
+            } else if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.BOOL) {
+                writeLine("B2I");
+            }
+        }
 
         Map<SwitchCase, String> caseBodyLabels = new LinkedHashMap<>();
         SwitchCase defaultCase = null;
@@ -232,6 +242,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
             caseBodyLabels.put(switchCase, nextLabel("case_body"));
         }
 
+        String dupInstruction = getDupInstruction(conditionType);
+        String eqInstruction = getEqInstruction(conditionType);
+
         for (SwitchCase switchCase : node.getCases()) {
             if (switchCase.isDefault()) {
                 continue;
@@ -239,29 +252,51 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
             String caseBodyLabel = caseBodyLabels.get(switchCase);
             for (CaseLabelAstNode caseLabel : switchCase.getCaseLabels()) {
-                writeLine("DUPI");
-                caseLabel.accept(this);
-                writeLine("IEQ");
+                writeLine(dupInstruction);
+                
+                if (caseLabel instanceof LiteralCaseLabel literalCaseLabel) {
+                    literalCaseLabel.getLiteral().accept(this);
+                    
+                    if (conditionType instanceof PrimitiveTypeInfo(var typeKind)) {
+                        if (literalCaseLabel.getLiteral().getKind() == LiteralKind.DOUBLE && typeKind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.INT) {
+                            writeLine("D2I");
+                        } else if (literalCaseLabel.getLiteral().getKind() == LiteralKind.INT && typeKind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.DOUBLE) {
+                            writeLine("I2D");
+                        }
+                    }
+                } else if (caseLabel instanceof EnumCaseLabel enumCaseLabel) {
+                    writeLine("PUSHI, " + enumCaseLabel.getResolvedEnumValue().getValue());
+                }
+                
+                if (conditionType instanceof PrimitiveTypeInfo(var kind)) {
+                    if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.CHAR && (caseLabel instanceof LiteralCaseLabel literalLabel && literalLabel.getLiteral().getKind() == LiteralKind.CHAR)) {
+                        writeLine("C2I");
+                    } else if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.BOOL && (caseLabel instanceof LiteralCaseLabel literalLabel && literalLabel.getLiteral().getKind() == LiteralKind.BOOLEAN)) {
+                        writeLine("B2I");
+                    }
+                }
+                
+                writeLine(eqInstruction);
                 writeLine("JUMPT, " + caseBodyLabel);
             }
         }
 
+        String popInstruction = getPopInstruction(conditionType);
         if (defaultCase != null) {
             writeLine("JUMP, " + caseBodyLabels.get(defaultCase));
         } else {
-            writeLine("POPI");
+            writeLine(popInstruction);
             writeLine("JUMP, " + endLabel);
         }
 
         for (SwitchCase switchCase : node.getCases()) {
             writeLabel(caseBodyLabels.get(switchCase));
-            writeLine("POPI");
+            writeLine(popInstruction);
             switchCase.getStatement().accept(this);
             writeLine("JUMP, " + endLabel);
         }
 
         writeLabel(endLabel);
-        loopContexts.pop();
     }
 
     @Override
@@ -322,7 +357,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(CallExpression node) {
         if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
-            writeLine("DPRINTS, " + "msg");
+            writeLine("HPRINTS");
         } else if (node.getFunctionName().equalsIgnoreCase("printi")) {
             node.getArguments().getFirst().accept(this);
             writeLine("PRINTI");
@@ -366,7 +401,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(LiteralExpression<?> node) {
         if (node.getKind() == LiteralKind.STRING) {
-            dataSection.internString((String) node.getValue());
+            DataEntry entry = dataSection.internString((String) node.getValue());
+            writeLine("PUSHR, " + entry.getLabel());
         }
         if (node.getKind() == LiteralKind.BOOLEAN) {
             Boolean b = (Boolean) node.getValue();
@@ -431,4 +467,33 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private record LoopContext(String breakLabel, String continueLabel) {
     }
 
+    private String getDupInstruction(TypeInfo type) {
+        if (type instanceof PrimitiveTypeInfo(var kind)) {
+            return switch (kind) {
+                case DOUBLE -> "DUPD";
+                default -> "DUPI";
+            };
+        }
+        return "DUPI";
+    }
+
+    private String getEqInstruction(TypeInfo type) {
+        if (type instanceof PrimitiveTypeInfo(var kind)) {
+            return switch (kind) {
+                case DOUBLE -> "DEQ";
+                default -> "IEQ";
+            };
+        }
+        return "IEQ";
+    }
+
+    private String getPopInstruction(TypeInfo type) {
+        if (type instanceof PrimitiveTypeInfo(var kind)) {
+            return switch (kind) {
+                case DOUBLE -> "POPD";
+                default -> "POPI";
+            };
+        }
+        return "POPI";
+    }
 }
