@@ -4,8 +4,10 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,15 +30,12 @@ public class SourceCache {
     public SourceCache(String filePath) {
         this.filePath = filePath;
         try {
-            this.sourceCode = Files.readString(Path.of(filePath));
+            this.sourceCode = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
             this.cachedLines = buildCache(this.sourceCode);
         } catch (IOException e) {
             JaverLogger.error(e.getMessage());
             throw new RuntimeException(e);
         }
-        // Read the entire file into a single string.
-        // Path.of() and Files.readString() are standard in modern Java.
-
     }
 
     /**
@@ -46,9 +45,7 @@ public class SourceCache {
      * @return A list of individual lines.
      */
     private List<String> buildCache(String source) {
-        // TODO: Implement splitting the source string by newlines
-        // Hint: In modern Java, you can use source.lines().toList();
-        return null;
+        return Arrays.asList(source.split("\\R", -1));
     }
 
     /**
@@ -77,9 +74,10 @@ public class SourceCache {
      * @return The string content of that specific line, or a fallback message if out of bounds.
      */
     public String getLine(int lineNumber) {
-        // TODO: Implement fetching from cachedLines.
-        // Remember to adjust for 1-indexed line numbers (e.g., lineNumber - 1)
-        // and handle index out of bounds safely!
-        return "";
+        int index = lineNumber - 1;
+        if (index < 0 || index >= cachedLines.size()) {
+            return "";
+        }
+        return cachedLines.get(index);
     }
 }

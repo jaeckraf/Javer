@@ -1,0 +1,11 @@
+.code
+_main:
+ENTER, 0
+do_body_0:
+do_condition_1:
+PUSHB, 0
+JUMPT, do_body_0
+do_end_2:
+RET
+
+.data

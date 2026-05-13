@@ -19,13 +19,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public final class E2EApplicationTest {
 
     private static final Path DEFAULT_CASE_ROOT = defaultCaseRoot();
-    private static final Path DEFAULT_OUTPUT_ROOT = Path.of("target", "e2e-test-output");
 
     private static final String DEFAULT_COMPILER_MAIN_CLASS =
             "ch.zhaw.it.pm4.javer.compiler.Compiler";
 
     private static final String DEFAULT_VM_MAIN_CLASS =
             "ch.zhaw.it.pm4.javer.vm.VM";
+
+    private static final String INPUT_SOURCE_FILE = "input.javer";
+    private static final String COMPILER_STDOUT_FILE = "expected.compiler.stdout";
+    private static final String COMPILER_STDERR_FILE = "expected.compiler.stderr";
+    private static final String VM_STDOUT_FILE = "expected.vm.stdout";
+    private static final String VM_STDERR_FILE = "expected.vm.stderr";
+    private static final String ACTUAL_BYTECODE_FILE = "output.jbc";
+    private static final String EXPECTED_BYTECODE_FILE = "expected_output.jbc";
+    private static final String COMPILATION_SUCCESSFUL = "Compilation Successful";
+    private static final String BYTECODE_FILE_EXTENSION = ".jbc";
 
     private static final long DEFAULT_TIMEOUT_SECONDS = 10;
 
@@ -46,10 +55,6 @@ public final class E2EApplicationTest {
                 ? Path.of(args[0])
                 : Path.of(System.getProperty("e2e.resources", DEFAULT_CASE_ROOT.toString()));
 
-        Path outputRoot = args.length >= 2
-                ? Path.of(args[1])
-                : Path.of(System.getProperty("e2e.output", DEFAULT_OUTPUT_ROOT.toString()));
-
         long timeoutSeconds = Long.parseLong(
                 System.getProperty("e2e.timeout.seconds", String.valueOf(DEFAULT_TIMEOUT_SECONDS))
         );
@@ -58,14 +63,11 @@ public final class E2EApplicationTest {
             throw new IllegalArgumentException("E2E case directory does not exist: " + caseRoot);
         }
 
-        Files.createDirectories(outputRoot);
-
         List<Path> caseDirectories = discoverCaseDirectories(caseRoot);
-
         List<CaseResult> results = new ArrayList<>();
 
         for (Path caseDirectory : caseDirectories) {
-            CaseResult result = runCase(caseRoot, caseDirectory, outputRoot, timeoutSeconds);
+            CaseResult result = runCase(caseRoot, caseDirectory, timeoutSeconds);
             results.add(result);
 
             if (result.passed()) {
@@ -90,10 +92,10 @@ public final class E2EApplicationTest {
                 }
 
                 System.err.println();
-                System.err.println("════════════════════════════════════════");
+                System.err.println("========================================");
                 System.err.println("FAILED CASE: " + result.caseName());
                 System.err.println("TYPE: " + result.testType());
-                System.err.println("════════════════════════════════════════");
+                System.err.println("========================================");
 
                 for (String failure : result.failures()) {
                     System.err.println();
@@ -112,40 +114,46 @@ public final class E2EApplicationTest {
     private static CaseResult runCase(
             Path caseRoot,
             Path caseDirectory,
-            Path outputRoot,
             long timeoutSeconds
     ) {
         String caseName = caseRoot.relativize(caseDirectory).toString().replace('\\', '/');
         List<String> failures = new ArrayList<>();
 
         try {
-            Path sourceInput = caseDirectory.resolve("input.jv");
-            Path bytecodeInput = caseDirectory.resolve("input.bytecode");
+            requireFiles(
+                    caseDirectory,
+                    failures,
+                    INPUT_SOURCE_FILE,
+                    COMPILER_STDOUT_FILE,
+                    COMPILER_STDERR_FILE
+            );
 
-            boolean hasSourceInput = Files.exists(sourceInput);
-            boolean hasBytecodeInput = Files.exists(bytecodeInput);
-
-            if (!hasSourceInput && !hasBytecodeInput) {
-                failures.add("Case has neither input.jv nor input.bytecode");
+            if (!failures.isEmpty()) {
                 return new CaseResult(caseName, "INVALID", failures);
             }
 
-            if (hasSourceInput) {
-                return runCompilerAndVmCase(
+            boolean expectsCompilerSuccess = expectsCompilerSuccess(caseDirectory);
+
+            if (expectsCompilerSuccess) {
+                requireFiles(
                         caseDirectory,
-                        outputRoot,
-                        timeoutSeconds,
-                        caseName,
-                        sourceInput,
-                        failures
+                        failures,
+                        VM_STDOUT_FILE,
+                        VM_STDERR_FILE,
+                        ACTUAL_BYTECODE_FILE,
+                        EXPECTED_BYTECODE_FILE
                 );
             }
 
-            return runVmOnlyCase(
+            if (!failures.isEmpty()) {
+                return new CaseResult(caseName, "INVALID", failures);
+            }
+
+            return runCompilerAndMaybeVmCase(
                     caseDirectory,
                     timeoutSeconds,
                     caseName,
-                    bytecodeInput,
+                    expectsCompilerSuccess,
                     failures
             );
         } catch (Exception exception) {
@@ -154,160 +162,93 @@ public final class E2EApplicationTest {
         }
     }
 
-    private static CaseResult runCompilerAndVmCase(
+    private static CaseResult runCompilerAndMaybeVmCase(
             Path caseDirectory,
-            Path outputRoot,
             long timeoutSeconds,
             String caseName,
-            Path sourceInput,
+            boolean expectsCompilerSuccess,
             List<String> failures
     ) throws Exception {
-        Path caseOutputDirectory = outputRoot.resolve(caseName);
-        Files.createDirectories(caseOutputDirectory);
+        Path generatedBytecodeFile = caseDirectory.resolve(ACTUAL_BYTECODE_FILE);
 
-        Path generatedBytecodeFile = caseOutputDirectory.resolve("output.bytecode");
+        RunResult compilerResult = runCompilerProcess(
+                caseDirectory.resolve(INPUT_SOURCE_FILE),
+                generatedBytecodeFile,
+                timeoutSeconds
+        );
 
-        RunResult compilerResult = runCompilerProcess(sourceInput, generatedBytecodeFile, timeoutSeconds);
-
-        compareOptionalFile(
-                caseDirectory.resolve("expected.compiler.stdout"),
+        compareRequiredFile(
+                caseDirectory.resolve(COMPILER_STDOUT_FILE),
                 compilerResult.stdout(),
                 caseName + " compiler stdout mismatch",
                 failures
         );
 
-        compareOptionalFile(
-                caseDirectory.resolve("expected.compiler.stderr"),
+        compareRequiredFile(
+                caseDirectory.resolve(COMPILER_STDERR_FILE),
                 compilerResult.stderr(),
                 caseName + " compiler stderr mismatch",
                 failures
         );
 
-        compareOptionalFile(
-                caseDirectory.resolve("expected.diagnostics"),
-                compilerResult.stderr(),
-                caseName + " diagnostics mismatch",
-                failures
-        );
-
-        compareOptionalExitFile(
-                caseDirectory.resolve("expected.compiler.exit"),
-                compilerResult.exitCode(),
-                caseName + " compiler exit mismatch",
-                failures
-        );
-
-        boolean expectsDiagnostics = Files.exists(caseDirectory.resolve("expected.diagnostics"));
-        boolean compilerFailed = compilerResult.exitCode() != 0 || !compilerResult.stderr().isBlank();
-
-        RunResult vmResult = new RunResult("", "", compilerResult.exitCode());
-
-        if (!expectsDiagnostics && !compilerFailed) {
-            if (!Files.exists(generatedBytecodeFile)) {
-                failures.add(caseName + " compiler did not create bytecode file: " + generatedBytecodeFile);
-                return new CaseResult(caseName, "COMPILER+VM", failures);
-            }
-
-            vmResult = runVmProcess(generatedBytecodeFile, timeoutSeconds);
-
-            int failuresBeforeVmStdout = failures.size();
-
-            compareOptionalFile(
-                    caseDirectory.resolve("expected.vm.stdout"),
-                    vmResult.stdout(),
-                    caseName + " VM stdout mismatch",
-                    failures
-            );
-
-            if (failures.size() > failuresBeforeVmStdout) {
-                failures.add(caseName + " generated bytecode:"
-                        + System.lineSeparator()
-                        + readFileIfExists(generatedBytecodeFile));
-            }
-
-            compareOptionalFile(
-                    caseDirectory.resolve("expected.vm.stderr"),
-                    vmResult.stderr(),
-                    caseName + " VM stderr mismatch",
-                    failures
-            );
-
-            compareOptionalExitFile(
-                    caseDirectory.resolve("expected.vm.exit"),
-                    vmResult.exitCode(),
-                    caseName + " VM exit mismatch",
-                    failures
-            );
+        if (!failures.isEmpty()) {
+            return new CaseResult(caseName, expectsCompilerSuccess ? "COMPILER+VM" : "COMPILER-ERROR", failures);
         }
 
-        int overallExit = compilerFailed ? compilerResult.exitCode() : vmResult.exitCode();
+        if (!expectsCompilerSuccess) {
+            return new CaseResult(caseName, "COMPILER-ERROR", failures);
+        }
 
-        compareOptionalExitFile(
-                caseDirectory.resolve("expected.exit"),
-                overallExit,
-                caseName + " overall exit mismatch",
+        boolean compilerActuallySucceeded =
+                compilerResult.exitCode() == 0
+                        && normalize(compilerResult.stdout()).equals(COMPILATION_SUCCESSFUL)
+                        && normalize(compilerResult.stderr()).isBlank();
+
+        if (!compilerActuallySucceeded) {
+            failures.add(caseName + " compiler was expected to succeed, so VM was not started");
+            return new CaseResult(caseName, "COMPILER+VM", failures);
+        }
+
+        if (!Files.exists(generatedBytecodeFile)) {
+            failures.add(caseName + " compiler did not create bytecode file: " + generatedBytecodeFile);
+            return new CaseResult(caseName, "COMPILER+VM", failures);
+        }
+
+        compareRequiredFile(
+                caseDirectory.resolve(EXPECTED_BYTECODE_FILE),
+                readFileIfExists(generatedBytecodeFile),
+                caseName + " bytecode mismatch",
+                failures
+        );
+
+        if (!failures.isEmpty()) {
+            return new CaseResult(caseName, "COMPILER+VM", failures);
+        }
+
+        RunResult vmResult = runVmProcess(generatedBytecodeFile, timeoutSeconds);
+
+        compareRequiredFile(
+                caseDirectory.resolve(VM_STDOUT_FILE),
+                vmResult.stdout(),
+                caseName + " VM stdout mismatch",
+                failures
+        );
+
+        compareRequiredFile(
+                caseDirectory.resolve(VM_STDERR_FILE),
+                vmResult.stderr(),
+                caseName + " VM stderr mismatch",
                 failures
         );
 
         return new CaseResult(caseName, "COMPILER+VM", failures);
     }
 
-    private static CaseResult runVmOnlyCase(
-            Path caseDirectory,
-            long timeoutSeconds,
-            String caseName,
-            Path bytecodeInput,
-            List<String> failures
-    ) throws Exception {
-        RunResult vmResult = runVmProcess(bytecodeInput, timeoutSeconds);
-
-        int failuresBeforeVmStdout = failures.size();
-
-        compareOptionalFile(
-                caseDirectory.resolve("expected.vm.stdout"),
-                vmResult.stdout(),
-                caseName + " VM stdout mismatch",
-                failures
-        );
-
-        if (failures.size() > failuresBeforeVmStdout) {
-            failures.add(caseName + " input bytecode:"
-                    + System.lineSeparator()
-                    + readFileIfExists(bytecodeInput));
-        }
-
-        compareOptionalFile(
-                caseDirectory.resolve("expected.vm.stderr"),
-                vmResult.stderr(),
-                caseName + " VM stderr mismatch",
-                failures
-        );
-
-        compareOptionalExitFile(
-                caseDirectory.resolve("expected.vm.exit"),
-                vmResult.exitCode(),
-                caseName + " VM exit mismatch",
-                failures
-        );
-
-        compareOptionalExitFile(
-                caseDirectory.resolve("expected.exit"),
-                vmResult.exitCode(),
-                caseName + " overall exit mismatch",
-                failures
-        );
-
-        return new CaseResult(caseName, "VM-ONLY", failures);
-    }
-
     private static List<Path> discoverCaseDirectories(Path caseRoot) throws Exception {
         try (Stream<Path> stream = Files.walk(caseRoot)) {
             return stream
                     .filter(Files::isRegularFile)
-                    .filter(path -> {
-                        String fileName = path.getFileName().toString();
-                        return fileName.equals("input.jv") || fileName.equals("input.bytecode");
-                    })
+                    .filter(path -> path.getFileName().toString().equals(INPUT_SOURCE_FILE))
                     .map(Path::getParent)
                     .distinct()
                     .sorted(Comparator.comparing(Path::toString))
@@ -330,8 +271,7 @@ public final class E2EApplicationTest {
         command.add("--in-file");
         command.add(inputFile.toString());
         command.add("--out-file");
-        command.add(bytecodeFile.toString());
-        command.add("--no-logging");
+        command.add(bytecodeOutputBasePath(bytecodeFile).toString());
 
         return runProcess(command, timeoutSeconds);
     }
@@ -425,13 +365,27 @@ public final class E2EApplicationTest {
         return thread;
     }
 
-    private static void compareOptionalFile(
+    private static void requireFiles(Path caseDirectory, List<String> failures, String... fileNames) {
+        for (String fileName : fileNames) {
+            Path file = caseDirectory.resolve(fileName);
+            if (!Files.isRegularFile(file)) {
+                failures.add("Required case file is missing: " + file);
+            }
+        }
+    }
+
+    private static boolean expectsCompilerSuccess(Path caseDirectory) throws Exception {
+        return readNormalized(caseDirectory.resolve(COMPILER_STDOUT_FILE)).equals(COMPILATION_SUCCESSFUL);
+    }
+
+    private static void compareRequiredFile(
             Path expectedFile,
             String actual,
             String message,
             List<String> failures
     ) throws Exception {
         if (!Files.exists(expectedFile)) {
+            failures.add("Required expected file is missing: " + expectedFile);
             return;
         }
 
@@ -451,24 +405,6 @@ public final class E2EApplicationTest {
         }
     }
 
-    private static void compareOptionalExitFile(
-            Path expectedExitFile,
-            int actualExit,
-            String message,
-            List<String> failures
-    ) throws Exception {
-        if (!Files.exists(expectedExitFile)) {
-            return;
-        }
-
-        String expectedText = readNormalized(expectedExitFile);
-        int expectedExit = Integer.parseInt(expectedText);
-
-        if (expectedExit != actualExit) {
-            failures.add(message + ": expected " + expectedExit + ", actual " + actualExit);
-        }
-    }
-
     private static String readNormalized(Path file) throws Exception {
         return normalize(Files.readString(file, StandardCharsets.UTF_8));
     }
@@ -484,16 +420,90 @@ public final class E2EApplicationTest {
         }
     }
 
+    private static Path bytecodeOutputBasePath(Path bytecodeFile) {
+        String fileName = bytecodeFile.getFileName().toString();
+        if (!fileName.endsWith(BYTECODE_FILE_EXTENSION)) {
+            return bytecodeFile;
+        }
+
+        String baseName = fileName.substring(0, fileName.length() - BYTECODE_FILE_EXTENSION.length());
+        return bytecodeFile.resolveSibling(baseName);
+    }
+
     private static String normalize(String text) {
         if (text == null) {
             return "";
         }
 
-        return text
+        return normalizePathReferences(text
                 .replace("\r\n", "\n")
                 .replace('\r', '\n')
-                .replaceAll("[ \t]+\\n", "\n")
+                .replaceAll("[ \t]+\\n", "\n"))
                 .strip();
+    }
+
+    private static String normalizePathReferences(String text) {
+        String[] lines = text.split("\n", -1);
+        StringBuilder normalized = new StringBuilder(text.length());
+
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) {
+                normalized.append('\n');
+            }
+
+            normalized.append(normalizePathReferenceLine(lines[i]));
+        }
+
+        return normalized.toString();
+    }
+
+    private static String normalizePathReferenceLine(String line) {
+        String normalized = normalizePathReferenceLine(line, "File: ");
+        normalized = normalizePathReferenceLine(normalized, "  --> ");
+        normalized = normalizePathReferenceLine(normalized, "Error reading file: ");
+        return normalized;
+    }
+
+    private static String normalizePathReferenceLine(String line, String prefix) {
+        if (!line.startsWith(prefix)) {
+            return line;
+        }
+
+        return prefix + normalizePathReference(line.substring(prefix.length()));
+    }
+
+    private static String normalizePathReference(String pathReference) {
+        String normalized = pathReference.replace('\\', '/');
+
+        for (Path stableRoot : stablePathRoots()) {
+            String root = stableRoot.toAbsolutePath().normalize().toString().replace('\\', '/');
+            normalized = normalized.replace(root + "/", "");
+        }
+
+        if (normalized.startsWith("./")) {
+            normalized = normalized.substring(2);
+        }
+
+        return normalized
+                .replace("E2E/src/test/resources/", "src/test/resources/")
+                .replace("E2E/target/", "target/");
+    }
+
+    private static List<Path> stablePathRoots() {
+        Path userDirectory = Path.of("").toAbsolutePath().normalize();
+        List<Path> roots = new ArrayList<>();
+        roots.add(userDirectory);
+
+        if (userDirectory.getFileName() != null && userDirectory.getFileName().toString().equals("E2E")) {
+            roots.add(userDirectory.getParent());
+        } else {
+            roots.add(userDirectory.resolve("E2E"));
+        }
+
+        return roots.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private static String javaExecutable() {
@@ -544,19 +554,19 @@ public final class E2EApplicationTest {
     }
 
     private static Path defaultCaseRoot() {
-        Path fromProjectRootMain = Path.of("E2E", "src", "main", "resources", "cases");
-        if (Files.isDirectory(fromProjectRootMain)) {
-            return fromProjectRootMain;
+        Path fromProjectRootTestcases = Path.of("E2E", "src", "test", "resources", "testcases");
+        if (Files.isDirectory(fromProjectRootTestcases)) {
+            return fromProjectRootTestcases;
         }
 
-        Path fromModuleRootMain = Path.of("src", "main", "resources", "cases");
-        if (Files.isDirectory(fromModuleRootMain)) {
-            return fromModuleRootMain;
+        Path fromModuleRootTestcases = Path.of("src", "test", "resources", "testcases");
+        if (Files.isDirectory(fromModuleRootTestcases)) {
+            return fromModuleRootTestcases;
         }
 
-        Path fromProjectRootTest = Path.of("E2E", "src", "test", "resources", "cases");
-        if (Files.isDirectory(fromProjectRootTest)) {
-            return fromProjectRootTest;
+        Path fromProjectRootCases = Path.of("E2E", "src", "test", "resources", "cases");
+        if (Files.isDirectory(fromProjectRootCases)) {
+            return fromProjectRootCases;
         }
 
         return Path.of("src", "test", "resources", "cases");

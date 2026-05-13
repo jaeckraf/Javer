@@ -33,10 +33,10 @@ public record SourceLocation(int startColumn, int endColumn, int lineNumber) {
 
     /**
      * Formats the location for debugging and error reporting.
-     * Output format: [startColumn : endColumn : lineNumber]
+     * Output format: [lineNumber : startColumn : endColumn]
      */
     @Override
     public String toString() {
-        return String.format("[%d : %d : %d]", startColumn, endColumn, lineNumber);
+        return String.format("[%d : %d : %d]", lineNumber, startColumn, endColumn);
     }
 }

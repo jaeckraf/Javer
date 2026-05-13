@@ -7,8 +7,15 @@ import java.util.Objects;
 /**
  * Immutable class representing a token extracted from source code.
  * A token consists of a type, its string value, and its position in the source.
+ * String and char literal values are stored without delimiters and with escape
+ * sequences already resolved. Based integer literal values are stored without
+ * their radix prefix.
  */
 public class Token {
+    private static final int TOKEN_TYPE_WIDTH = 35;
+    private static final int VALUE_WIDTH = 15;
+    private static final int POSITION_WIDTH = 3;
+
     private final TokenType type;
     private final String value;
     private final SourceLocation position;
@@ -17,7 +24,7 @@ public class Token {
      * Creates a new Token with the specified type, value, and position.
      * 
      * @param type the type of the token (must not be null)
-     * @param value the string value of the token as read from the file
+     * @param value the string value of the token
      * @param position the position of the token in the source (must not be null)
      * @throws NullPointerException if type or position is null
      */
@@ -37,7 +44,7 @@ public class Token {
     }
     
     /**
-     * Gets the string value of this token as read from the file.
+     * Gets the string value of this token.
      * 
      * @return the token's value
      */
@@ -57,6 +64,15 @@ public class Token {
     
     @Override
     public String toString() {
-        return String.format("Token{type=%s, value='%s', position=%s}", type, value, position);
+        return String.format(
+                "TokenType: %" + TOKEN_TYPE_WIDTH + "s, value: '%" + VALUE_WIDTH
+                        + "s', position: [%" + POSITION_WIDTH + "d : %" + POSITION_WIDTH
+                        + "d : %" + POSITION_WIDTH + "d ]",
+                type,
+                value,
+                position.lineNumber(),
+                position.startColumn(),
+                position.endColumn()
+        );
     }
 }

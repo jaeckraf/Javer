@@ -13,7 +13,7 @@ class SourceLocationTest {
         assertEquals(2, location.startColumn());
         assertEquals(8, location.endColumn());
         assertEquals(3, location.lineNumber());
-        assertEquals("[2 : 8 : 3]", location.toString());
+        assertEquals("[3 : 2 : 8]", location.toString());
     }
 }
 

@@ -18,6 +18,7 @@ public class GuiController {
 
     private static final String CONSOLE_INPUT_FILE_NAME = "console-input.javer";
     private static final String VM_INPUT_FILE_NAME = "vm-input.jbc";
+    private static final String BYTECODE_FILE_EXTENSION = ".jbc";
 
     // Packaged release layout inside Application app image
     private static final Path RELEASE_COMPILER_EXE = Path.of("app", "tools", "Compiler", "javer-compiler.exe");
@@ -186,12 +187,14 @@ public class GuiController {
     }
 
     private List<String> buildCompilerCommand(String inputPath) {
+        String compilerOutputPath = bytecodeOutputBasePath(vmInputFile).toAbsolutePath().toString();
+
         Path compilerExe = resolveReleaseExecutable(RELEASE_COMPILER_EXE, "Compiler");
         if (compilerExe != null) {
             return List.of(
                     compilerExe.toString(),
                     inputPath,
-                    vmInputFile.toAbsolutePath().toString()
+                    compilerOutputPath
             );
         }
 
@@ -206,8 +209,18 @@ public class GuiController {
                 "-jar",
                 compilerJar.toString(),
                 inputPath,
-                vmInputFile.toAbsolutePath().toString()
+                compilerOutputPath
         );
+    }
+
+    private Path bytecodeOutputBasePath(Path bytecodeFile) {
+        String fileName = bytecodeFile.getFileName().toString();
+        if (!fileName.endsWith(BYTECODE_FILE_EXTENSION)) {
+            return bytecodeFile;
+        }
+
+        String baseName = fileName.substring(0, fileName.length() - BYTECODE_FILE_EXTENSION.length());
+        return bytecodeFile.resolveSibling(baseName);
     }
 
     private List<String> buildVmCommand() {

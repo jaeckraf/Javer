@@ -7,7 +7,6 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -31,52 +30,6 @@ public class Lexer {
     private int tokenStartIndex = 0;
     private int tokenStartLine = 1;
     private int tokenStartColumn = 1;
-
-    private static final Map<String, TokenType> KEYWORDS = Map.ofEntries(
-            Map.entry("if", TokenType.KEYWORD_IF),
-            Map.entry("else", TokenType.KEYWORD_ELSE),
-            Map.entry("while", TokenType.KEYWORD_WHILE),
-            Map.entry("do", TokenType.KEYWORD_DO),
-            Map.entry("for", TokenType.KEYWORD_FOR),
-            Map.entry("return", TokenType.KEYWORD_RETURN),
-            Map.entry("fn", TokenType.KEYWORD_FUNCTION),
-            Map.entry("break", TokenType.KEYWORD_BREAK),
-            Map.entry("continue", TokenType.KEYWORD_CONTINUE),
-            Map.entry("switch", TokenType.KEYWORD_SWITCH),
-            Map.entry("case", TokenType.KEYWORD_CASE),
-            Map.entry("default", TokenType.KEYWORD_DEFAULT),
-            Map.entry("let", TokenType.KEYWORD_LET),
-            Map.entry("call", TokenType.KEYWORD_CALL),
-            Map.entry("new", TokenType.KEYWORD_NEW),
-            // Types
-            Map.entry("struct", TokenType.TYPE_STRUCT),
-            Map.entry("int", TokenType.TYPE_INTEGER),
-            Map.entry("double", TokenType.TYPE_DOUBLE),
-            Map.entry("boolean", TokenType.TYPE_BOOLEAN),
-            Map.entry("string", TokenType.TYPE_STRING),
-            Map.entry("char", TokenType.TYPE_CHARACTER),
-            Map.entry("void", TokenType.TYPE_VOID),
-            Map.entry("enum", TokenType.TYPE_ENUM));
-
-    /**
-     * Single-character symbols that require no lookahead. Any character present
-     * in this map is lexed by simply consuming it and emitting the mapped token
-     * type. This keeps {@link #lexSymbol()} focused on the ambiguous cases
-     * (e.g. {@code +} vs {@code ++} vs {@code +=}).
-     */
-    private static final Map<Character, TokenType> SINGLE_CHAR_SYMBOLS = Map.ofEntries(
-            Map.entry('(', TokenType.SYMBOL_LEFT_PARENTHESIS),
-            Map.entry(')', TokenType.SYMBOL_RIGHT_PARENTHESIS),
-            Map.entry('{', TokenType.SYMBOL_LEFT_BRACE),
-            Map.entry('}', TokenType.SYMBOL_RIGHT_BRACE),
-            Map.entry('[', TokenType.SYMBOL_LEFT_BRACKET),
-            Map.entry(']', TokenType.SYMBOL_RIGHT_BRACKET),
-            Map.entry(';', TokenType.SYMBOL_SEMICOLON),
-            Map.entry(',', TokenType.SYMBOL_COMMA),
-            Map.entry('.', TokenType.SYMBOL_DOT),
-            Map.entry(':', TokenType.SYMBOL_COLON),
-            Map.entry('?', TokenType.SYMBOL_QUESTION_MARK),
-            Map.entry('~', TokenType.OPERATOR_BITWISE_NOT));
 
     /**
      * @param sourceCode  the raw source code to be tokenized
@@ -153,7 +106,10 @@ public class Lexer {
      * in the source code.
      */
     private Token makeToken(TokenType tokenType) {
-        String value = sourceCode.substring(tokenStartIndex, indexInSourceCode);
+        return makeToken(tokenType, sourceCode.substring(tokenStartIndex, indexInSourceCode));
+    }
+
+    private Token makeToken(TokenType tokenType, String value) {
         SourceLocation location = defineSourceLocation();
         Token token = new Token(tokenType, value, location);
         JaverLogger.debug(String.format("Lexer: Produced token %10s %50s at %20s", tokenType, value, location));
@@ -253,29 +209,32 @@ public class Lexer {
         if (currentChar() == '0' && (peek(1) == 'x' || peek(1) == 'X')) {
             advance();
             advance();
+            int digitsStartIndex = indexInSourceCode;
             if (!isHexDigit(currentChar())) {
                 error("Hexadecimal literal must have at least one digit");
             }
             consumeDigitsForBase(16);
-            return makeToken(TokenType.LITERAL_HEX);
+            return makeToken(TokenType.LITERAL_HEX, sourceCode.substring(digitsStartIndex, indexInSourceCode));
         }
         if (currentChar() == '0' && (peek(1) == 'o' || peek(1) == 'O')) {
             advance();
             advance();
+            int digitsStartIndex = indexInSourceCode;
             if (!isOctalDigit(currentChar())) {
                 error("Octal literal must have at least one digit");
             }
             consumeDigitsForBase(8);
-            return makeToken(TokenType.LITERAL_OCTAL);
+            return makeToken(TokenType.LITERAL_OCTAL, sourceCode.substring(digitsStartIndex, indexInSourceCode));
         }
         if (currentChar() == '0' && (peek(1) == 'b' || peek(1) == 'B')) {
             advance();
             advance();
+            int digitsStartIndex = indexInSourceCode;
             if (!isBinaryDigit(currentChar())) {
                 error("Binary literal must have at least one digit");
             }
             consumeDigitsForBase(2);
-            return makeToken(TokenType.LITERAL_BINARY);
+            return makeToken(TokenType.LITERAL_BINARY, sourceCode.substring(digitsStartIndex, indexInSourceCode));
         }
 
         // Decimal integer / double
@@ -315,12 +274,13 @@ public class Lexer {
      * Handles common escape sequences (\n, \t, \r, \\, \", \', \0, \b, \f).
      */
     private Token lexString() {
+        StringBuilder value = new StringBuilder();
         advance();
         while (indexInSourceCode < sourceCode.length()) {
             char currentChar = currentChar();
             if (currentChar == '"') {
                 advance();
-                return makeToken(TokenType.LITERAL_STRING);
+                return makeToken(TokenType.LITERAL_STRING, value.toString());
             }
             if (isLineTerminator(currentChar)) {
                 error("Unterminated string literal");
@@ -334,10 +294,14 @@ public class Lexer {
                 char esc = currentChar();
                 if (!isValidEscape(esc)) {
                     error("Invalid escape sequence: \\" + esc);
+                    value.append(esc);
+                } else {
+                    value.append(resolveEscape(esc));
                 }
                 advance();
                 continue;
             }
+            value.append(currentChar);
             advance();
         }
         error("Unterminated string literal");
@@ -351,6 +315,7 @@ public class Lexer {
      * quotes.
      */
     private Token lexChar() {
+        String value;
         advance();
         if (indexInSourceCode >= sourceCode.length() || isLineTerminator(currentChar())) {
             error("Unterminated char literal");
@@ -370,9 +335,13 @@ public class Lexer {
             char esc = currentChar();
             if (!isValidEscape(esc)) {
                 error("Invalid escape sequence: \\" + esc);
+                value = String.valueOf(esc);
+            } else {
+                value = String.valueOf(resolveEscape(esc));
             }
             advance();
         } else {
+            value = String.valueOf(currentChar());
             advance();
         }
         if (indexInSourceCode >= sourceCode.length() || currentChar() != '\'') {
@@ -389,7 +358,7 @@ public class Lexer {
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
         advance();
-        return makeToken(TokenType.LITERAL_CHAR);
+        return makeToken(TokenType.LITERAL_CHAR, value);
     }
 
     /**
@@ -399,130 +368,22 @@ public class Lexer {
      * Multi-character operators are matched greedily.
      */
     private Token lexSymbol() {
+        TokenType.FixedTokenMatch match = TokenType.fixedTokenAt(sourceCode, indexInSourceCode);
+        if (match != null) {
+            advance(match.length());
+            return makeToken(match.tokenType());
+        }
+
         char currentChar = currentChar();
-
-        // single-character symbols that need no lookahead.
-        TokenType direct = SINGLE_CHAR_SYMBOLS.get(currentChar);
-        if (direct != null) {
-            advance();
-            return makeToken(direct);
-        }
-
-        // Ambiguous operators that depend on the next 1-2 characters.
-        switch (currentChar) {
-            case '+':
-                return handleTripleOperator('+', TokenType.OPERATOR_PLUS,
-                        TokenType.OPERATOR_INCREMENT, TokenType.OPERATOR_PLUS_ASSIGN);
-            case '-':
-                return handleTripleOperator('-', TokenType.OPERATOR_MINUS,
-                        TokenType.OPERATOR_DECREMENT, TokenType.OPERATOR_MINUS_ASSIGN);
-            case '*':
-                return handleSingleOrAssignOperator(TokenType.OPERATOR_MULTIPLY,
-                        TokenType.OPERATOR_MULTIPLY_ASSIGN);
-            case '/':
-                return handleSingleOrAssignOperator(TokenType.OPERATOR_DIVIDE,
-                        TokenType.OPERATOR_DIVIDE_ASSIGN);
-            case '%':
-                return handleSingleOrAssignOperator(TokenType.OPERATOR_MODULO,
-                        TokenType.OPERATOR_MODULO_ASSIGN);
-            case '=':
-                return handleSingleOrAssignOperator(TokenType.OPERATOR_ASSIGN,
-                        TokenType.OPERATOR_EQUALS);
-            case '!':
-                return handleSingleOrAssignOperator(TokenType.OPERATOR_LOGICAL_NOT,
-                        TokenType.OPERATOR_NOT_EQUALS);
-            case '<':
-                return handleShiftOrRelationalOperator('<', TokenType.OPERATOR_LESS_THAN,
-                        TokenType.OPERATOR_LESS_EQUAL,
-                        TokenType.OPERATOR_BITSHIFT_LEFT,
-                        TokenType.OPERATOR_BITSHIFT_LEFT_ASSIGN);
-            case '>':
-                return handleShiftOrRelationalOperator('>', TokenType.OPERATOR_GREATER_THAN,
-                        TokenType.OPERATOR_GREATER_EQUAL,
-                        TokenType.OPERATOR_BITSHIFT_RIGHT,
-                        TokenType.OPERATOR_BITSHIFT_RIGHT_ASSIGN);
-            case '&':
-                return handleTripleOperator('&', TokenType.OPERATOR_BITWISE_AND,
-                        TokenType.OPERATOR_AND, TokenType.OPERATOR_BITWISE_AND_ASSIGN);
-            case '|':
-                return handleTripleOperator('|', TokenType.OPERATOR_BITWISE_OR,
-                        TokenType.OPERATOR_OR, TokenType.OPERATOR_BITWISE_OR_ASSIGN);
-            case '^':
-                return handleSingleOrAssignOperator(TokenType.OPERATOR_BITWISE_XOR,
-                        TokenType.OPERATOR_BITWISE_XOR_ASSIGN);
-            default:
-                error("Unexpected character: '" + currentChar + "'");
-                advance();
-                return makeToken(TokenType.SPECIAL_UNKNOWN);
-        }
+        error("Unexpected character: '" + currentChar + "'");
+        advance();
+        return makeToken(TokenType.SPECIAL_UNKNOWN);
     }
 
-    /**
-     * Handles the "{@code op} or {@code op=}" pattern. The leading character
-     * has already been peeked at by the caller; this helper consumes it and
-     * greedily attaches an {@code =} if present.
-     *
-     * @param single     token type for the bare operator ({@code *}, {@code /}, ...)
-     * @param withAssign token type for the compound-assign form ({@code *=}, {@code /=}, ...)
-     */
-    private Token handleSingleOrAssignOperator(TokenType single, TokenType withAssign) {
-        advance();
-        if (currentChar() == '=') {
+    private void advance(int count) {
+        for (int i = 0; i < count; i++) {
             advance();
-            return makeToken(withAssign);
         }
-        return makeToken(single);
-    }
-
-    /**
-     * Handles the "{@code op} / {@code op op} / {@code op=}" pattern used by
-     * {@code + ++ +=}, {@code - -- -=}, {@code & && &=}, {@code | || |=}.
-     *
-     * @param doubled     the character that, when repeated, yields {@code doubledType}
-     * @param single      token type for the bare operator
-     * @param doubledType token type for the doubled operator ({@code ++}, {@code &&}, ...)
-     * @param withAssign  token type for the compound-assign form
-     */
-    private Token handleTripleOperator(char doubled, TokenType single, TokenType doubledType, TokenType withAssign) {
-        advance();
-        if (currentChar() == doubled) {
-            advance();
-            return makeToken(doubledType);
-        }
-        if (currentChar() == '=') {
-            advance();
-            return makeToken(withAssign);
-        }
-        return makeToken(single);
-    }
-
-    /**
-     * Handles the four-way "{@code op} / {@code op=} / {@code op op} / {@code op op=}"
-     * pattern used by {@code <} and {@code >}, which can be a relational
-     * operator, a relational-equal, a bit-shift, or a shift-assign.
-     *
-     * @param same        the character that, when repeated, forms a shift
-     * @param single      token type for the bare relational operator ({@code <}, {@code >})
-     * @param withAssign  token type for the relational-equal ({@code <=}, {@code >=})
-     * @param shift       token type for the shift operator ({@code <<}, {@code >>})
-     * @param shiftAssign token type for the shift-assign ({@code <<=}, {@code >>=})
-     */
-    private Token handleShiftOrRelationalOperator(char same, TokenType single, TokenType withAssign,
-                                                  TokenType shift, TokenType shiftAssign) {
-        advance();
-        if (currentChar() == '=') {
-            advance();
-            return makeToken(withAssign);
-        }
-        if (currentChar() == same) {
-            advance();
-            if (currentChar() == '=') {
-                advance();
-                return makeToken(shiftAssign);
-            }
-            return makeToken(shift);
-        }
-        return makeToken(single);
     }
 
     /**
@@ -541,19 +402,7 @@ public class Lexer {
             advance();
         }
         String keywordText = sourceCode.substring(tokenStartIndex, indexInSourceCode);
-        TokenType keywordType = KEYWORDS.get(keywordText);
-        if (keywordType != null) {
-            return makeToken(keywordType);
-        }
-        switch (keywordText) {
-            case "true":
-            case "false":
-                return makeToken(TokenType.LITERAL_BOOLEAN);
-            case "null":
-                return makeToken(TokenType.LITERAL_NULL);
-            default:
-                return makeToken(TokenType.ID_IDENTIFIER);
-        }
+        return makeToken(TokenType.fromWordLexeme(keywordText));
     }
 
     /**
@@ -743,6 +592,21 @@ public class Lexer {
     private boolean isValidEscape(char c) {
         return c == 'n' || c == 'r' || c == 't' || c == 'b' || c == 'f'
                 || c == '0' || c == '"' || c == '\'' || c == '\\';
+    }
+
+    private char resolveEscape(char c) {
+        return switch (c) {
+            case 'n' -> '\n';
+            case 'r' -> '\r';
+            case 't' -> '\t';
+            case 'b' -> '\b';
+            case 'f' -> '\f';
+            case '0' -> '\0';
+            case '"' -> '"';
+            case '\'' -> '\'';
+            case '\\' -> '\\';
+            default -> c;
+        };
     }
 
     /**

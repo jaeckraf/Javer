@@ -88,11 +88,6 @@ public class Parser {
     private static final Set<TokenType> FOLLOW_EXPRESSION = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COLON, TokenType.SYMBOL_RIGHT_PARENTHESIS, TokenType.SYMBOL_RIGHT_BRACKET, TokenType.SYMBOL_RIGHT_BRACE);
     private static final Set<TokenType> FOLLOW_CASE = EnumSet.of(TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SYMBOL_RIGHT_BRACE);
 
-    /**
-     * Synchronisation, wenn ein Pflicht-Token am Statement-Ende fehlt.
-     * FIRST_STATEMENT ist hier absichtlich nicht enthalten, sonst wird z.B. ein String-Literal
-     * innerhalb eines kaputten Statements direkt als neues Statement akzeptiert.
-     */
     private static final Set<TokenType> FOLLOW_STATEMENT_END = EnumSet.of(
             TokenType.SYMBOL_SEMICOLON,
             TokenType.SYMBOL_RIGHT_BRACE,
@@ -142,7 +137,6 @@ public class Parser {
         return node;
     }
 
-    /** Terminal-match nach Folienlogik: Fehler melden und falsches Terminal konsumieren. */
     private boolean match(TokenType expected) {
         if (matchCurrentToken(expected)) {
             consumeToken();
@@ -153,16 +147,16 @@ public class Parser {
         return false;
     }
 
-    /** Wie match(...), aber gibt echten oder synthetischen Token für AST-Werte zurück. */
     private Token expectTokenType(TokenType expected) {
         Token token = currentToken();
         if (token.getTokenType() == expected) {
             consumeToken();
             return token;
         }
+        SourceLocation missingLocation = expectedTokenLocation();
         reportExpectedToken(expected);
         if (isNotAtEnd()) consumeToken();
-        return new Token(expected, expected.toString(), token.getPosition());
+        return new Token(expected, expected.diagnosticName(), missingLocation);
     }
 
     private Token expectTokenTypes(Set<TokenType> expected) {
@@ -174,7 +168,7 @@ public class Parser {
         reportExpectedTokens(expected);
         if (isNotAtEnd()) consumeToken();
         TokenType dummy = expected.iterator().next();
-        return new Token(dummy, dummy.toString(), token.getPosition());
+        return new Token(dummy, dummy.diagnosticName(), token.getPosition());
     }
 
     private boolean skipErrors(Set<TokenType> first, Set<TokenType> follow, boolean epsilonAllowed) {
@@ -207,14 +201,85 @@ public class Parser {
         return located(new BlockStatement(List.of()), startToken);
     }
 
-    private void reportExpectedToken(TokenType expected) { reportExpectedTokens(EnumSet.of(expected)); }
+    private void reportExpectedToken(TokenType expected) {
+        reportExpectedTokens(EnumSet.of(expected), expectedTokenLocation());
+    }
 
     private void reportExpectedTokens(Set<TokenType> expected) {
+        reportExpectedTokens(expected, diagnosticLocation(currentToken()));
+    }
+
+    private void reportExpectedTokens(Set<TokenType> expected, SourceLocation location) {
         Token current = currentToken();
-        SourceLocation location = current.getPosition();
-        String message = String.format("Expected token %s but found %s.", expected, current.getTokenType());
+        String message = expected.size() == 1
+                ? String.format("Expected: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current))
+                : String.format("Expected one of: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current));
         JaverLogger.error(message);
         diagnosticBag.add(location, Severity.ERROR, message);
+    }
+
+    private SourceLocation expectedTokenLocation() {
+        Token current = currentToken();
+        if (current.getTokenType() == TokenType.SPECIAL_END_OF_FILE || currentPosition == 0) {
+            return diagnosticLocation(current);
+        }
+
+        SourceLocation previous = previousToken().getPosition();
+        int insertionColumn = previous.endColumn() + 1;
+        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber());
+    }
+
+    private SourceLocation diagnosticLocation(Token token) {
+        if (token.getTokenType() != TokenType.SPECIAL_END_OF_FILE || currentPosition == 0) {
+            return token.getPosition();
+        }
+
+        SourceLocation previous = previousToken().getPosition();
+        int insertionColumn = previous.endColumn() + 1;
+        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber());
+    }
+
+    private String formatExpectedTokens(Set<TokenType> expected) {
+        List<String> literalNames = new ArrayList<>();
+        List<String> tokenNames = new ArrayList<>();
+
+        for (TokenType tokenType : expected) {
+            String name = tokenType.diagnosticName();
+            if (name.startsWith("Literal: ")) {
+                literalNames.add(quote(name.substring("Literal: ".length())));
+            } else {
+                tokenNames.add(quote(name));
+            }
+        }
+
+        if (!literalNames.isEmpty()) {
+            tokenNames.add(0, "Literal: (" + String.join(", ", literalNames) + ")");
+        }
+
+        return String.join(", ", tokenNames);
+    }
+
+    private String quote(String value) {
+        return "'" + value + "'";
+    }
+
+    private String formatFoundToken(Token token) {
+        String value = token.getValue();
+        if (value != null && !value.isEmpty()) {
+            return printable(value);
+        }
+        return token.getTokenType().diagnosticName();
+    }
+
+    private String printable(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t")
+                .replace("\b", "\\b")
+                .replace("\f", "\\f")
+                .replace("\0", "\\0");
     }
 
     private CompilationUnit parseCompilationUnit() {
@@ -776,9 +841,8 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_HEX)) {
             Token token = expectTokenType(TokenType.LITERAL_HEX);
-            String v = token.getValue();
             try {
-                int parsed = Integer.parseInt(v.startsWith("0x") || v.startsWith("0X") ? v.substring(2) : v, 16);
+                int parsed = Integer.parseInt(token.getValue(), 16);
                 return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
             } catch (NumberFormatException ex) {
                 return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
@@ -786,9 +850,8 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_BINARY)) {
             Token token = expectTokenType(TokenType.LITERAL_BINARY);
-            String v = token.getValue();
             try {
-                int parsed = Integer.parseInt(v.startsWith("0b") || v.startsWith("0B") ? v.substring(2) : v, 2);
+                int parsed = Integer.parseInt(token.getValue(), 2);
                 return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
             } catch (NumberFormatException ex) {
                 return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
@@ -796,9 +859,8 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_OCTAL)) {
             Token token = expectTokenType(TokenType.LITERAL_OCTAL);
-            String v = token.getValue();
             try {
-                int parsed = Integer.parseInt(v.startsWith("0o") || v.startsWith("0O") ? v.substring(2) : v, 8);
+                int parsed = Integer.parseInt(token.getValue(), 8);
                 return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
             } catch (NumberFormatException ex) {
                 return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
@@ -815,36 +877,13 @@ public class Parser {
 
     private LiteralExpression<String> parseStringLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_STRING);
-        return located(new LiteralExpression<>(LiteralKind.STRING, unescapeString(stripQuotes(token.getValue()))), token);
+        return located(new LiteralExpression<>(LiteralKind.STRING, token.getValue()), token);
     }
 
     private LiteralExpression<Character> parseCharLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_CHAR);
-        String value = unescapeString(stripQuotes(token.getValue()));
+        String value = token.getValue();
         return located(new LiteralExpression<>(LiteralKind.CHAR, value.isEmpty() ? '\0' : value.charAt(0)), token);
-    }
-
-    private String unescapeString(String s) {
-        if (s == null || s.indexOf('\\') < 0) return s == null ? "" : s;
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (c != '\\') { sb.append(c); continue; }
-            if (i + 1 >= s.length()) { sb.append('\\'); break; }
-            char next = s.charAt(++i);
-            switch (next) {
-                case 'n' -> sb.append('\n');
-                case 't' -> sb.append('\t');
-                case 'r' -> sb.append('\r');
-                case 'b' -> sb.append('\b');
-                case 'f' -> sb.append('\f');
-                case '\\' -> sb.append('\\');
-                case '\'' -> sb.append('\'');
-                case '"' -> sb.append('"');
-                default -> sb.append(next);
-            }
-        }
-        return sb.toString();
     }
 
     private LiteralExpression<Void> parseNullLiteral() {
@@ -864,11 +903,6 @@ public class Parser {
     private double parseDouble(Token token) {
         try { return Double.parseDouble(token.getValue()); }
         catch (NumberFormatException ignored) { return 0.0; }
-    }
-
-    private String stripQuotes(String value) {
-        if (value == null || value.length() < 2) return value == null ? "" : value;
-        return value.substring(1, value.length() - 1);
     }
 
     private BinaryExpressionKind toBinaryExpressionKind(Token token) {

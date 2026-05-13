@@ -24,11 +24,13 @@ import java.util.Map;
 public final class SymbolTableAstPrinter extends AstPrinter {
 
     @Override
+    protected void writeRoot(CompilationUnit node) {
+        writeSymbolTables(node.getGlobalScope());
+    }
+
+    @Override
     public void visit(CompilationUnit node) {
         writeSymbolTables(node.getGlobalScope());
-        writeRawLine("AST");
-        writeRawLine("===");
-        nodesChild("declarations", node.getDeclarations(), true);
     }
 
     private void writeSymbolTables(GlobalScope globalScope) {
