@@ -1,0 +1,5 @@
+.code
+_main:
+ENTER, 0
+
+.data

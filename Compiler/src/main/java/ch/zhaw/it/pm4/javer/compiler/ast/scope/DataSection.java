@@ -21,7 +21,7 @@ public final class DataSection {
             return existing;
         }
 
-        String label = strings.isEmpty() ? "msg" : "msg_" + strings.size();
+        String label = "string_" + strings.size();
         List<String> encoded = encodeString(value);
         DataEntry entry = addConstant(label, PrimitiveTypeInfo.of(PrimitiveTypeKind.CHAR), encoded);
         strings.put(value, entry);

@@ -1,0 +1,12 @@
+.code
+_main:
+ENTER, 0
+for_condition_0:
+PUSHB, 0
+JUMPF, for_end_2
+for_update_1:
+JUMP, for_condition_0
+for_end_2:
+RET
+
+.data

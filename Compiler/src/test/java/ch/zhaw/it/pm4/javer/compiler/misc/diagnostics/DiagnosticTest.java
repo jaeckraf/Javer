@@ -14,7 +14,7 @@ class DiagnosticTest {
 
         assertEquals(location, diagnostic.getLocation());
         assertEquals(Severity.ERROR, diagnostic.getSeverity());
-        assertEquals("[ERROR] at [1 : 4 : 2]: Type mismatch", diagnostic.toString());
+        assertEquals("[ERROR] at [2 : 1 : 4]: Type mismatch", diagnostic.toString());
     }
 }
 
