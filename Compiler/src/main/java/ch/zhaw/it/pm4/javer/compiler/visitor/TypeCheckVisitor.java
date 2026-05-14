@@ -285,37 +285,46 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             return;
         }
 
-        TypeInfo assignedValueType = switch (node.getOperator()) {
-            case ASSIGN -> valueType;
+        boolean valid = true;
 
+        switch (node.getOperator()) {
+            case ASSIGN -> {
+                if (!isAssignable(targetType, valueType)) {
+                    report(node, "Cannot assign " + valueType + " to " + targetType + ".");
+                    valid = false;
+                }
+            }
             case ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN -> {
                 if (!isNumeric(targetType) || !isNumeric(valueType)) {
                     report(node, "Arithmetic assignment requires numeric operands.");
-                    yield UnknownTypeInfo.INSTANCE;
+                    valid = false;
+                } else if (!targetType.equals(valueType)) {
+                    // Optional: int += double erlauben?
+                    report(node, "Arithmetic assignment requires operands of the same type.");
+                    valid = false;
                 }
-                yield numericResult(targetType, valueType);
             }
-
             case BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN,
                  LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN -> {
                 if (!isInteger(targetType) || !isInteger(valueType)) {
                     report(node, "Bitwise/shift assignment requires integer operands.");
-                    yield UnknownTypeInfo.INSTANCE;
+                    valid = false;
                 }
-                yield PrimitiveTypeInfo.INT;
             }
+            case INVALID -> {
+                report(node, "Invalid assignment operator.");
+                valid = false;
+            }
+        }
 
-            case INVALID -> UnknownTypeInfo.INSTANCE;
-        };
-
-        if (!isAssignable(targetType, assignedValueType)) {
-            report(node, "Cannot assign " + assignedValueType + " to " + targetType + ".");
+        if (!valid) {
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
 
         node.setResultingType(targetType);
     }
+
 
 
     private boolean isAssignableTarget(ExpressionAstNode target) {

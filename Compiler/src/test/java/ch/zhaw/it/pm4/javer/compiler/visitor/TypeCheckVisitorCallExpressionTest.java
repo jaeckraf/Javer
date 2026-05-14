@@ -15,6 +15,7 @@ import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -54,16 +55,20 @@ class TypeCheckVisitorCallExpressionTest {
     }
 
     // --- Positive: matching parameters ---
+
     @Test
     void testMatchingParameters() {
-        // Funktion: foo(int, double)
         ParameterEntry param1 = mock(ParameterEntry.class);
         when(param1.getType()).thenReturn(PrimitiveTypeInfo.INT);
         ParameterEntry param2 = mock(ParameterEntry.class);
         when(param2.getType()).thenReturn(PrimitiveTypeInfo.DOUBLE);
 
+        Map<String, ParameterEntry> params = new LinkedHashMap<>();
+        params.put("a", param1);
+        params.put("b", param2);
+
         FunctionScope scope = mock(FunctionScope.class);
-        when(scope.getParameters()).thenReturn(Map.of("a", param1, "b", param2));
+        when(scope.getParameters()).thenReturn(params);
 
         FunctionEntry function = mock(FunctionEntry.class);
         when(function.getScope()).thenReturn(scope);
@@ -76,6 +81,7 @@ class TypeCheckVisitorCallExpressionTest {
         assertEquals(PrimitiveTypeInfo.DOUBLE, expr.getResultingType());
         assertFalse(bag.hasErrors());
     }
+
 
     // --- Negative: non-existing function ---
     @Test
@@ -92,8 +98,11 @@ class TypeCheckVisitorCallExpressionTest {
         ParameterEntry param1 = mock(ParameterEntry.class);
         when(param1.getType()).thenReturn(PrimitiveTypeInfo.INT);
 
+        Map<String, ParameterEntry> params = new LinkedHashMap<>();
+        params.put("a", param1);
+
         FunctionScope scope = mock(FunctionScope.class);
-        when(scope.getParameters()).thenReturn(Map.of("a", param1));
+        when(scope.getParameters()).thenReturn(params);
 
         FunctionEntry function = mock(FunctionEntry.class);
         when(function.getScope()).thenReturn(scope);
@@ -113,8 +122,11 @@ class TypeCheckVisitorCallExpressionTest {
         ParameterEntry param1 = mock(ParameterEntry.class);
         when(param1.getType()).thenReturn(PrimitiveTypeInfo.INT);
 
+        Map<String, ParameterEntry> params = new LinkedHashMap<>();
+        params.put("a", param1);
+
         FunctionScope scope = mock(FunctionScope.class);
-        when(scope.getParameters()).thenReturn(Map.of("a", param1));
+        when(scope.getParameters()).thenReturn(params);
 
         FunctionEntry function = mock(FunctionEntry.class);
         when(function.getScope()).thenReturn(scope);
@@ -136,19 +148,22 @@ class TypeCheckVisitorCallExpressionTest {
         ParameterEntry param2 = mock(ParameterEntry.class);
         when(param2.getType()).thenReturn(PrimitiveTypeInfo.DOUBLE);
 
+        Map<String, ParameterEntry> params = new LinkedHashMap<>();
+        params.put("a", param1);
+        params.put("b", param2);
+
         FunctionScope scope = mock(FunctionScope.class);
-        when(scope.getParameters()).thenReturn(Map.of("a", param1, "b", param2));
+        when(scope.getParameters()).thenReturn(params);
 
         FunctionEntry function = mock(FunctionEntry.class);
         when(function.getScope()).thenReturn(scope);
         when(function.getReturnType()).thenReturn(PrimitiveTypeInfo.DOUBLE);
 
-        // Übergib absichtlich falsche Typen (z.B. String statt Double)
         CallExpression expr = new CallExpression("foo", List.of(intLit(1), stringLit("fail")));
         expr.setResolvedFunction(function);
 
         expr.accept(visitor);
-        assertEquals(PrimitiveTypeInfo.DOUBLE, expr.getResultingType()); // Typ bleibt, aber Fehler wird gemeldet
+        assertEquals(PrimitiveTypeInfo.DOUBLE, expr.getResultingType());
         assertTrue(bag.hasErrors());
     }
 }
