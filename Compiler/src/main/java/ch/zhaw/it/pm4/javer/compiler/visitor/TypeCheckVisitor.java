@@ -533,7 +533,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         boolean isStruct = type instanceof StructTypeInfo;
 
         if (isArray) {
-            node.setResultingType(new ArrayTypeInfo(type));
+            node.setResultingType(type);
             return;
         }
 
