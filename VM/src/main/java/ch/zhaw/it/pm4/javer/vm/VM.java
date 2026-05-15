@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Stack-based virtual machine that parses and executes Javer bytecode.
@@ -16,17 +17,15 @@ public class VM {
 
     private static final int STACK_SIZE = 1048576; // 1 MB
     private static final int STACK_WINDOW = 8;
-    private static final int REF_INDEX_MASK = 0x0FFFFFFF;
-    private static final int HEAP_REF_TAG = 0x10000000;
-    private static final int DATA_REF_TAG = 0x20000000;
     private static final int NULL_REF = 0;
+    private static final int DATA_BASE = 0x00001000;
+    private static final int HEAP_BASE = 0x10000000;
+    private static final long ADDRESS_SPACE_SIZE = 1L << 32;
 
     private final byte[] stack = new byte[STACK_SIZE];
-    private final List<byte[]> heap = new ArrayList<>();
-    private final List<byte[]> dataObjects = new ArrayList<>();
     private final Map<Integer, Instruction> code = new HashMap<>();
-    private final Map<String, byte[]> dataMap = new HashMap<>();
-    private final Map<String, Integer> dataIndexes = new HashMap<>();
+    private final Map<String, Integer> dataLabels = new HashMap<>();
+    private final TreeMap<Integer, MemoryRegion> regions = new TreeMap<>(Integer::compareUnsigned);
     private final Map<String, Integer> labels = new HashMap<>();
     private final List<String> lines;
     private final List<CallFrame> callStack = new ArrayList<>();
@@ -34,6 +33,8 @@ public class VM {
     private int sp = 0;
     private int pc = 0;
     private int fp = 0;
+    private int nextDataAddress = DATA_BASE;
+    private int nextHeapAddress = HEAP_BASE;
     private int programEndAddress = 0;
     private boolean halted = false;
 
@@ -106,31 +107,34 @@ public class VM {
 
     private void dumpHeap() {
         System.out.println("=== HEAP DUMP ===");
-        System.out.println("objects = " + heap.size());
+        List<MemoryRegion> heapRegions = regions.values().stream()
+                .filter(MemoryRegion::writable)
+                .toList();
+        System.out.println("objects = " + heapRegions.size());
 
-        if (heap.isEmpty()) {
+        if (heapRegions.isEmpty()) {
             System.out.println("<empty>");
             return;
         }
 
-        for (int i = 0; i < heap.size(); i++) {
-            byte[] obj = heap.get(i);
-            System.out.print("heap[" + i + "] = ");
-            dumpByteArrayInline(obj);
+        for (MemoryRegion region : heapRegions) {
+            System.out.print(region.name() + " @ " + formatAddress(region.base()) + " = ");
+            dumpByteArrayInline(region.bytes());
         }
     }
 
     private void dumpData() {
         System.out.println("=== DATA DUMP ===");
 
-        if (dataMap.isEmpty()) {
+        if (dataLabels.isEmpty()) {
             System.out.println("<empty>");
             return;
         }
 
-        for (Map.Entry<String, byte[]> entry : dataMap.entrySet()) {
-            System.out.print(entry.getKey() + " = ");
-            dumpByteArrayInline(entry.getValue());
+        for (Map.Entry<String, Integer> entry : dataLabels.entrySet()) {
+            MemoryRegion region = regions.get(entry.getValue());
+            System.out.print(entry.getKey() + " @ " + formatAddress(entry.getValue()) + " = ");
+            dumpByteArrayInline(region.bytes());
         }
     }
 
@@ -554,14 +558,14 @@ public class VM {
             case POPI -> noOperand(parts, instrName, lineNumber, new PopIntInstruction());
             case POPD -> noOperand(parts, instrName, lineNumber, new PopDoubleInstruction());
 
-            case HLOAD1 -> noOperand(parts, instrName, lineNumber, new HLoad1Instruction());
-            case HLOAD2 -> noOperand(parts, instrName, lineNumber, new HLoad2Instruction());
-            case HLOAD4 -> noOperand(parts, instrName, lineNumber, new HLoad4Instruction());
-            case HLOAD8 -> noOperand(parts, instrName, lineNumber, new HLoad8Instruction());
-            case HSTORE1 -> noOperand(parts, instrName, lineNumber, new HStore1Instruction());
-            case HSTORE2 -> noOperand(parts, instrName, lineNumber, new HStore2Instruction());
-            case HSTORE4 -> noOperand(parts, instrName, lineNumber, new HStore4Instruction());
-            case HSTORE8 -> noOperand(parts, instrName, lineNumber, new HStore8Instruction());
+            case LOAD1 -> noOperand(parts, instrName, lineNumber, new Load1Instruction());
+            case LOAD2 -> noOperand(parts, instrName, lineNumber, new Load2Instruction());
+            case LOAD4 -> noOperand(parts, instrName, lineNumber, new Load4Instruction());
+            case LOAD8 -> noOperand(parts, instrName, lineNumber, new Load8Instruction());
+            case STORE1 -> noOperand(parts, instrName, lineNumber, new Store1Instruction());
+            case STORE2 -> noOperand(parts, instrName, lineNumber, new Store2Instruction());
+            case STORE4 -> noOperand(parts, instrName, lineNumber, new Store4Instruction());
+            case STORE8 -> noOperand(parts, instrName, lineNumber, new Store8Instruction());
             case NEW -> noOperand(parts, instrName, lineNumber, new NewInstruction());
 
             case IADD -> noOperand(parts, instrName, lineNumber, new IAddInstruction());
@@ -708,13 +712,7 @@ public class VM {
             case PRINTC -> noOperand(parts, instrName, lineNumber, new PrintCharInstruction());
             case PRINTI -> noOperand(parts, instrName, lineNumber, new PrintIntInstruction());
             case PRINTD -> noOperand(parts, instrName, lineNumber, new PrintDoubleInstruction());
-            case DPRINTS -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                yield new PrintDataStringInstruction(
-                        parseIdentifier(parts[1], instrName, "data name", lineNumber)
-                );
-            }
-            case HPRINTS -> noOperand(parts, instrName, lineNumber, new PrintHeapStringInstruction());
+            case PRINTS -> noOperand(parts, instrName, lineNumber, new PrintStringInstruction());
         };
     }
 
@@ -734,7 +732,7 @@ public class VM {
         }
 
         String name = parts[0];
-        if (dataMap.containsKey(name)) {
+        if (dataLabels.containsKey(name)) {
             throw new ParseException("Line " + lineNumber + ": duplicate data symbol '" + name + "'");
         }
 
@@ -768,9 +766,8 @@ public class VM {
             dataBytes[i] = byteList.get(i);
         }
 
-        dataIndexes.put(name, dataObjects.size());
-        dataObjects.add(dataBytes);
-        dataMap.put(name, dataBytes);
+        int base = allocateDataRegion(name, dataBytes);
+        dataLabels.put(name, base);
     }
 
     private void ensureOperandCount(String[] parts, int expectedCount, String instrName, int lineNumber)
@@ -882,14 +879,14 @@ public class VM {
             case "POPI" -> InstructionKind.POPI;
             case "POPD" -> InstructionKind.POPD;
 
-            case "HLOAD1" -> InstructionKind.HLOAD1;
-            case "HLOAD2" -> InstructionKind.HLOAD2;
-            case "HLOAD4" -> InstructionKind.HLOAD4;
-            case "HLOAD8" -> InstructionKind.HLOAD8;
-            case "HSTORE1" -> InstructionKind.HSTORE1;
-            case "HSTORE2" -> InstructionKind.HSTORE2;
-            case "HSTORE4" -> InstructionKind.HSTORE4;
-            case "HSTORE8" -> InstructionKind.HSTORE8;
+            case "LOAD1" -> InstructionKind.LOAD1;
+            case "LOAD2" -> InstructionKind.LOAD2;
+            case "LOAD4" -> InstructionKind.LOAD4;
+            case "LOAD8" -> InstructionKind.LOAD8;
+            case "STORE1" -> InstructionKind.STORE1;
+            case "STORE2" -> InstructionKind.STORE2;
+            case "STORE4" -> InstructionKind.STORE4;
+            case "STORE8" -> InstructionKind.STORE8;
             case "NEW" -> InstructionKind.NEW;
 
             case "IADD" -> InstructionKind.IADD;
@@ -956,8 +953,7 @@ public class VM {
             case "PRINTC" -> InstructionKind.PRINTC;
             case "PRINTI" -> InstructionKind.PRINTI;
             case "PRINTD" -> InstructionKind.PRINTD;
-            case "DPRINTS" -> InstructionKind.DPRINTS;
-            case "HPRINTS" -> InstructionKind.HPRINTS;
+            case "PRINTS" -> InstructionKind.PRINTS;
 
             default -> null;
         };
@@ -1068,90 +1064,125 @@ public class VM {
         return Double.longBitsToDouble(bits);
     }
 
-    private int makeHeapReference(int index) {
-        if (index < 0 || index > REF_INDEX_MASK) {
-            throw new VMExecutionException("Heap reference index out of range: " + index);
-        }
-        return HEAP_REF_TAG | index;
-    }
-
     private int makeDataReference(String name) {
-        Integer index = dataIndexes.get(name);
-        if (index == null) {
+        Integer address = dataLabels.get(name);
+        if (address == null) {
             throw new VMExecutionException("Data object '" + name + "' not found");
         }
-        if (index > REF_INDEX_MASK) {
-            throw new VMExecutionException("Data reference index out of range: " + index);
+        return address;
+    }
+
+    private int allocateDataRegion(String name, byte[] bytes) {
+        int base = nextDataAddress;
+        long end = Integer.toUnsignedLong(base) + Math.max(bytes.length, 1);
+        long heapStart = Integer.toUnsignedLong(HEAP_BASE);
+        if (end > heapStart) {
+            throw new VMExecutionException("Data section exceeds reserved address range");
         }
-        return DATA_REF_TAG | index;
+
+        addRegion(new MemoryRegion(base, bytes.length, false, "data:" + name, bytes));
+        nextDataAddress = (int) end;
+        return base;
     }
 
-    private boolean isHeapReference(int reference) {
-        return (reference & ~REF_INDEX_MASK) == HEAP_REF_TAG;
+    private int allocateHeapRegion(int size) {
+        if (size < 0) {
+            throw new VMExecutionException("Negative heap allocation size: " + size);
+        }
+
+        int base = nextHeapAddress;
+        long end = Integer.toUnsignedLong(base) + Math.max(size, 1);
+        if (end > ADDRESS_SPACE_SIZE) {
+            throw new VMExecutionException("Heap address space exhausted");
+        }
+
+        addRegion(new MemoryRegion(base, size, true, "heap:" + formatAddress(base), new byte[size]));
+        nextHeapAddress = (int) end;
+        return base;
     }
 
-    private boolean isDataReference(int reference) {
-        return (reference & ~REF_INDEX_MASK) == DATA_REF_TAG;
+    private void addRegion(MemoryRegion region) {
+        long base = Integer.toUnsignedLong(region.base());
+        long end = base + Math.max(region.size(), 0);
+
+        Map.Entry<Integer, MemoryRegion> previous = regions.floorEntry(region.base());
+        if (previous != null && previous.getKey().equals(region.base())) {
+            throw new VMExecutionException("Duplicate memory region at " + formatAddress(region.base()));
+        }
+        if (previous != null && regionEnd(previous.getValue()) > base) {
+            throw new VMExecutionException("Memory region overlap at " + formatAddress(region.base()));
+        }
+
+        Map.Entry<Integer, MemoryRegion> next = regions.ceilingEntry(region.base());
+        if (next != null && end > Integer.toUnsignedLong(next.getKey())) {
+            throw new VMExecutionException("Memory region overlap at " + formatAddress(region.base()));
+        }
+
+        regions.put(region.base(), region);
     }
 
-    private int referenceIndex(int reference) {
-        return reference & REF_INDEX_MASK;
+    private long regionEnd(MemoryRegion region) {
+        return Integer.toUnsignedLong(region.base()) + Math.max(region.size(), 0);
     }
 
-    private String describeReference(int reference) {
-        if (reference == NULL_REF) {
+    private String formatAddress(int address) {
+        return "0x%08X".formatted(address);
+    }
+
+    private String describeAddress(int address) {
+        if (address == NULL_REF) {
             return "null";
         }
-        if (isHeapReference(reference)) {
-            return "heap[" + referenceIndex(reference) + "]";
-        }
-        if (isDataReference(reference)) {
-            return "data[" + referenceIndex(reference) + "]";
-        }
-        return "invalid reference 0x" + Integer.toHexString(reference);
+        return formatAddress(address);
     }
 
-    private byte[] getMutableHeapObject(int reference) {
-        if (reference == NULL_REF) {
+    private int addAddressOffset(int base, int offset, String instructionName) {
+        long target = Integer.toUnsignedLong(base) + (long) offset;
+        if (target < 0 || target >= ADDRESS_SPACE_SIZE) {
+            throw new VMExecutionException(
+                    instructionName + ": address overflow (base=" + describeAddress(base) + ", offset=" + offset + ")"
+            );
+        }
+        return (int) target;
+    }
+
+    private MemoryAccess resolveRegion(int address, int size) {
+        if (size < 0) {
+            throw new VMExecutionException("Negative memory access size: " + size);
+        }
+        if (address == NULL_REF) {
             throw new VMExecutionException("Null reference");
         }
-        if (!isHeapReference(reference)) {
-            throw new VMExecutionException("Expected heap reference, got " + describeReference(reference));
+
+        long start = Integer.toUnsignedLong(address);
+        long end = start + size;
+        if (end > ADDRESS_SPACE_SIZE) {
+            throw new VMExecutionException("Memory access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")");
         }
 
-        int index = referenceIndex(reference);
-        if (index < 0 || index >= heap.size()) {
-            throw new VMExecutionException("Invalid heap reference: " + describeReference(reference));
+        Map.Entry<Integer, MemoryRegion> entry = regions.floorEntry(address);
+        if (entry == null) {
+            throw new VMExecutionException("Invalid memory address: " + formatAddress(address));
         }
-        return heap.get(index);
+
+        MemoryRegion region = entry.getValue();
+        long regionBase = Integer.toUnsignedLong(region.base());
+        long regionEnd = regionEnd(region);
+        if (start < regionBase || end > regionEnd) {
+            throw new VMExecutionException(
+                    region.name() + " access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")"
+            );
+        }
+
+        return new MemoryAccess(region, (int) (start - regionBase));
     }
 
-    private ReferencedObject getReferencedObject(int reference) {
-        if (reference == NULL_REF) {
-            throw new VMExecutionException("Null reference");
+    private MemoryAccess resolveWritableRegion(int address, int size) {
+        MemoryAccess access = resolveRegion(address, size);
+        if (!access.region().writable()) {
+            throw new VMExecutionException(access.region().name() + " is read-only");
         }
-        if (isHeapReference(reference)) {
-            int index = referenceIndex(reference);
-            if (index < 0 || index >= heap.size()) {
-                throw new VMExecutionException("Invalid heap reference: " + describeReference(reference));
-            }
-            return new ReferencedObject(heap.get(index), "heap[" + index + "]");
-        }
-        if (isDataReference(reference)) {
-            int index = referenceIndex(reference);
-            if (index < 0 || index >= dataObjects.size()) {
-                throw new VMExecutionException("Invalid data reference: " + describeReference(reference));
-            }
-            return new ReferencedObject(dataObjects.get(index), "data[" + index + "]");
-        }
-
-        throw new VMExecutionException("Invalid reference: " + describeReference(reference));
-    }
-
-    private void checkReferenceAccess(String sourceName, byte[] obj, int offset, int size) {
-        if (size < 0 || offset < 0 || offset > obj.length - size) {
-            throw new VMExecutionException(sourceName + " access out of bounds (offset=" + offset + ", size=" + size + ")");
-        }
+        return access;
     }
 
     private int checkFrameAccess(int offset, int size) {
@@ -1164,19 +1195,77 @@ public class VM {
         return (int) addr;
     }
 
-    private byte[] getDataObject(String name) {
-        byte[] data = dataMap.get(name);
-        if (data == null) {
-            throw new VMExecutionException("Data object '" + name + "' not found");
-        }
-        return data;
+    private int dataAddress(String name, int offset, String instructionName) {
+        return addAddressOffset(makeDataReference(name), offset, instructionName + " " + name);
     }
 
-    private void checkDataAccess(String name, byte[] data, int offset, int size) {
-        if (size < 0 || offset < 0 || offset > data.length - size) {
-            throw new VMExecutionException(
-                    "Data access out of bounds for '" + name + "' (offset=" + offset + ", size=" + size + ")"
-            );
+    private byte readByte(int address) {
+        MemoryAccess access = resolveRegion(address, 1);
+        return access.region().bytes()[access.offset()];
+    }
+
+    private char readChar(int address) {
+        MemoryAccess access = resolveRegion(address, 2);
+        byte[] bytes = access.region().bytes();
+        int offset = access.offset();
+        byte low = bytes[offset];
+        byte high = bytes[offset + 1];
+        return (char) (((high & 0xFF) << 8) | (low & 0xFF));
+    }
+
+    private int readInt(int address) {
+        MemoryAccess access = resolveRegion(address, 4);
+        byte[] bytes = access.region().bytes();
+        int offset = access.offset();
+        int value = 0;
+        for (int i = 0; i < 4; i++) {
+            value |= (bytes[offset + i] & 0xFF) << (8 * i);
+        }
+        return value;
+    }
+
+    private double readDouble(int address) {
+        MemoryAccess access = resolveRegion(address, 8);
+        byte[] bytes = access.region().bytes();
+        int offset = access.offset();
+        long bits = 0;
+        for (int i = 0; i < 8; i++) {
+            bits |= ((long) (bytes[offset + i] & 0xFF)) << (8 * i);
+        }
+        return Double.longBitsToDouble(bits);
+    }
+
+    private void writeByte(int address, byte value) {
+        MemoryAccess access = resolveWritableRegion(address, 1);
+        access.region().bytes()[access.offset()] = value;
+    }
+
+    private void writeChar(int address, char value) {
+        MemoryAccess access = resolveWritableRegion(address, 2);
+        byte[] bytes = access.region().bytes();
+        int offset = access.offset();
+        bytes[offset] = (byte) (value & 0xFF);
+        bytes[offset + 1] = (byte) ((value >> 8) & 0xFF);
+    }
+
+    private void writeInt(int address, int value) {
+        MemoryAccess access = resolveWritableRegion(address, 4);
+        byte[] bytes = access.region().bytes();
+        int offset = access.offset();
+        for (int i = 0; i < 4; i++) {
+            bytes[offset + i] = (byte) (value & 0xFF);
+            value >>= 8;
+        }
+    }
+
+    private void writeDouble(int address, double value) {
+        MemoryAccess access = resolveWritableRegion(address, 8);
+        byte[] bytes = access.region().bytes();
+        int offset = access.offset();
+        long bits = Double.doubleToLongBits(value);
+        for (int i = 0; i < 8; i++) {
+            bytes[offset + i] = (byte) (bits & 0xFF);
+            bits >>= 8;
         }
     }
 
@@ -1260,9 +1349,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 1);
-            vm.pushByte(data[offset]);
+            vm.pushByte(vm.readByte(vm.dataAddress(name, offset, "LOADB")));
         }
     }
 
@@ -1277,12 +1364,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 2);
-            byte low = data[offset];
-            byte high = data[offset + 1];
-            char value = (char) (((high & 0xFF) << 8) | (low & 0xFF));
-            vm.pushChar(value);
+            vm.pushChar(vm.readChar(vm.dataAddress(name, offset, "LOADC")));
         }
     }
 
@@ -1297,13 +1379,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 4);
-            int value = 0;
-            for (int i = 0; i < 4; i++) {
-                value |= (data[offset + i] & 0xFF) << (8 * i);
-            }
-            vm.pushInt(value);
+            vm.pushInt(vm.readInt(vm.dataAddress(name, offset, "LOADI")));
         }
     }
 
@@ -1318,13 +1394,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 8);
-            long bits = 0;
-            for (int i = 0; i < 8; i++) {
-                bits |= ((long) (data[offset + i] & 0xFF)) << (8 * i);
-            }
-            vm.pushDouble(Double.longBitsToDouble(bits));
+            vm.pushDouble(vm.readDouble(vm.dataAddress(name, offset, "LOADD")));
         }
     }
 
@@ -1338,9 +1408,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 1);
-            vm.pushByte(data[offset]);
+            vm.pushByte(vm.readByte(vm.dataAddress(name, offset, "DLOAD1")));
         }
     }
 
@@ -1354,13 +1422,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 2);
-
-            byte low = data[offset];
-            byte high = data[offset + 1];
-            char value = (char) (((high & 0xFF) << 8) | (low & 0xFF));
-            vm.pushChar(value);
+            vm.pushChar(vm.readChar(vm.dataAddress(name, offset, "DLOAD2")));
         }
     }
 
@@ -1374,14 +1436,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 4);
-
-            int value = 0;
-            for (int i = 0; i < 4; i++) {
-                value |= (data[offset + i] & 0xFF) << (8 * i);
-            }
-            vm.pushInt(value);
+            vm.pushInt(vm.readInt(vm.dataAddress(name, offset, "DLOAD4")));
         }
     }
 
@@ -1395,14 +1450,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 8);
-
-            long bits = 0;
-            for (int i = 0; i < 8; i++) {
-                bits |= ((long) (data[offset + i] & 0xFF)) << (8 * i);
-            }
-            vm.pushDouble(Double.longBitsToDouble(bits));
+            vm.pushDouble(vm.readDouble(vm.dataAddress(name, offset, "DLOAD8")));
         }
     }
 
@@ -1418,9 +1466,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             byte value = vm.popByte();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 1);
-            data[offset] = value;
+            vm.writeByte(vm.dataAddress(name, offset, "STOREB"), value);
         }
     }
 
@@ -1436,10 +1482,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             char value = vm.popChar();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 2);
-            data[offset] = (byte) (value & 0xFF);
-            data[offset + 1] = (byte) ((value >> 8) & 0xFF);
+            vm.writeChar(vm.dataAddress(name, offset, "STOREC"), value);
         }
     }
 
@@ -1455,12 +1498,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int value = vm.popInt();
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 4);
-            for (int i = 0; i < 4; i++) {
-                data[offset + i] = (byte) (value & 0xFF);
-                value >>= 8;
-            }
+            vm.writeInt(vm.dataAddress(name, offset, "STOREI"), value);
         }
     }
 
@@ -1475,14 +1513,7 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            double dValue = vm.popDouble();
-            long value = Double.doubleToLongBits(dValue);
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 8);
-            for (int i = 0; i < 8; i++) {
-                data[offset + i] = (byte) (value & 0xFF);
-                value >>= 8;
-            }
+            vm.writeDouble(vm.dataAddress(name, offset, "STORED"), vm.popDouble());
         }
     }
 
@@ -1498,9 +1529,7 @@ public class VM {
             byte value = vm.popByte();
             int offset = vm.popInt();
 
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 1);
-            data[offset] = value;
+            vm.writeByte(vm.dataAddress(name, offset, "DSTORE1"), value);
         }
     }
 
@@ -1516,11 +1545,7 @@ public class VM {
             char value = vm.popChar();
             int offset = vm.popInt();
 
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 2);
-
-            data[offset] = (byte) (value & 0xFF);
-            data[offset + 1] = (byte) ((value >> 8) & 0xFF);
+            vm.writeChar(vm.dataAddress(name, offset, "DSTORE2"), value);
         }
     }
 
@@ -1536,13 +1561,7 @@ public class VM {
             int value = vm.popInt();
             int offset = vm.popInt();
 
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 4);
-
-            for (int i = 0; i < 4; i++) {
-                data[offset + i] = (byte) (value & 0xFF);
-                value >>= 8;
-            }
+            vm.writeInt(vm.dataAddress(name, offset, "DSTORE4"), value);
         }
     }
 
@@ -1555,17 +1574,10 @@ public class VM {
 
         @Override
         public void execute(VM vm) {
-            double dValue = vm.popDouble();
-            long value = Double.doubleToLongBits(dValue);
+            double value = vm.popDouble();
             int offset = vm.popInt();
 
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, offset, 8);
-
-            for (int i = 0; i < 8; i++) {
-                data[offset + i] = (byte) (value & 0xFF);
-                value >>= 8;
-            }
+            vm.writeDouble(vm.dataAddress(name, offset, "DSTORE8"), value);
         }
     }
 
@@ -1586,13 +1598,15 @@ public class VM {
                 throw new VMExecutionException("DCOPYH " + name + ": negative byte count " + byteCount);
             }
 
-            byte[] data = vm.getDataObject(name);
-            vm.checkDataAccess(name, data, 0, byteCount);
+            MemoryAccess source = vm.resolveRegion(vm.makeDataReference(name), byteCount);
+            int targetAddress = vm.addAddressOffset(base, offset, "DCOPYH " + name);
+            MemoryAccess target = vm.resolveWritableRegion(targetAddress, byteCount);
 
-            byte[] obj = vm.getMutableHeapObject(base);
-            vm.checkReferenceAccess("heap", obj, offset, byteCount);
-
-            System.arraycopy(data, 0, obj, offset, byteCount);
+            System.arraycopy(
+                    source.region().bytes(), source.offset(),
+                    target.region().bytes(), target.offset(),
+                    byteCount
+            );
         }
     }
 
@@ -1624,117 +1638,79 @@ public class VM {
         }
     }
 
-    private static final class HLoad1Instruction extends Instruction {
+    private static final class Load1Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
             int base = vm.popInt();
-            ReferencedObject object = vm.getReferencedObject(base);
-            vm.checkReferenceAccess(object.sourceName(), object.bytes(), offset, 1);
-            vm.pushByte(object.bytes()[offset]);
+            vm.pushByte(vm.readByte(vm.addAddressOffset(base, offset, "LOAD1")));
         }
     }
 
-    private static final class HLoad2Instruction extends Instruction {
+    private static final class Load2Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
             int base = vm.popInt();
-            ReferencedObject object = vm.getReferencedObject(base);
-            byte[] obj = object.bytes();
-            vm.checkReferenceAccess(object.sourceName(), obj, offset, 2);
-            byte low = obj[offset];
-            byte high = obj[offset + 1];
-            char value = (char) (((high & 0xFF) << 8) | (low & 0xFF));
-            vm.pushChar(value);
+            vm.pushChar(vm.readChar(vm.addAddressOffset(base, offset, "LOAD2")));
         }
     }
 
-    private static final class HLoad4Instruction extends Instruction {
+    private static final class Load4Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
             int base = vm.popInt();
-            ReferencedObject object = vm.getReferencedObject(base);
-            byte[] obj = object.bytes();
-            vm.checkReferenceAccess(object.sourceName(), obj, offset, 4);
-            int value = 0;
-            for (int i = 0; i < 4; i++) {
-                value |= (obj[offset + i] & 0xFF) << (8 * i);
-            }
-            vm.pushInt(value);
+            vm.pushInt(vm.readInt(vm.addAddressOffset(base, offset, "LOAD4")));
         }
     }
 
-    private static final class HLoad8Instruction extends Instruction {
+    private static final class Load8Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             int offset = vm.popInt();
             int base = vm.popInt();
-            ReferencedObject object = vm.getReferencedObject(base);
-            byte[] obj = object.bytes();
-            vm.checkReferenceAccess(object.sourceName(), obj, offset, 8);
-            long bits = 0;
-            for (int i = 0; i < 8; i++) {
-                bits |= ((long) (obj[offset + i] & 0xFF)) << (8 * i);
-            }
-            vm.pushDouble(Double.longBitsToDouble(bits));
+            vm.pushDouble(vm.readDouble(vm.addAddressOffset(base, offset, "LOAD8")));
         }
     }
 
-    private static final class HStore1Instruction extends Instruction {
+    private static final class Store1Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             byte value = vm.popByte();
             int offset = vm.popInt();
             int base = vm.popInt();
-            byte[] obj = vm.getMutableHeapObject(base);
-            vm.checkReferenceAccess("heap", obj, offset, 1);
-            obj[offset] = value;
+            vm.writeByte(vm.addAddressOffset(base, offset, "STORE1"), value);
         }
     }
 
-    private static final class HStore2Instruction extends Instruction {
+    private static final class Store2Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             char value = vm.popChar();
             int offset = vm.popInt();
             int base = vm.popInt();
-            byte[] obj = vm.getMutableHeapObject(base);
-            vm.checkReferenceAccess("heap", obj, offset, 2);
-            obj[offset] = (byte) (value & 0xFF);
-            obj[offset + 1] = (byte) ((value >> 8) & 0xFF);
+            vm.writeChar(vm.addAddressOffset(base, offset, "STORE2"), value);
         }
     }
 
-    private static final class HStore4Instruction extends Instruction {
+    private static final class Store4Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
             int value = vm.popInt();
             int offset = vm.popInt();
             int base = vm.popInt();
-            byte[] obj = vm.getMutableHeapObject(base);
-            vm.checkReferenceAccess("heap", obj, offset, 4);
-            for (int i = 0; i < 4; i++) {
-                obj[offset + i] = (byte) (value & 0xFF);
-                value >>= 8;
-            }
+            vm.writeInt(vm.addAddressOffset(base, offset, "STORE4"), value);
         }
     }
 
-    private static final class HStore8Instruction extends Instruction {
+    private static final class Store8Instruction extends Instruction {
         @Override
         public void execute(VM vm) {
-            double dValue = vm.popDouble();
-            long value = Double.doubleToLongBits(dValue);
+            double value = vm.popDouble();
             int offset = vm.popInt();
             int base = vm.popInt();
-            byte[] obj = vm.getMutableHeapObject(base);
-            vm.checkReferenceAccess("heap", obj, offset, 8);
-            for (int i = 0; i < 8; i++) {
-                obj[offset + i] = (byte) (value & 0xFF);
-                value >>= 8;
-            }
+            vm.writeDouble(vm.addAddressOffset(base, offset, "STORE8"), value);
         }
     }
 
@@ -1742,11 +1718,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int size = vm.popInt();
-            if (size < 0) {
-                throw new VMExecutionException("Negative heap allocation size: " + size);
-            }
-            vm.heap.add(new byte[size]);
-            vm.pushInt(vm.makeHeapReference(vm.heap.size() - 1));
+            vm.pushInt(vm.allocateHeapRegion(size));
         }
     }
 
@@ -2159,31 +2131,18 @@ public class VM {
         }
     }
 
-    private static final class PrintDataStringInstruction extends Instruction {
-        private final String name;
-
-        public PrintDataStringInstruction(String name) {
-            this.name = name;
-        }
-
+    private static final class PrintStringInstruction extends Instruction {
         @Override
         public void execute(VM vm) {
-            byte[] data = vm.getDataObject(name);
-            vm.printNullTerminatedCharString(data, "DPRINTS " + name);
+            int address = vm.popInt();
+            vm.printNullTerminatedCharString(address, "PRINTS " + vm.describeAddress(address));
         }
     }
 
-    private static final class PrintHeapStringInstruction extends Instruction {
-        @Override
-        public void execute(VM vm) {
-            int ref = vm.popInt();
-            ReferencedObject object = vm.getReferencedObject(ref);
-            vm.printNullTerminatedCharString(object.bytes(), "HPRINTS " + object.sourceName());
-        }
-    }
-
-    private void printNullTerminatedCharString(byte[] bytes, String sourceName) {
-        for (int offset = 0; offset + 1 < bytes.length; offset += 2) {
+    private void printNullTerminatedCharString(int address, String sourceName) {
+        MemoryAccess access = resolveRegion(address, 0);
+        byte[] bytes = access.region().bytes();
+        for (int offset = access.offset(); offset + 1 < bytes.length; offset += 2) {
             byte low = bytes[offset];
             byte high = bytes[offset + 1];
 
@@ -2493,8 +2452,8 @@ public class VM {
         FLOAD1, FLOAD2, FLOAD4, FLOAD8,
         FSTORE1, FSTORE2, FSTORE4, FSTORE8,
         POPB, POPC, POPI, POPD,
-        HLOAD1, HLOAD2, HLOAD4, HLOAD8,
-        HSTORE1, HSTORE2, HSTORE4, HSTORE8,
+        LOAD1, LOAD2, LOAD4, LOAD8,
+        STORE1, STORE2, STORE4, STORE8,
         NEW,
         IADD, ISUB, IMUL, IDIV, IMOD,
         DADD, DSUB, DMUL, DDIV,
@@ -2508,13 +2467,16 @@ public class VM {
         JUMP, JUMPT, JUMPF,
         CALL, ENTER,
         RET, RETB, RETC, RETI, RETD,
-        HALT, PRINTB, PRINTC, PRINTI, PRINTD, DPRINTS, HPRINTS
+        HALT, PRINTB, PRINTC, PRINTI, PRINTD, PRINTS
     }
 
     private record PendingJumpCheck(String labelName, int lineNumber) {
     }
 
-    private record ReferencedObject(byte[] bytes, String sourceName) {
+    private record MemoryRegion(int base, int size, boolean writable, String name, byte[] bytes) {
+    }
+
+    private record MemoryAccess(MemoryRegion region, int offset) {
     }
 
     private static final class ParseException extends Exception {

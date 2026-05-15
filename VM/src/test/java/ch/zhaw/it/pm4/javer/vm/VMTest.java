@@ -91,7 +91,8 @@ class VMTest {
                 .code
                 _main:
                 ENTER, 0
-                DPRINTS, hello
+                PUSHR, hello
+                PRINTS
                 RET
                 
                 .data
@@ -109,7 +110,7 @@ class VMTest {
                 _main:
                 ENTER, 0
                 PUSHR, hello
-                HPRINTS
+                PRINTS
                 RET
                 
                 .data
@@ -132,11 +133,11 @@ class VMTest {
                 FLOAD4, 0
                 PUSHI, 0
                 PUSHR, hello
-                HSTORE4
+                STORE4
                 FLOAD4, 0
                 PUSHI, 0
-                HLOAD4
-                HPRINTS
+                LOAD4
+                PRINTS
                 RET
                 
                 .data
@@ -367,6 +368,46 @@ class VMTest {
     }
 
     @Test
+    void loadsIntegerFromDataAddress() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 0
+                PUSHR, answer
+                PUSHI, 0
+                LOAD4
+                PRINTI
+                RET
+                
+                .data
+                answer 4 0000002A
+                """);
+
+        assertEquals("42", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
+    void rejectsWriteToReadOnlyDataAddress() throws Exception {
+        RunResult result = runMain("""
+                .code
+                _main:
+                ENTER, 0
+                PUSHR, answer
+                PUSHI, 0
+                PUSHI, 7
+                STORE4
+                RET
+                
+                .data
+                answer 4 0000002A
+                """);
+
+        assertEquals("", result.stdout());
+        assertTrue(result.stderr().contains("Runtime error: data:answer is read-only"));
+    }
+
+    @Test
     void copiesDataBytesToHeap() throws Exception {
         RunResult result = runProgram("""
                 .code
@@ -381,11 +422,11 @@ class VMTest {
                 DCOPYH, values
                 FLOAD4, 0
                 PUSHI, 0
-                HLOAD4
+                LOAD4
                 PRINTI
                 FLOAD4, 0
                 PUSHI, 4
-                HLOAD4
+                LOAD4
                 PRINTI
                 RET
                 
@@ -510,7 +551,7 @@ class VMTest {
                 """);
 
         assertEquals("", result.stdout());
-        assertTrue(result.stderr().contains("Runtime error: heap access out of bounds"));
+        assertTrue(result.stderr().contains("Runtime error: heap:0x10000000 access out of bounds"));
     }
 
     @Test

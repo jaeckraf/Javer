@@ -12,6 +12,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -289,7 +290,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(CallExpression node) {
         if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
-            writeLine("DPRINTS, " + "msg");
+            writeLine("PRINTS");
         }
     }
 
@@ -321,7 +322,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(LiteralExpression<?> node) {
         if (node.getKind() == LiteralKind.STRING) {
-            dataSection.internString((String) node.getValue());
+            DataEntry entry = dataSection.internString((String) node.getValue());
+            writeLine("PUSHR, " + entry.getLabel());
         }
         if (node.getKind() == LiteralKind.BOOLEAN) {
             Boolean b = (Boolean) node.getValue();
