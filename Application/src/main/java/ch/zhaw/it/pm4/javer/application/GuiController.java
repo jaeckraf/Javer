@@ -93,6 +93,12 @@ public class GuiController {
     private CheckBox compilerLoggingOption;
 
     @FXML
+    private TextField vmStackSizeOption;
+
+    @FXML
+    private CheckBox vmDumpOnErrorOption;
+
+    @FXML
     private TextField vmAdditionalArguments;
 
     /**
@@ -323,12 +329,26 @@ public class GuiController {
             addJavaJarCommand(command, vmJar);
         }
 
-        command.add(vmInputFile.toAbsolutePath().toString());
         if (expertModeOption.isSelected()) {
-            command.addAll(parseAdditionalArguments(vmAdditionalArguments.getText()));
+            addVmOptions(command);
         }
+        command.add(vmInputFile.toAbsolutePath().toString());
 
         return command;
+    }
+
+    private void addVmOptions(List<String> command) {
+        String stackSize = vmStackSizeOption.getText();
+        if (stackSize != null && !stackSize.isBlank()) {
+            command.add("--stack-size");
+            command.add(stackSize.trim());
+        }
+
+        if (vmDumpOnErrorOption.isSelected()) {
+            command.add("--dump-on-error");
+        }
+
+        command.addAll(parseAdditionalArguments(vmAdditionalArguments.getText()));
     }
 
     private void addJavaJarCommand(List<String> command, Path jarPath) {
