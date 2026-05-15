@@ -33,7 +33,9 @@ class GuiTest {
         assertNotNull(namespace.get("runCompilerButton"));
         assertNotNull(namespace.get("compilerOutput"));
         assertNotNull(namespace.get("virtualMachineOutput"));
-        assertNotNull(namespace.get("vmStackSizeOption"));
+        assertNotNull(namespace.get("vmStackSizeValueOption"));
+        assertNotNull(namespace.get("vmStackSizeKbOption"));
+        assertNotNull(namespace.get("vmStackSizeMbOption"));
         assertNotNull(namespace.get("vmDumpOnErrorOption"));
     }
 }

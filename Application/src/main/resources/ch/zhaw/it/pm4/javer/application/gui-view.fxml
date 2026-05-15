@@ -9,6 +9,10 @@
       xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="ch.zhaw.it.pm4.javer.application.GuiController">
 
+    <fx:define>
+        <ToggleGroup fx:id="vmStackSizeUnitGroup" />
+    </fx:define>
+
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
@@ -95,20 +99,18 @@
 
         <HBox alignment="CENTER_LEFT" spacing="12.0">
             <Label text="Stack Size" />
-            <TextField fx:id="vmStackSizeOption"
-                       prefWidth="120.0"
-                       promptText="1M">
-                <style>-fx-font-family: &#39;Consolas&#39;; -fx-font-size: 12px;</style>
-            </TextField>
+            <Spinner fx:id="vmStackSizeValueOption"
+                     prefWidth="90.0" />
+            <RadioButton fx:id="vmStackSizeKbOption"
+                         text="KB"
+                         toggleGroup="$vmStackSizeUnitGroup" />
+            <RadioButton fx:id="vmStackSizeMbOption"
+                         selected="true"
+                         text="MB"
+                         toggleGroup="$vmStackSizeUnitGroup" />
             <CheckBox fx:id="vmDumpOnErrorOption"
                       text="Dump on runtime error" />
         </HBox>
-
-        <TextField fx:id="vmAdditionalArguments"
-                   promptText="Additional VM arguments"
-                   HBox.hgrow="ALWAYS">
-            <style>-fx-font-family: &#39;Consolas&#39;; -fx-font-size: 12px;</style>
-        </TextField>
     </VBox>
 
     <TextArea fx:id="virtualMachineOutput"

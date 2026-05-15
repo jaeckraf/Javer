@@ -5,6 +5,9 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
@@ -27,6 +30,10 @@ public class GuiController {
     private static final String CONSOLE_INPUT_FILE_NAME = "console-input.javer";
     private static final String VM_INPUT_FILE_NAME = "vm-input.jbc";
     private static final String BYTECODE_FILE_EXTENSION = ".jbc";
+    private static final int DEFAULT_STACK_SIZE_VALUE = 1;
+    private static final int MIN_STACK_SIZE_VALUE = 1;
+    private static final int MAX_STACK_SIZE_KB = 16 * 1024;
+    private static final int MAX_STACK_SIZE_MB = 16;
     private static final List<String> TOOL_JAVA_OPTIONS = List.of(
             "-Dfile.encoding=UTF-8",
             "-Dstdout.encoding=UTF-8",
@@ -93,7 +100,13 @@ public class GuiController {
     private CheckBox compilerLoggingOption;
 
     @FXML
-    private TextField vmStackSizeOption;
+    private Spinner<Integer> vmStackSizeValueOption;
+
+    @FXML
+    private RadioButton vmStackSizeKbOption;
+
+    @FXML
+    private RadioButton vmStackSizeMbOption;
 
     @FXML
     private CheckBox vmDumpOnErrorOption;
@@ -135,6 +148,7 @@ public class GuiController {
 
         updateCompilerButtons(false);
         updateVMButtons(false);
+        configureStackSizeOptions();
         bindExpertMode();
     }
 
@@ -338,17 +352,46 @@ public class GuiController {
     }
 
     private void addVmOptions(List<String> command) {
-        String stackSize = vmStackSizeOption.getText();
-        if (stackSize != null && !stackSize.isBlank()) {
-            command.add("--stack-size");
-            command.add(stackSize.trim());
-        }
+        command.add("--stack-size");
+        command.add(vmStackSizeValueOption.getValue() + selectedStackSizeUnit());
 
         if (vmDumpOnErrorOption.isSelected()) {
             command.add("--dump-on-error");
         }
+    }
 
-        command.addAll(parseAdditionalArguments(vmAdditionalArguments.getText()));
+    private void configureStackSizeOptions() {
+        setStackSizeValueFactory(maxStackSizeForSelectedUnit());
+        vmStackSizeKbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
+            if (selected) {
+                setStackSizeValueFactory(MAX_STACK_SIZE_KB);
+            }
+        });
+        vmStackSizeMbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
+            if (selected) {
+                setStackSizeValueFactory(MAX_STACK_SIZE_MB);
+            }
+        });
+    }
+
+    private void setStackSizeValueFactory(int maxStackSize) {
+        Integer currentValue = vmStackSizeValueOption.getValue();
+        int stackSize = currentValue == null ? DEFAULT_STACK_SIZE_VALUE : currentValue;
+        int clampedStackSize = Math.clamp(stackSize, MIN_STACK_SIZE_VALUE, maxStackSize);
+
+        vmStackSizeValueOption.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(
+                MIN_STACK_SIZE_VALUE,
+                maxStackSize,
+                clampedStackSize
+        ));
+    }
+
+    private int maxStackSizeForSelectedUnit() {
+        return vmStackSizeKbOption.isSelected() ? MAX_STACK_SIZE_KB : MAX_STACK_SIZE_MB;
+    }
+
+    private String selectedStackSizeUnit() {
+        return vmStackSizeKbOption.isSelected() ? "KB" : "MB";
     }
 
     private void addJavaJarCommand(List<String> command, Path jarPath) {
@@ -363,46 +406,6 @@ public class GuiController {
         compilerOptionsBox.managedProperty().bind(expertModeOption.selectedProperty());
         vmOptionsBox.visibleProperty().bind(expertModeOption.selectedProperty());
         vmOptionsBox.managedProperty().bind(expertModeOption.selectedProperty());
-    }
-
-    private List<String> parseAdditionalArguments(String arguments) {
-        List<String> parsedArguments = new ArrayList<>();
-        if (arguments == null || arguments.isBlank()) {
-            return parsedArguments;
-        }
-
-        StringBuilder currentArgument = new StringBuilder();
-        boolean quoted = false;
-
-        for (int i = 0; i < arguments.length(); i++) {
-            char character = arguments.charAt(i);
-
-            if (character == '"') {
-                quoted = !quoted;
-                continue;
-            }
-
-            if (Character.isWhitespace(character) && !quoted) {
-                addArgumentIfPresent(parsedArguments, currentArgument);
-                continue;
-            }
-
-            currentArgument.append(character);
-        }
-
-        if (quoted) {
-            JaverLogger.warning("VM arguments contain an unclosed quote; using the remaining text as one argument.");
-        }
-
-        addArgumentIfPresent(parsedArguments, currentArgument);
-        return parsedArguments;
-    }
-
-    private void addArgumentIfPresent(List<String> arguments, StringBuilder argument) {
-        if (!argument.isEmpty()) {
-            arguments.add(argument.toString());
-            argument.setLength(0);
-        }
     }
 
     private void startVmAfterSuccessfulCompilation(
