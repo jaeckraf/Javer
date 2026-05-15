@@ -1,3 +1,9 @@
 .code
+_main:
+ENTER, 0
+PUSHI, 42
+PUSHI, 0
+IDIV
+RET
 
 .data

@@ -1,12 +1,14 @@
 package ch.zhaw.it.pm4.javer.vm;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -15,14 +17,15 @@ import java.util.TreeMap;
  */
 public class VM {
 
-    private static final int STACK_SIZE = 1048576; // 1 MB
+    private static final int DEFAULT_STACK_SIZE = 1048576; // 1 MB
+    private static final int MAX_STACK_SIZE = 16 * 1024 * 1024; // 16 MB
     private static final int STACK_WINDOW = 8;
     private static final int NULL_REF = 0;
     private static final int DATA_BASE = 0x00001000;
     private static final int HEAP_BASE = 0x10000000;
     private static final long ADDRESS_SPACE_SIZE = 1L << 32;
 
-    private final byte[] stack = new byte[STACK_SIZE];
+    private final byte[] stack;
     private final Map<Integer, Instruction> code = new HashMap<>();
     private final Map<String, Integer> dataLabels = new HashMap<>();
     private final TreeMap<Integer, MemoryRegion> regions = new TreeMap<>(Integer::compareUnsigned);
@@ -44,15 +47,23 @@ public class VM {
      * @param args first argument is the bytecode file path
      */
     public static void main(String[] args) {
-        if (args.length == 0) {
-            System.out.println("Usage: java VM <filePath>");
+        if (args.length == 0 || containsHelpOption(args)) {
+            printUsage(System.out);
             return;
         }
 
-        String filePath = args[0];
-
+        VMOptions options;
         try {
-            VM vm = new VM(filePath);
+            options = parseOptions(args);
+        } catch (OptionParseException e) {
+            System.err.println(e.getMessage());
+            printUsage(System.err);
+            return;
+        }
+
+        VM vm = null;
+        try {
+            vm = new VM(options.filePath(), options.stackSizeBytes());
             vm.run();
         } catch (ParseException e) {
             System.err.println("Program contains parse errors. Execution aborted.");
@@ -60,6 +71,96 @@ public class VM {
             System.err.println("Error reading file: " + e.getMessage());
         } catch (VMExecutionException e) {
             System.err.println("Runtime error: " + e.getMessage());
+            if (options.dumpOnRuntimeError() && vm != null) {
+                vm.dumpState(System.err);
+            }
+        }
+    }
+
+    private static boolean containsHelpOption(String[] args) {
+        for (String arg : args) {
+            if ("--help".equals(arg) || "-h".equals(arg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void printUsage(PrintStream out) {
+        out.println("Usage: java VM [options] <filePath>");
+        out.println("Options:");
+        out.println("  --stack-size <size>    Stack size in bytes, K/KB or M/MB (default 1M, max 16M)");
+        out.println("  --dump-on-error        Print VM state dump after a runtime error");
+        out.println("  -h, --help             Show this help");
+    }
+
+    private static VMOptions parseOptions(String[] args) throws OptionParseException {
+        int stackSizeBytes = DEFAULT_STACK_SIZE;
+        boolean dumpOnRuntimeError = false;
+        String filePath = null;
+
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+
+            if ("--stack-size".equals(arg)) {
+                if (i + 1 >= args.length) {
+                    throw new OptionParseException("Missing value for --stack-size");
+                }
+                stackSizeBytes = parseStackSize(args[++i]);
+            } else if (arg.startsWith("--stack-size=")) {
+                stackSizeBytes = parseStackSize(arg.substring("--stack-size=".length()));
+            } else if ("--dump-on-error".equals(arg)) {
+                dumpOnRuntimeError = true;
+            } else if (arg.startsWith("-")) {
+                throw new OptionParseException("Unknown option: " + arg);
+            } else if (filePath == null) {
+                filePath = arg;
+            } else {
+                throw new OptionParseException("Unexpected argument: " + arg);
+            }
+        }
+
+        if (filePath == null) {
+            throw new OptionParseException("Missing bytecode file path");
+        }
+
+        return new VMOptions(filePath, stackSizeBytes, dumpOnRuntimeError);
+    }
+
+    private static int parseStackSize(String rawValue) throws OptionParseException {
+        String value = rawValue.trim().replace("_", "");
+        if (value.isEmpty()) {
+            throw new OptionParseException("Invalid --stack-size value: " + rawValue);
+        }
+
+        String upper = value.toUpperCase(Locale.ROOT);
+        long multiplier = 1;
+        String number = upper;
+        String substring = upper.substring(0, upper.length() - 2);
+        if (upper.endsWith("KB")) {
+            multiplier = 1024;
+            number = substring;
+        } else if (upper.endsWith("K")) {
+            multiplier = 1024;
+            number = upper.substring(0, upper.length() - 1);
+        } else if (upper.endsWith("MB")) {
+            multiplier = 1024 * 1024;
+            number = substring;
+        } else if (upper.endsWith("M")) {
+            multiplier = 1024 * 1024;
+            number = upper.substring(0, upper.length() - 1);
+        }
+
+        try {
+            long stackSize = Math.multiplyExact(Long.parseLong(number), multiplier);
+            if (stackSize < 1 || stackSize > MAX_STACK_SIZE) {
+                throw new OptionParseException(
+                        "--stack-size must be between 1 and " + MAX_STACK_SIZE + " bytes"
+                );
+            }
+            return (int) stackSize;
+        } catch (NumberFormatException | ArithmeticException e) {
+            throw new OptionParseException("Invalid --stack-size value: " + rawValue);
         }
     }
 
@@ -71,26 +172,48 @@ public class VM {
      * @throws ParseException if bytecode parsing fails
      */
     public VM(String filePath) throws IOException, ParseException {
+        this(filePath, DEFAULT_STACK_SIZE);
+    }
+
+    /**
+     * Loads and parses a bytecode program with a custom VM stack size.
+     *
+     * @param filePath       path to the bytecode file
+     * @param stackSizeBytes stack size in bytes
+     * @throws IOException    if the bytecode file cannot be read
+     * @throws ParseException if bytecode parsing fails
+     */
+    public VM(String filePath, int stackSizeBytes) throws IOException, ParseException {
+        validateStackSize(stackSizeBytes);
+        this.stack = new byte[stackSizeBytes];
         this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
         parse();
     }
 
-    private void dumpStack() {
-        System.out.println("=== STACK DUMP ===");
-        System.out.println("sp = " + sp);
+    private static void validateStackSize(int stackSizeBytes) {
+        if (stackSizeBytes < 1 || stackSizeBytes > MAX_STACK_SIZE) {
+            throw new IllegalArgumentException(
+                    "stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes"
+            );
+        }
+    }
+
+    private void dumpStack(PrintStream out) {
+        out.println("=== STACK DUMP ===");
+        out.println("sp = " + sp);
 
         if (sp == 0) {
-            System.out.println("<empty>");
+            out.println("<empty>");
         } else {
             for (int i = 0; i < sp; i++) {
                 int unsigned = stack[i] & 0xFF;
-                System.out.printf("[%d] 0x%02X (%d)%n", i, unsigned, stack[i]);
+                out.printf("[%d] 0x%02X (%d)%n", i, unsigned, stack[i]);
             }
         }
     }
 
-    private void dumpStackWindow(int range) {
-        System.out.println("=== STACK WINDOW (sp ± " + range + ") ===");
+    private void dumpStackWindow(int range, PrintStream out) {
+        out.println("=== STACK WINDOW (sp +/- " + range + ") ===");
 
         int start = Math.max(0, sp - range);
         int end = Math.min(stack.length, sp + range);
@@ -101,86 +224,86 @@ public class VM {
             String spMarker = (i == sp) ? "<-- sp" : "";
             String state = (i < sp) ? "VAL" : "INV";
 
-            System.out.printf("[%05d] 0x%02X (%d) %s %s%n", i, unsigned, stack[i], state, spMarker);
+            out.printf("[%05d] 0x%02X (%d) %s %s%n", i, unsigned, stack[i], state, spMarker);
         }
     }
 
-    private void dumpHeap() {
-        System.out.println("=== HEAP DUMP ===");
+    private void dumpHeap(PrintStream out) {
+        out.println("=== HEAP DUMP ===");
         List<MemoryRegion> heapRegions = regions.values().stream()
                 .filter(MemoryRegion::writable)
                 .toList();
-        System.out.println("objects = " + heapRegions.size());
+        out.println("objects = " + heapRegions.size());
 
         if (heapRegions.isEmpty()) {
-            System.out.println("<empty>");
+            out.println("<empty>");
             return;
         }
 
         for (MemoryRegion region : heapRegions) {
-            System.out.print(region.name() + " @ " + formatAddress(region.base()) + " = ");
-            dumpByteArrayInline(region.bytes());
+            out.print(region.name() + " @ " + formatAddress(region.base()) + " = ");
+            dumpByteArrayInline(region.bytes(), out);
         }
     }
 
-    private void dumpData() {
-        System.out.println("=== DATA DUMP ===");
+    private void dumpData(PrintStream out) {
+        out.println("=== DATA DUMP ===");
 
         if (dataLabels.isEmpty()) {
-            System.out.println("<empty>");
+            out.println("<empty>");
             return;
         }
 
         for (Map.Entry<String, Integer> entry : dataLabels.entrySet()) {
             MemoryRegion region = regions.get(entry.getValue());
-            System.out.print(entry.getKey() + " @ " + formatAddress(entry.getValue()) + " = ");
-            dumpByteArrayInline(region.bytes());
+            out.print(entry.getKey() + " @ " + formatAddress(entry.getValue()) + " = ");
+            dumpByteArrayInline(region.bytes(), out);
         }
     }
 
-    private void dumpLabels() {
-        System.out.println("=== LABELS DUMP ===");
+    private void dumpLabels(PrintStream out) {
+        out.println("=== LABELS DUMP ===");
 
         if (labels.isEmpty()) {
-            System.out.println("<empty>");
+            out.println("<empty>");
             return;
         }
 
         for (Map.Entry<String, Integer> entry : labels.entrySet()) {
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
+            out.println(entry.getKey() + " -> " + entry.getValue());
         }
     }
 
-    private void dumpState() {
-        System.out.println("========================================");
-        System.out.println("VM STATE DUMP");
-        System.out.println("pc = " + pc);
-        System.out.println("sp = " + sp);
-        System.out.println("halted = " + halted);
-        System.out.println("programEndAddress = " + programEndAddress);
-        System.out.println("========================================");
+    private void dumpState(PrintStream out) {
+        out.println("========================================");
+        out.println("VM STATE DUMP");
+        out.println("pc = " + pc);
+        out.println("sp = " + sp);
+        out.println("halted = " + halted);
+        out.println("programEndAddress = " + programEndAddress);
+        out.println("========================================");
 
-        dumpStack();
-        System.out.println();
+        dumpStackWindow(STACK_WINDOW, out);
+        out.println();
 
-        dumpHeap();
-        System.out.println();
+        dumpHeap(out);
+        out.println();
 
-        dumpData();
-        System.out.println();
+        dumpData(out);
+        out.println();
 
-        dumpLabels();
-        System.out.println("========================================");
+        dumpLabels(out);
+        out.println("========================================");
     }
 
-    private void dumpByteArrayInline(byte[] arr) {
+    private void dumpByteArrayInline(byte[] arr, PrintStream out) {
         if (arr == null) {
-            System.out.println("<null>");
+            out.println("<null>");
             return;
         }
 
         if (arr.length == 0) {
-            System.out.println("[]");
+            out.println("[]");
             return;
         }
 
@@ -205,7 +328,7 @@ public class VM {
         }
         sb.append("\"");
 
-        System.out.println(sb);
+        out.println(sb);
     }
 
     private void validateEnterInstructions(int codeLineIndex, int dataLineIndex, List<String> errors) {
@@ -2473,6 +2596,9 @@ public class VM {
     private record PendingJumpCheck(String labelName, int lineNumber) {
     }
 
+    private record VMOptions(String filePath, int stackSizeBytes, boolean dumpOnRuntimeError) {
+    }
+
     private record MemoryRegion(int base, int size, boolean writable, String name, byte[] bytes) {
     }
 
@@ -2494,6 +2620,12 @@ public class VM {
 
         public List<String> getErrors() {
             return errors;
+        }
+    }
+
+    private static final class OptionParseException extends Exception {
+        public OptionParseException(String message) {
+            super(message);
         }
     }
 

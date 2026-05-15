@@ -555,10 +555,22 @@ class VMTest {
     }
 
     @Test
+    void rejectsStackSizeAboveLimit() {
+        RunResult result = captureOutput(() -> VM.main(new String[]{
+                "--stack-size", "17M", "program.bytecode"
+        }));
+
+        assertEquals("", result.stdout());
+        assertTrue(result.stderr().contains("--stack-size must be between 1 and 16777216 bytes"));
+    }
+
+    @Test
     void reportsUsageWhenNoArgumentsArePassed() {
         RunResult result = captureMainWithoutFile();
 
-        assertEquals("Usage: java VM <filePath>", normalize(result.stdout()));
+        assertTrue(result.stdout().contains("Usage: java VM [options] <filePath>"));
+        assertTrue(result.stdout().contains("--stack-size <size>"));
+        assertTrue(result.stdout().contains("--dump-on-error"));
         assertEquals("", result.stderr());
     }
 
@@ -571,10 +583,13 @@ class VMTest {
         });
     }
 
-    private RunResult runMain(String bytecode) throws Exception {
+    private RunResult runMain(String bytecode, String... optionArgs) throws Exception {
         Path program = writeProgram(bytecode);
+        String[] args = new String[optionArgs.length + 1];
+        System.arraycopy(optionArgs, 0, args, 0, optionArgs.length);
+        args[args.length - 1] = program.toString();
 
-        return captureOutput(() -> VM.main(new String[]{program.toString()}));
+        return captureOutput(() -> VM.main(args));
     }
 
     private RunResult captureMainWithoutFile() {
