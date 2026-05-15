@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.application;
 
 import ch.zhaw.it.pm4.misc.JaverLogger;
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
@@ -93,7 +92,9 @@ public class GuiController {
         compilerOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        createOrClearFile(vmInputFile, "VM input file");
+        if (inputPath == null || !deleteFileIfExists(vmInputFile, "VM input file")) {
+            return;
+        }
 
         List<String> command = buildCompilerCommand(inputPath);
         if (command == null) {
@@ -102,10 +103,8 @@ public class GuiController {
 
         logCommand("Compiler", command);
 
-        boolean started = compilerRunner.start(command);
-
-        if (!started) {
-            JaverLogger.error("Compiler is already running.\n");
+        if (compilerRunner.start(command).isEmpty()) {
+            JaverLogger.warning("Compiler is already running.");
         }
     }
 
@@ -124,27 +123,40 @@ public class GuiController {
 
         logCommand("VM", command);
 
-        boolean started = vmRunner.start(command);
-
-        if (!started) {
-            JaverLogger.error("VM is already running.\n");
+        if (vmRunner.start(command).isEmpty()) {
+            JaverLogger.warning("VM is already running.");
         }
     }
 
     @FXML
-    public void onStopVMClick(ActionEvent actionEvent) {
+    public void onStopVMClick() {
         vmRunner.stop();
     }
 
     @FXML
-    public void onStopCompilerClick(ActionEvent actionEvent) {
+    public void onStopCompilerClick() {
         compilerRunner.stop();
     }
 
+    public void shutdown() {
+        JaverLogger.info("Application shutdown started.");
+
+        if (compilerRunner != null) {
+            compilerRunner.stopAndWait();
+        }
+        if (vmRunner != null) {
+            vmRunner.stopAndWait();
+        }
+
+        deleteRuntimeFileIfExists(consoleInputFile, "source input file");
+        deleteRuntimeFileIfExists(vmInputFile, "VM input file");
+        GuiLogAppender.clearConsumer();
+    }
+
     @FXML
-    public void onRunCompilerAndVMClick(ActionEvent actionEvent) {
+    public void onRunCompilerAndVMClick() {
         if (compilerRunner.isRunning() || vmRunner.isRunning()) {
-            JaverLogger.error("Compiler or VM is already running.\n");
+            JaverLogger.warning("Compiler or VM is already running.");
             return;
         }
 
@@ -152,7 +164,9 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        createOrClearFile(vmInputFile, "VM input file");
+        if (inputPath == null || !deleteFileIfExists(vmInputFile, "VM input file")) {
+            return;
+        }
 
         List<String> compilerCommand = buildCompilerCommand(inputPath);
         List<String> vmCommand = buildVmCommand();
@@ -161,29 +175,15 @@ public class GuiController {
             return;
         }
 
-        Thread chainThread = new Thread(() -> {
-            logCommand("Compiler", compilerCommand);
+        logCommand("Compiler", compilerCommand);
 
-            boolean compilerStarted = compilerRunner.start(compilerCommand);
+        var compilerRun = compilerRunner.start(compilerCommand);
+        if (compilerRun.isEmpty()) {
+            JaverLogger.warning("Compiler is already running.");
+            return;
+        }
 
-            if (!compilerStarted) {
-                JaverLogger.error("Compiler is already running.\n");
-                return;
-            }
-
-            waitUntilFinished(compilerRunner);
-
-            if (vmRunner.isRunning()) {
-                JaverLogger.error("VM is already running.\n");
-                return;
-            }
-
-            logCommand("VM", vmCommand);
-            vmRunner.start(vmCommand);
-        }, "compiler-vm-chain");
-
-        chainThread.setDaemon(true);
-        chainThread.start();
+        compilerRun.get().thenAccept(result -> startVmAfterSuccessfulCompilation(result, vmCommand));
     }
 
     private List<String> buildCompilerCommand(String inputPath) {
@@ -200,7 +200,7 @@ public class GuiController {
 
         Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
         if (compilerJar == null) {
-            JaverLogger.error("Compiler executable and IDE jar are both unavailable.\n");
+            JaverLogger.error("Compiler executable and IDE jar are both unavailable.");
             return null;
         }
 
@@ -234,7 +234,7 @@ public class GuiController {
 
         Path vmJar = resolveJarFromProperty("javer.vm.jar");
         if (vmJar == null) {
-            JaverLogger.error("VM executable and IDE jar are both unavailable.\n");
+            JaverLogger.error("VM executable and IDE jar are both unavailable.");
             return null;
         }
 
@@ -246,15 +246,38 @@ public class GuiController {
         );
     }
 
-    private void waitUntilFinished(ManagedProcessRunner runner) {
-        while (runner.isRunning()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                JaverLogger.error("Chained execution interrupted.\n");
-                return;
-            }
+    private void startVmAfterSuccessfulCompilation(
+            ManagedProcessRunner.ProcessResult compilerResult,
+            List<String> vmCommand
+    ) {
+        if (!compilerResult.isSuccess()) {
+            JaverLogger.warning("Compiler did not finish successfully. VM will not be started.");
+            return;
+        }
+
+        if (!isBytecodeFileReady()) {
+            JaverLogger.error("Compiler finished, but the VM input file is missing or empty: "
+                    + vmInputFile.toAbsolutePath());
+            return;
+        }
+
+        if (vmRunner.isRunning()) {
+            JaverLogger.warning("VM is already running.");
+            return;
+        }
+
+        logCommand("VM", vmCommand);
+        if (vmRunner.start(vmCommand).isEmpty()) {
+            JaverLogger.warning("VM is already running.");
+        }
+    }
+
+    private boolean isBytecodeFileReady() {
+        try {
+            return Files.isRegularFile(vmInputFile) && Files.size(vmInputFile) > 0;
+        } catch (IOException exception) {
+            JaverLogger.error("Failed to inspect VM input file: " + exception.getMessage());
+            return false;
         }
     }
 
@@ -269,30 +292,37 @@ public class GuiController {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
-            JaverLogger.error("Created source input file: " + consoleInputFile.toAbsolutePath() + "\n");
+            JaverLogger.info("Created source input file: " + consoleInputFile.toAbsolutePath());
+            return consoleInputFile.toAbsolutePath().toString();
         } catch (IOException exception) {
-            JaverLogger.error("Failed to write source input file: " + exception.getMessage() + "\n");
+            JaverLogger.error("Failed to write source input file: " + exception.getMessage());
+            return null;
         }
-
-        return consoleInputFile.toAbsolutePath().toString();
     }
 
-    private void createOrClearFile(Path path, String label) {
+    private boolean deleteFileIfExists(Path path, String label) {
         try {
             Path parent = path.toAbsolutePath().getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            Files.writeString(
-                    path,
-                    "",
-                    StandardCharsets.US_ASCII,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING
-            );
-            JaverLogger.error("Created/cleared " + label + ": " + path.toAbsolutePath() + "\n");
+            if (Files.deleteIfExists(path)) {
+                JaverLogger.info("Deleted previous " + label + ": " + path.toAbsolutePath());
+            }
+            return true;
         } catch (IOException e) {
-            JaverLogger.error("Failed to create/clear " + label + ": " + e.getMessage() + "\n");
+            JaverLogger.error("Failed to delete previous " + label + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void deleteRuntimeFileIfExists(Path path, String label) {
+        try {
+            if (Files.deleteIfExists(path)) {
+                JaverLogger.info("Deleted " + label + ": " + path.toAbsolutePath());
+            }
+        } catch (IOException e) {
+            JaverLogger.warning("Failed to delete " + label + ": " + e.getMessage());
         }
     }
 
@@ -300,11 +330,11 @@ public class GuiController {
         Path path = runtimeDirectory.resolve(relativePath).toAbsolutePath().normalize();
 
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
-            JaverLogger.info(label + " packaged executable not found at: " + path);
+            JaverLogger.debug(label + " packaged executable not found at: " + path);
             return null;
         }
 
-        JaverLogger.error("Resolved " + label + " executable to: " + path + "\n");
+        JaverLogger.info("Resolved " + label + " executable to: " + path);
         return path;
     }
 
@@ -371,20 +401,20 @@ public class GuiController {
     private Path resolveJarFromProperty(String propertyName) {
         String value = System.getProperty(propertyName);
         if (value == null || value.isBlank()) {
-            JaverLogger.error("ERROR: Missing system property: " + propertyName + "\n");
-            JaverLogger.error("Please ensure JarConfigLoader.loadConfiguration() is called at startup or set the property manually.\n");
+            JaverLogger.error("Missing system property: " + propertyName);
+            JaverLogger.error("Please ensure JarConfigLoader.loadConfiguration() is called at startup or set the property manually.");
             return null;
         }
 
         Path path = Path.of(value).toAbsolutePath().normalize();
         if (!Files.exists(path) || !Files.isRegularFile(path)) {
-            JaverLogger.error("ERROR: Configured jar does not exist: " + path + "\n");
-            JaverLogger.error("Make sure the jar file is present at the expected location.\n");
-            JaverLogger.error("Property '" + propertyName + "' is set to: " + value + "\n");
+            JaverLogger.error("Configured jar does not exist: " + path);
+            JaverLogger.error("Make sure the jar file is present at the expected location.");
+            JaverLogger.error("Property '" + propertyName + "' is set to: " + value);
             return null;
         }
 
-        JaverLogger.error("Resolved " + propertyName + " to: " + path.toAbsolutePath() + "\n");
+        JaverLogger.info("Resolved " + propertyName + " to: " + path.toAbsolutePath());
         return path;
     }
 
@@ -399,7 +429,7 @@ public class GuiController {
         Platform.runLater(() -> {
             runCompilerButton.setDisable(running);
             stopCompilerButton.setDisable(!running);
-            runCompilerAndVMButton.setDisable(running);
+            updateRunCompilerAndVMButtonState();
         });
     }
 
@@ -407,7 +437,16 @@ public class GuiController {
         Platform.runLater(() -> {
             runVMButton.setDisable(running);
             stopVMButton.setDisable(!running);
+            updateRunCompilerAndVMButtonState();
         });
+    }
+
+    private void updateRunCompilerAndVMButtonState() {
+        runCompilerAndVMButton.setDisable(isRunnerRunning(compilerRunner) || isRunnerRunning(vmRunner));
+    }
+
+    private boolean isRunnerRunning(ManagedProcessRunner runner) {
+        return runner != null && runner.isRunning();
     }
 
     private void appendCompilerOutput(String text) {

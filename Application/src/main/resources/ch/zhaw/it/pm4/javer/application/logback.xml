@@ -24,9 +24,7 @@
     </appender>
 
     <appender name="GUI" class="ch.zhaw.it.pm4.javer.application.GuiLogAppender">
-        <encoder>
-            <pattern>${PATTERN}</pattern>
-        </encoder>
+        <pattern>${PATTERN}</pattern>
     </appender>
 
     <root level="${LOG_LEVEL}">

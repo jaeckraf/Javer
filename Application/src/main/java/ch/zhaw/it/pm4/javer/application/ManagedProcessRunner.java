@@ -8,8 +8,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class ManagedProcessRunner {
+
+    private static final long STOP_TIMEOUT_SECONDS = 2;
 
     private final String name;
     private final OutputListener stdoutListener;
@@ -17,6 +24,10 @@ public class ManagedProcessRunner {
     private final RunningStateListener runningStateListener;
 
     private volatile Process process;
+    private volatile Thread workerThread;
+    private volatile boolean running;
+    private volatile boolean stopRequested;
+    private volatile CompletableFuture<ProcessResult> currentCompletion;
 
     public ManagedProcessRunner(
             String name,
@@ -30,62 +41,166 @@ public class ManagedProcessRunner {
         this.runningStateListener = runningStateListener;
     }
 
-    public synchronized boolean start(List<String> command) {
-        if (isRunning()) {
-            return false;
+    public synchronized Optional<CompletableFuture<ProcessResult>> start(List<String> command) {
+        if (running) {
+            return Optional.empty();
         }
 
-        Thread worker = new Thread(() -> runProcess(command), name.toLowerCase() + "-runner");
+        CompletableFuture<ProcessResult> completion = new CompletableFuture<>();
+        running = true;
+        stopRequested = false;
+        currentCompletion = completion;
+        runningStateListener.onRunningStateChanged(true);
+
+        Thread worker = new Thread(() -> runProcess(command, completion), name.toLowerCase() + "-runner");
+        workerThread = worker;
         worker.setDaemon(true);
         worker.start();
-        return true;
+        return Optional.of(completion);
     }
 
     public synchronized void stop() {
-        if (!isRunning()) {
+        if (!running) {
             JaverLogger.warning(name + " is not running.");
             return;
         }
 
-        process.destroyForcibly();
-        JaverLogger.warning(name + " process was killed.");
+        requestStop();
+    }
+
+    public void stopAndWait() {
+        CompletableFuture<ProcessResult> completion;
+        synchronized (this) {
+            if (!running) {
+                return;
+            }
+            completion = currentCompletion;
+            requestStop();
+        }
+
+        waitForCompletion(completion);
+    }
+
+    private void requestStop() {
+        if (stopRequested) {
+            return;
+        }
+
+        stopRequested = true;
+        Process runningProcess = process;
+        Thread runningWorker = workerThread;
+        if (runningProcess != null) {
+            runningProcess.destroy();
+            forceStopIfStillRunning(runningProcess);
+        } else if (runningWorker != null) {
+            runningWorker.interrupt();
+        }
+        JaverLogger.warning(name + " process stop was requested.");
+    }
+
+    private void waitForCompletion(CompletableFuture<ProcessResult> completion) {
+        if (completion == null) {
+            return;
+        }
+
+        try {
+            completion.get(STOP_TIMEOUT_SECONDS + 1, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            JaverLogger.error(name + " failed while stopping.", e);
+        } catch (TimeoutException e) {
+            JaverLogger.warning(name + " did not finish before shutdown continued.");
+        }
+    }
+
+    private void forceStopIfStillRunning(Process runningProcess) {
+        Thread forceStopper = new Thread(() -> {
+            try {
+                if (!runningProcess.waitFor(STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS) && runningProcess.isAlive()) {
+                    runningProcess.destroyForcibly();
+                    JaverLogger.warning(name + " process did not stop in time and was killed.");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }, name.toLowerCase() + "-force-stop");
+
+        forceStopper.setDaemon(true);
+        forceStopper.start();
     }
 
     public synchronized boolean isRunning() {
-        return process != null && process.isAlive();
+        return running;
     }
 
-    private void runProcess(List<String> command) {
-        runningStateListener.onRunningStateChanged(true);
+    private void runProcess(List<String> command, CompletableFuture<ProcessResult> completion) {
         JaverLogger.info("Starting " + name + ".");
+
+        boolean started = false;
+        boolean interrupted = false;
+        int exitCode = -1;
+        Throwable failure = null;
+        Thread stdoutThread = null;
+        Thread stderrThread = null;
 
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(command);
             Process startedProcess = processBuilder.start();
+            started = true;
 
             synchronized (this) {
                 process = startedProcess;
+                if (stopRequested) {
+                    startedProcess.destroy();
+                    forceStopIfStillRunning(startedProcess);
+                }
             }
 
-            Thread stdoutThread = pipeStream(startedProcess.getInputStream(), stdoutListener);
-            Thread stderrThread = pipeStream(startedProcess.getErrorStream(), stderrListener);
+            stdoutThread = pipeStream(startedProcess.getInputStream(), stdoutListener);
+            stderrThread = pipeStream(startedProcess.getErrorStream(), stderrListener);
 
-            int exitCode = startedProcess.waitFor();
+            exitCode = startedProcess.waitFor();
 
-            stdoutThread.join();
-            stderrThread.join();
+            joinThread(stdoutThread);
+            joinThread(stderrThread);
 
             JaverLogger.info(name + " finished with exit code " + exitCode + ".");
         } catch (IOException e) {
+            failure = e;
             JaverLogger.error("Failed to start " + name + ": " + e.getMessage(), e);
         } catch (InterruptedException e) {
+            interrupted = true;
+            Process runningProcess = process;
+            if (runningProcess != null && runningProcess.isAlive()) {
+                runningProcess.destroy();
+                forceStopIfStillRunning(runningProcess);
+            }
             Thread.currentThread().interrupt();
             JaverLogger.error(name + " was interrupted.", e);
         } finally {
+            boolean stopped;
             synchronized (this) {
+                stopped = stopRequested;
                 process = null;
+                workerThread = null;
+                running = false;
+                stopRequested = false;
+                currentCompletion = null;
             }
-            runningStateListener.onRunningStateChanged(false);
+
+            ProcessResult result = new ProcessResult(name, started, exitCode, stopped, interrupted, failure);
+            try {
+                runningStateListener.onRunningStateChanged(false);
+            } finally {
+                completion.complete(result);
+            }
+        }
+    }
+
+    private void joinThread(Thread thread) throws InterruptedException {
+        if (thread != null) {
+            thread.join();
         }
     }
 
@@ -105,6 +220,19 @@ public class ManagedProcessRunner {
         thread.setDaemon(true);
         thread.start();
         return thread;
+    }
+
+    public record ProcessResult(
+            String name,
+            boolean started,
+            int exitCode,
+            boolean stopped,
+            boolean interrupted,
+            Throwable failure
+    ) {
+        public boolean isSuccess() {
+            return started && exitCode == 0 && !stopped && !interrupted && failure == null;
+        }
     }
 
     @FunctionalInterface

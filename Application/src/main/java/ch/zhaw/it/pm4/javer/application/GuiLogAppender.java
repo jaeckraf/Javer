@@ -3,13 +3,13 @@ package ch.zhaw.it.pm4.javer.application;
 import ch.qos.logback.classic.PatternLayout;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
-import javafx.application.Platform;
 
 import java.util.function.Consumer;
 
 public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
 
     private static volatile Consumer<String> consumer;
+    private String pattern;
     private PatternLayout layout;
 
     public static void setConsumer(Consumer<String> guiConsumer) {
@@ -20,11 +20,20 @@ public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
         consumer = null;
     }
 
+    public void setPattern(String pattern) {
+        this.pattern = pattern;
+    }
+
     @Override
     public void start() {
+        if (pattern == null || pattern.isBlank()) {
+            addError("No pattern configured for GUI log appender.");
+            return;
+        }
+
         layout = new PatternLayout();
         layout.setContext(getContext());
-        layout.setPattern("%d{HH:mm:ss} %-7level %-24.24logger{0} %-24method %msg%n");
+        layout.setPattern(pattern);
         layout.start();
         super.start();
     }
@@ -45,6 +54,6 @@ public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
         }
 
         String text = layout.doLayout(eventObject);
-        Platform.runLater(() -> currentConsumer.accept(text));
+        currentConsumer.accept(text);
     }
 }
