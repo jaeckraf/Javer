@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public final class E2EApplicationTest {
 
     private static final Path DEFAULT_CASE_ROOT = defaultCaseRoot();
+    private static final Path DEFAULT_OUTPUT_ROOT = Path.of("target", "e2e-output");
 
     private static final String DEFAULT_COMPILER_MAIN_CLASS =
             "ch.zhaw.it.pm4.javer.compiler.Compiler";
@@ -55,6 +56,10 @@ public final class E2EApplicationTest {
                 ? Path.of(args[0])
                 : Path.of(System.getProperty("e2e.resources", DEFAULT_CASE_ROOT.toString()));
 
+        Path outputRoot = args.length >= 2
+                ? Path.of(args[1])
+                : Path.of(System.getProperty("e2e.output", DEFAULT_OUTPUT_ROOT.toString()));
+
         long timeoutSeconds = Long.parseLong(
                 System.getProperty("e2e.timeout.seconds", String.valueOf(DEFAULT_TIMEOUT_SECONDS))
         );
@@ -67,7 +72,7 @@ public final class E2EApplicationTest {
         List<CaseResult> results = new ArrayList<>();
 
         for (Path caseDirectory : caseDirectories) {
-            CaseResult result = runCase(caseRoot, caseDirectory, timeoutSeconds);
+            CaseResult result = runCase(caseRoot, caseDirectory, outputRoot, timeoutSeconds);
             results.add(result);
 
             if (result.passed()) {
@@ -114,6 +119,7 @@ public final class E2EApplicationTest {
     private static CaseResult runCase(
             Path caseRoot,
             Path caseDirectory,
+            Path outputRoot,
             long timeoutSeconds
     ) {
         String caseName = caseRoot.relativize(caseDirectory).toString().replace('\\', '/');
@@ -140,7 +146,6 @@ public final class E2EApplicationTest {
                         failures,
                         VM_STDOUT_FILE,
                         VM_STDERR_FILE,
-                        ACTUAL_BYTECODE_FILE,
                         EXPECTED_BYTECODE_FILE
                 );
             }
@@ -151,6 +156,7 @@ public final class E2EApplicationTest {
 
             return runCompilerAndMaybeVmCase(
                     caseDirectory,
+                    outputRoot,
                     timeoutSeconds,
                     caseName,
                     expectsCompilerSuccess,
@@ -164,12 +170,14 @@ public final class E2EApplicationTest {
 
     private static CaseResult runCompilerAndMaybeVmCase(
             Path caseDirectory,
+            Path outputRoot,
             long timeoutSeconds,
             String caseName,
             boolean expectsCompilerSuccess,
             List<String> failures
     ) throws Exception {
-        Path generatedBytecodeFile = caseDirectory.resolve(ACTUAL_BYTECODE_FILE);
+        Path generatedBytecodeFile = generatedBytecodeFile(outputRoot, caseName);
+        prepareGeneratedBytecodeFile(generatedBytecodeFile);
 
         RunResult compilerResult = runCompilerProcess(
                 caseDirectory.resolve(INPUT_SOURCE_FILE),
@@ -196,6 +204,10 @@ public final class E2EApplicationTest {
         }
 
         if (!expectsCompilerSuccess) {
+            if (Files.exists(generatedBytecodeFile)) {
+                failures.add(caseName + " compiler created bytecode although compilation was expected to fail: "
+                        + generatedBytecodeFile);
+            }
             return new CaseResult(caseName, "COMPILER-ERROR", failures);
         }
 
@@ -242,6 +254,21 @@ public final class E2EApplicationTest {
         );
 
         return new CaseResult(caseName, "COMPILER+VM", failures);
+    }
+
+    private static Path generatedBytecodeFile(Path outputRoot, String caseName) throws Exception {
+        Path caseOutputDirectory = outputRoot.resolve(Path.of(caseName));
+        Files.createDirectories(caseOutputDirectory);
+        return caseOutputDirectory.resolve(ACTUAL_BYTECODE_FILE);
+    }
+
+    private static void prepareGeneratedBytecodeFile(Path generatedBytecodeFile) throws Exception {
+        Path parent = generatedBytecodeFile.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
+        Files.deleteIfExists(generatedBytecodeFile);
     }
 
     private static List<Path> discoverCaseDirectories(Path caseRoot) throws Exception {
