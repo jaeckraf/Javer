@@ -4,13 +4,17 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 
 public class GuiController {
@@ -18,6 +22,11 @@ public class GuiController {
     private static final String CONSOLE_INPUT_FILE_NAME = "console-input.javer";
     private static final String VM_INPUT_FILE_NAME = "vm-input.jbc";
     private static final String BYTECODE_FILE_EXTENSION = ".jbc";
+    private static final List<String> TOOL_JAVA_OPTIONS = List.of(
+            "-Dfile.encoding=UTF-8",
+            "-Dstdout.encoding=UTF-8",
+            "-Dstderr.encoding=UTF-8"
+    );
 
     // Packaged release layout inside Application app image
     private static final Path RELEASE_COMPILER_EXE = Path.of("app", "tools", "Compiler", "javer-compiler.exe");
@@ -58,6 +67,30 @@ public class GuiController {
     private TextArea statusOutput;
 
     @FXML
+    private CheckBox expertModeOption;
+
+    @FXML
+    private VBox compilerOptionsBox;
+
+    @FXML
+    private VBox vmOptionsBox;
+
+    @FXML
+    private CheckBox compilerDumpLexerOption;
+
+    @FXML
+    private CheckBox compilerDumpAstOption;
+
+    @FXML
+    private CheckBox compilerDumpSymbolTableOption;
+
+    @FXML
+    private CheckBox compilerLoggingOption;
+
+    @FXML
+    private TextField vmAdditionalArguments;
+
+    @FXML
     public void initialize() {
         GuiLogAppender.setConsumer(this::appendStatus);
 
@@ -81,6 +114,7 @@ public class GuiController {
 
         updateCompilerButtons(false);
         updateVMButtons(false);
+        bindExpertMode();
     }
 
     @FXML
@@ -189,28 +223,45 @@ public class GuiController {
     private List<String> buildCompilerCommand(String inputPath) {
         String compilerOutputPath = bytecodeOutputBasePath(vmInputFile).toAbsolutePath().toString();
 
+        List<String> command = new ArrayList<>();
         Path compilerExe = resolveReleaseExecutable(RELEASE_COMPILER_EXE, "Compiler");
         if (compilerExe != null) {
-            return List.of(
-                    compilerExe.toString(),
-                    inputPath,
-                    compilerOutputPath
-            );
+            command.add(compilerExe.toString());
+        } else {
+            Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
+            if (compilerJar == null) {
+                JaverLogger.error("Compiler executable and IDE jar are both unavailable.");
+                return null;
+            }
+            addJavaJarCommand(command, compilerJar);
         }
 
-        Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
-        if (compilerJar == null) {
-            JaverLogger.error("Compiler executable and IDE jar are both unavailable.");
-            return null;
+        command.add("--in-file");
+        command.add(inputPath);
+        command.add("--out-file");
+        command.add(compilerOutputPath);
+        addCompilerOptions(command);
+
+        return command;
+    }
+
+    private void addCompilerOptions(List<String> command) {
+        if (!expertModeOption.isSelected()) {
+            return;
         }
 
-        return List.of(
-                "java",
-                "-jar",
-                compilerJar.toString(),
-                inputPath,
-                compilerOutputPath
-        );
+        if (compilerDumpLexerOption.isSelected()) {
+            command.add("--dump-lexer");
+        }
+        if (compilerDumpAstOption.isSelected()) {
+            command.add("--dump-ast");
+        }
+        if (compilerDumpSymbolTableOption.isSelected()) {
+            command.add("--dump-symboltable");
+        }
+        if (compilerLoggingOption.isSelected()) {
+            command.add("--logging");
+        }
     }
 
     private Path bytecodeOutputBasePath(Path bytecodeFile) {
@@ -224,26 +275,79 @@ public class GuiController {
     }
 
     private List<String> buildVmCommand() {
+        List<String> command = new ArrayList<>();
         Path vmExe = resolveReleaseExecutable(RELEASE_VM_EXE, "VM");
         if (vmExe != null) {
-            return List.of(
-                    vmExe.toString(),
-                    vmInputFile.toAbsolutePath().toString()
-            );
+            command.add(vmExe.toString());
+        } else {
+            Path vmJar = resolveJarFromProperty("javer.vm.jar");
+            if (vmJar == null) {
+                JaverLogger.error("VM executable and IDE jar are both unavailable.");
+                return null;
+            }
+            addJavaJarCommand(command, vmJar);
         }
 
-        Path vmJar = resolveJarFromProperty("javer.vm.jar");
-        if (vmJar == null) {
-            JaverLogger.error("VM executable and IDE jar are both unavailable.");
-            return null;
+        command.add(vmInputFile.toAbsolutePath().toString());
+        if (expertModeOption.isSelected()) {
+            command.addAll(parseAdditionalArguments(vmAdditionalArguments.getText()));
         }
 
-        return List.of(
-                "java",
-                "-jar",
-                vmJar.toString(),
-                vmInputFile.toAbsolutePath().toString()
-        );
+        return command;
+    }
+
+    private void addJavaJarCommand(List<String> command, Path jarPath) {
+        command.add("java");
+        command.addAll(TOOL_JAVA_OPTIONS);
+        command.add("-jar");
+        command.add(jarPath.toString());
+    }
+
+    private void bindExpertMode() {
+        compilerOptionsBox.visibleProperty().bind(expertModeOption.selectedProperty());
+        compilerOptionsBox.managedProperty().bind(expertModeOption.selectedProperty());
+        vmOptionsBox.visibleProperty().bind(expertModeOption.selectedProperty());
+        vmOptionsBox.managedProperty().bind(expertModeOption.selectedProperty());
+    }
+
+    private List<String> parseAdditionalArguments(String arguments) {
+        List<String> parsedArguments = new ArrayList<>();
+        if (arguments == null || arguments.isBlank()) {
+            return parsedArguments;
+        }
+
+        StringBuilder currentArgument = new StringBuilder();
+        boolean quoted = false;
+
+        for (int i = 0; i < arguments.length(); i++) {
+            char character = arguments.charAt(i);
+
+            if (character == '"') {
+                quoted = !quoted;
+                continue;
+            }
+
+            if (Character.isWhitespace(character) && !quoted) {
+                addArgumentIfPresent(parsedArguments, currentArgument);
+                continue;
+            }
+
+            currentArgument.append(character);
+        }
+
+        if (quoted) {
+            JaverLogger.warning("VM arguments contain an unclosed quote; using the remaining text as one argument.");
+        }
+
+        addArgumentIfPresent(parsedArguments, currentArgument);
+        return parsedArguments;
+    }
+
+    private void addArgumentIfPresent(List<String> arguments, StringBuilder argument) {
+        if (!argument.isEmpty()) {
+            arguments.add(argument.toString());
+            argument.setLength(0);
+        }
     }
 
     private void startVmAfterSuccessfulCompilation(
