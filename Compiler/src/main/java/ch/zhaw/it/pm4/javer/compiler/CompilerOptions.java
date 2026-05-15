@@ -2,6 +2,9 @@ package ch.zhaw.it.pm4.javer.compiler;
 
 import java.nio.file.Path;
 
+/**
+ * Validated command-line configuration for one compiler run.
+ */
 public class CompilerOptions {
 
     private static final String SOURCE_FILE_EXTENSION = ".javer";
@@ -39,30 +42,57 @@ public class CompilerOptions {
         this.dumpSymbolTable = dumpSymbolTable;
     }
 
+    /**
+     * @return source file path with a {@code .javer} extension
+     */
     public String getInputFilePath() {
         return inputFilePath;
     }
 
+    /**
+     * @return normalized bytecode output file path with a {@code .jbc}
+     *         extension
+     */
     public String getOutputFilePath() {
         return outputFilePath;
     }
 
+    /**
+     * @return true when compiler-internal logging is enabled
+     */
     public boolean isLoggingEnabled() {
         return loggingEnabled;
     }
 
+    /**
+     * @return true when token dump output should be printed
+     */
     public boolean isDumpLexer() {
         return dumpLexer;
     }
 
+    /**
+     * @return true when AST dump output should be printed
+     */
     public boolean isDumpAst() {
         return dumpAst;
     }
 
+    /**
+     * @return true when symbol-table dump output should be printed
+     */
     public boolean isDumpSymbolTable() {
         return dumpSymbolTable;
     }
 
+    /**
+     * Parses and validates compiler command-line arguments.
+     *
+     * @param args command-line options
+     * @return validated compiler options
+     * @throws IllegalArgumentException if an option is unknown, missing, or has
+     *                                  an invalid path value
+     */
     public static CompilerOptions create(String... args) {
         String inputFilePath = null;
         String outputFilePath = null;

@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
+/**
+ * Symbol table entry for a generated or user-visible code label.
+ */
 public final class LabelEntry extends SymbolEntry {
 
     private final String label;

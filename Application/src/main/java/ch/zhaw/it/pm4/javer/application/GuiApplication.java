@@ -8,10 +8,26 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
+/**
+ * JavaFX application shell that loads the GUI view and delegates shutdown to
+ * the controller.
+ */
 public class GuiApplication extends Application {
 
     private GuiController controller;
 
+    /**
+     * Creates the JavaFX application instance.
+     */
+    public GuiApplication() {
+    }
+
+    /**
+     * Loads the FXML view, wires the controller, and displays the main stage.
+     *
+     * @param stage the primary JavaFX stage
+     * @throws IOException if the FXML view cannot be loaded
+     */
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
@@ -26,6 +42,10 @@ public class GuiApplication extends Application {
         stage.show();
     }
 
+    /**
+     * Stops managed child processes and removes runtime files through the
+     * controller.
+     */
     @Override
     public void stop() {
         if (controller != null) {

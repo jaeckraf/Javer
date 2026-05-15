@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
+/**
+ * Assignment operators supported by assignment expressions.
+ */
 public enum AssignOperator {
 
     ASSIGN, ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN,

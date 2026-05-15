@@ -19,6 +19,11 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.util.*;
 
+/**
+ * Recursive-descent parser for Javer source code. It consumes lexer tokens,
+ * builds the AST, and records recoverable syntax diagnostics in the supplied
+ * diagnostic bag.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class Parser {
 
@@ -103,11 +108,22 @@ public class Parser {
         return result;
     }
 
+    /**
+     * Creates a parser for a token stream.
+     *
+     * @param tokens token stream ending with {@code SPECIAL_END_OF_FILE}
+     * @param diagnosticBag collector used for syntax diagnostics
+     */
     public Parser(List<Token> tokens, DiagnosticBag diagnosticBag) {
         this.tokens = tokens;
         this.diagnosticBag = diagnosticBag;
     }
 
+    /**
+     * Parses the complete token stream as a compilation unit.
+     *
+     * @return parsed compilation unit
+     */
     public CompilationUnit parse() { return parseCompilationUnit(); }
 
     private Token currentToken() { return peek(0); }

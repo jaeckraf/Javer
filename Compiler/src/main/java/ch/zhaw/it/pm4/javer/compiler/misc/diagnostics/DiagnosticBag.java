@@ -8,6 +8,10 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
+/**
+ * Collects diagnostics for one compilation run and formats user-facing error
+ * reports with source excerpts.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class DiagnosticBag {
 
@@ -23,9 +27,10 @@ public class DiagnosticBag {
     /**
      * Initializes a new DiagnosticBag.
      *
-     * @param filePath   The path of the file being compiled.
+     * @param filePath The path of the file being compiled.
      * @param errorLimit The maximum number of errors before compilation aborts.
-     *                   // @param sourceCache The cache holding the raw source code text.
+     * @param compilationPhase initial compiler phase
+     * @param sourceCache The cache holding the raw source code text.
      */
     public DiagnosticBag(String filePath, int errorLimit, CompilationPhase compilationPhase, SourceCache sourceCache) {
         this.filePath = filePath;
@@ -35,6 +40,11 @@ public class DiagnosticBag {
         this.phase = compilationPhase;
     }
 
+    /**
+     * Updates the phase that will be printed in diagnostic reports.
+     *
+     * @param phase current compiler phase
+     */
     public void setPhase(CompilationPhase phase) {
         this.phase = phase;
     }
@@ -49,6 +59,13 @@ public class DiagnosticBag {
         // TODO: Implement error limit check (throw exception if exceeded)
     }
 
+    /**
+     * Adds a diagnostic at the given source location.
+     *
+     * @param location source location associated with the diagnostic
+     * @param severity diagnostic severity
+     * @param message user-facing message
+     */
     public void add(SourceLocation location, Severity severity, String message) {
         diagnostics.add(new Diagnostic(location, severity, message));
     }

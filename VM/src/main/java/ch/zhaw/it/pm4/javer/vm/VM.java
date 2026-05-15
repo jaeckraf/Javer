@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Stack-based virtual machine that parses and executes Javer bytecode.
+ */
 public class VM {
 
     private static final int STACK_SIZE = 1048576; // 1 MB
@@ -34,6 +37,11 @@ public class VM {
     private int programEndAddress = 0;
     private boolean halted = false;
 
+    /**
+     * Starts the VM for a bytecode file.
+     *
+     * @param args first argument is the bytecode file path
+     */
     public static void main(String[] args) {
         if (args.length == 0) {
             System.out.println("Usage: java VM <filePath>");
@@ -54,6 +62,13 @@ public class VM {
         }
     }
 
+    /**
+     * Loads and parses a bytecode program.
+     *
+     * @param filePath path to the bytecode file
+     * @throws IOException    if the bytecode file cannot be read
+     * @throws ParseException if bytecode parsing fails
+     */
     public VM(String filePath) throws IOException, ParseException {
         this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
         parse();
@@ -195,13 +210,13 @@ public class VM {
         boolean lastWasLabel = false;
         String currentFunctionLabel = null;
         boolean enterSeenInCurrentFunction = false;
-        
+
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty()) {
                 continue;
             }
-            
+
             if (isLabel(line)) {
                 lastLabelName = extractLabelName(line);
                 lastWasLabel = true;
@@ -212,7 +227,7 @@ public class VM {
                 }
             } else {
                 String instrName = line.split(",")[0].trim().toUpperCase();
-                
+
                 if ("ENTER".equals(instrName)) {
                     // ENTER is only allowed directly after a function label (starting with _)
                     if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
@@ -948,6 +963,10 @@ public class VM {
         };
     }
 
+    /**
+     * Executes the loaded program from the {@code _main} label until HALT or
+     * until no instruction exists at the current program counter.
+     */
     public void run() {
         if (labels.containsKey("_main")) {
             callStack.add(new CallFrame(-1, 0, 0, 0));
@@ -2492,9 +2511,11 @@ public class VM {
         HALT, PRINTB, PRINTC, PRINTI, PRINTD, DPRINTS, HPRINTS
     }
 
-    private record PendingJumpCheck(String labelName, int lineNumber) { }
+    private record PendingJumpCheck(String labelName, int lineNumber) {
+    }
 
-    private record ReferencedObject(byte[] bytes, String sourceName) { }
+    private record ReferencedObject(byte[] bytes, String sourceName) {
+    }
 
     private static final class ParseException extends Exception {
         private final List<String> errors;
@@ -2520,6 +2541,7 @@ public class VM {
         }
     }
 
-    private record CallFrame(int returnPc, int previousFp, int callerSp, int argBytes) { }
+    private record CallFrame(int returnPc, int previousFp, int callerSp, int argBytes) {
+    }
 
 }

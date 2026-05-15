@@ -8,6 +8,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node for a field declared inside a struct.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class StructField extends AstNodeBase implements AstNode {
 

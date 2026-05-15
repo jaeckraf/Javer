@@ -8,6 +8,12 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.SemanticContext;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * Root node of a parsed Javer program.
+ *
+ * <p>The compilation unit owns the top-level declarations and the semantic
+ * structures that are populated by later compiler phases.</p>
+ */
 public final class CompilationUnit extends AstNodeBase implements AstNode {
     private final GlobalScope globalScope;
     private final DataSection dataSection;

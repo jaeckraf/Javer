@@ -4,7 +4,21 @@ import javafx.application.Application;
 
 import java.net.URL;
 
-public class Launcher {
+/**
+ * Native-launcher-friendly entry point that configures logging and starts the
+ * JavaFX application.
+ */
+public final class Launcher {
+
+    private Launcher() {
+    }
+
+    /**
+     * Configures application logging, loads tool locations, and launches the
+     * JavaFX runtime.
+     *
+     * @param args command-line arguments passed through to JavaFX
+     */
     public static void main(String[] args) {
         URL logbackConfig = Launcher.class.getResource(
                 "/ch/zhaw/it/pm4/javer/application/logback.xml"

@@ -8,6 +8,9 @@ import java.util.Map;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 
+/**
+ * Symbol scope for local variables declared inside a block.
+ */
 public final class BlockScope {
 
     private final BlockScope parent;

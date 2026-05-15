@@ -9,6 +9,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node representing an enum declaration and its declared values.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class EnumDeclaration extends AstNodeBase implements DeclarationAstNode {
 

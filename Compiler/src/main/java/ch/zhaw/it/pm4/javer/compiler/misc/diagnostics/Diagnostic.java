@@ -4,11 +4,15 @@ import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
 /**
  * Represents a single user-facing issue discovered during compilation.
- * * Examples:
- * - invalid character (lexer)
- * - unexpected token (parser)
- * - unknown identifier (name resolution)
- * - type mismatch (type check)
+ *
+ * <p>Examples:</p>
+ *
+ * <ul>
+ * <li>invalid character (lexer)</li>
+ * <li>unexpected token (parser)</li>
+ * <li>unknown identifier (name resolution)</li>
+ * <li>type mismatch (type check)</li>
+ * </ul>
  */
 public class Diagnostic {
 
@@ -18,7 +22,8 @@ public class Diagnostic {
 
     /**
      * Creates a new Diagnostic with an initial message.
-     * * @param location The precise location of the issue in the source code.
+     *
+     * @param location The precise location of the issue in the source code.
      * @param severity The severity level of the issue.
      * @param message The message.
      */
@@ -28,14 +33,23 @@ public class Diagnostic {
         this.message = message;
     }
 
+    /**
+     * @return source location associated with the diagnostic
+     */
     public SourceLocation getLocation() {
         return location;
     }
 
+    /**
+     * @return diagnostic severity
+     */
     public Severity getSeverity() {
         return severity;
     }
 
+    /**
+     * @return user-facing diagnostic message
+     */
     public String getMessage() {
         return message;
     }

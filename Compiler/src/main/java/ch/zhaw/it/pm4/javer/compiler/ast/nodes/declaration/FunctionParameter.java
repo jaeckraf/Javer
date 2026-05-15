@@ -8,6 +8,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node for a declared function parameter.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class FunctionParameter extends AstNodeBase implements AstNode {
 

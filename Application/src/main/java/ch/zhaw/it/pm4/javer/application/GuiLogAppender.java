@@ -6,20 +6,44 @@ import ch.qos.logback.core.AppenderBase;
 
 import java.util.function.Consumer;
 
+/**
+ * Logback appender that forwards formatted application log events to a GUI
+ * text consumer.
+ */
 public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
 
     private static volatile Consumer<String> consumer;
     private String pattern;
     private PatternLayout layout;
 
+    /**
+     * Creates a Logback appender instance.
+     */
+    public GuiLogAppender() {
+    }
+
+    /**
+     * Registers the active GUI consumer for formatted log lines.
+     *
+     * @param guiConsumer consumer invoked for each formatted log event
+     */
     public static void setConsumer(Consumer<String> guiConsumer) {
         consumer = guiConsumer;
     }
 
+    /**
+     * Disconnects the current GUI consumer so later log events are ignored by
+     * this appender.
+     */
     public static void clearConsumer() {
         consumer = null;
     }
 
+    /**
+     * Sets the Logback pattern configured from {@code logback.xml}.
+     *
+     * @param pattern pattern used to format GUI log output
+     */
     public void setPattern(String pattern) {
         this.pattern = pattern;
     }

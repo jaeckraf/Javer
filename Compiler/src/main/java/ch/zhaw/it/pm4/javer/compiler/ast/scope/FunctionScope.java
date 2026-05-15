@@ -8,6 +8,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.LabelEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 
+/**
+ * Symbol scope for parameters, labels, and the root block of a function.
+ */
 public final class FunctionScope {
 
     private final FunctionEntry owner;

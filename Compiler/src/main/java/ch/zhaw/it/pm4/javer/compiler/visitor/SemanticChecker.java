@@ -7,12 +7,21 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
+/**
+ * Performs semantic checks that depend on control-flow context, such as
+ * validating break and continue placement.
+ */
 @JacocoGenerated("jacoco-ignore")
 public class SemanticChecker extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
     private int loopDepth = 0;
 
+    /**
+     * Creates a semantic-checking pass.
+     *
+     * @param diagnosticBag collector for semantic diagnostics
+     */
     public SemanticChecker(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
     }
