@@ -8,10 +8,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
@@ -225,9 +222,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
         TypeInfo conditionType = node.getCondition().getResultingType();
         
         if (conditionType instanceof PrimitiveTypeInfo(var kind)) {
-            if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.CHAR) {
+            if (kind == PrimitiveTypeKind.CHAR) {
                 writeLine("C2I");
-            } else if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.BOOL) {
+            } else if (kind == PrimitiveTypeKind.BOOL) {
                 writeLine("B2I");
             }
         }
@@ -258,9 +255,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
                     literalCaseLabel.getLiteral().accept(this);
                     
                     if (conditionType instanceof PrimitiveTypeInfo(var typeKind)) {
-                        if (literalCaseLabel.getLiteral().getKind() == LiteralKind.DOUBLE && typeKind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.INT) {
+                        if (literalCaseLabel.getLiteral().getKind() == LiteralKind.DOUBLE && typeKind == PrimitiveTypeKind.INT) {
                             writeLine("D2I");
-                        } else if (literalCaseLabel.getLiteral().getKind() == LiteralKind.INT && typeKind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.DOUBLE) {
+                        } else if (literalCaseLabel.getLiteral().getKind() == LiteralKind.INT && typeKind == PrimitiveTypeKind.DOUBLE) {
                             writeLine("I2D");
                         }
                     }
@@ -269,9 +266,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 }
                 
                 if (conditionType instanceof PrimitiveTypeInfo(var kind)) {
-                    if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.CHAR && (caseLabel instanceof LiteralCaseLabel literalLabel && literalLabel.getLiteral().getKind() == LiteralKind.CHAR)) {
+                    if (kind == PrimitiveTypeKind.CHAR && (caseLabel instanceof LiteralCaseLabel literalLabel && literalLabel.getLiteral().getKind() == LiteralKind.CHAR)) {
                         writeLine("C2I");
-                    } else if (kind == ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind.BOOL && (caseLabel instanceof LiteralCaseLabel literalLabel && literalLabel.getLiteral().getKind() == LiteralKind.BOOLEAN)) {
+                    } else if (kind == PrimitiveTypeKind.BOOL && (caseLabel instanceof LiteralCaseLabel literalLabel && literalLabel.getLiteral().getKind() == LiteralKind.BOOLEAN)) {
                         writeLine("B2I");
                     }
                 }
