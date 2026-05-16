@@ -3,6 +3,9 @@ package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 
+/**
+ * Base symbol entry for values that occupy storage in memory or a stack frame.
+ */
 public abstract class StorageEntry extends SymbolEntry {
 
     private final TypeInfo type;

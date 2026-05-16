@@ -5,6 +5,9 @@ import java.util.List;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 
+/**
+ * Symbol table entry for a static data constant.
+ */
 public final class DataEntry extends SymbolEntry {
 
     private final TypeInfo type;

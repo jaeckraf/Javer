@@ -8,6 +8,9 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * Statement node representing a {@code for} loop.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ForStatement extends AstNodeBase implements StatementAstNode {
 

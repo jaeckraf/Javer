@@ -9,6 +9,9 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
+/**
+ * AST node representing one case block inside a switch statement.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class SwitchCase extends AstNodeBase implements AstNode {
 

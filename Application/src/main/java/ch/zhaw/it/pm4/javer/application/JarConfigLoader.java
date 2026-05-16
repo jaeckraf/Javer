@@ -11,11 +11,14 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
  * Loads JAR configuration from application.properties and sets system properties.
  * This class handles the initialization of JAR paths for Compiler and VM.
  */
-public class JarConfigLoader {
+public final class JarConfigLoader {
 
     private static final String PROPERTIES_FILE = "application.properties";
     private static final String COMPILER_JAR_PROPERTY = "javer.compiler.jar";
     private static final String VM_JAR_PROPERTY = "javer.vm.jar";
+
+    private JarConfigLoader() {
+    }
 
     /**
      * Loads JAR configuration from application.properties and sets system properties.

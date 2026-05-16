@@ -5,6 +5,9 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
+/**
+ * Expression node representing an array initializer.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ArrayInitExpression extends ExpressionAstNodeBase {
 

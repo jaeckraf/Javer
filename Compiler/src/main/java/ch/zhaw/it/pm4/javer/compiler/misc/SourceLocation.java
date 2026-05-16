@@ -6,10 +6,12 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
 /**
  * Immutable record representing a location inside the source file.
  * Contains the start column, end column, and line number for precise error reporting.
- * * Used by:
- * - Tokens
- * - AST nodes
- * - Diagnostics
+ *
+ * <p>Used by tokens, AST nodes, and diagnostics.</p>
+ *
+ * @param startColumn first 1-based column covered by the location
+ * @param endColumn last 1-based column covered by the location
+ * @param lineNumber 1-based source line number
  */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public record SourceLocation(int startColumn, int endColumn, int lineNumber) {
@@ -17,7 +19,6 @@ public record SourceLocation(int startColumn, int endColumn, int lineNumber) {
     /**
      * Compact constructor to validate the source location boundaries.
      * Enforces that locations map to real, physical text coordinates (1-indexed).
-     *
      */
     public SourceLocation {
         if (startColumn < 1) {

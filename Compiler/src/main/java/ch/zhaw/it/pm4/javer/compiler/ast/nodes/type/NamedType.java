@@ -6,6 +6,9 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node for a type referenced by name, such as a struct or enum type.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class NamedType extends AstNodeBase implements TypeAstNode {
 
