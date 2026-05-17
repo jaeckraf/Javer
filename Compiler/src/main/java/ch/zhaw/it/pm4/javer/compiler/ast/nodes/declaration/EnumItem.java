@@ -6,6 +6,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node for a single value declared inside an enum.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class EnumItem extends AstNodeBase implements AstNode {
 

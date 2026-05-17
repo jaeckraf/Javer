@@ -6,6 +6,9 @@ import java.util.Map;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 
+/**
+ * Symbol scope containing the values declared by a single enum.
+ */
 public final class EnumScope {
 
     private final Map<String, EnumValueEntry> values = new LinkedHashMap<>();

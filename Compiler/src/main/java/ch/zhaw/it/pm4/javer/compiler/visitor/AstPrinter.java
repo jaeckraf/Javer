@@ -35,17 +35,38 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * Formats the AST as a human-readable tree.
+ */
 public class AstPrinter extends AstNodeVisitorBase {
 
     private final List<Boolean> isLastStack = new ArrayList<>();
     private Appendable output;
 
+    /**
+     * Creates an AST printer with no active output target.
+     */
+    public AstPrinter() {
+    }
+
+    /**
+     * Prints an AST into a string.
+     *
+     * @param node root compilation unit
+     * @return formatted tree representation
+     */
     public String printToString(CompilationUnit node) {
         StringBuilder builder = new StringBuilder();
         print(node, builder);
         return builder.toString();
     }
 
+    /**
+     * Prints an AST into an arbitrary appendable target.
+     *
+     * @param node root compilation unit
+     * @param output appendable that receives formatted output
+     */
     public void print(CompilationUnit node, Appendable output) {
         this.output = output;
         isLastStack.clear();
@@ -58,10 +79,22 @@ public class AstPrinter extends AstNodeVisitorBase {
         }
     }
 
+    /**
+     * Prints an AST to a UTF-8 file, replacing any existing content.
+     *
+     * @param node root compilation unit
+     * @param outputFilePath output file path
+     */
     public void printToFile(CompilationUnit node, String outputFilePath) {
         printToFile(node, Path.of(outputFilePath));
     }
 
+    /**
+     * Prints an AST to a UTF-8 file, replacing any existing content.
+     *
+     * @param node root compilation unit
+     * @param outputFile output file path
+     */
     public void printToFile(CompilationUnit node, Path outputFile) {
         prepareOutputDirectory(outputFile);
 
@@ -83,6 +116,11 @@ public class AstPrinter extends AstNodeVisitorBase {
         nodesChild("declarations", node.getDeclarations(), true);
     }
 
+    /**
+     * Writes the root tree node.
+     *
+     * @param node compilation unit to print
+     */
     protected void writeRoot(CompilationUnit node) {
         write(nodeTitle(node));
         writeLine();
@@ -363,6 +401,12 @@ public class AstPrinter extends AstNodeVisitorBase {
         nodesChild("expressions", node.getExpressions(), true);
     }
 
+    /**
+     * Writes the global symbol scope as a child branch.
+     *
+     * @param globalScope scope to print
+     * @param isLast whether this is the last sibling branch
+     */
     protected void globalScopeChild(GlobalScope globalScope, boolean isLast) {
         Map<String, SymbolEntry> entries = globalScope.getAllEntries();
         writeBranchLine("globalScope (" + entries.size() + ")", isLast);
@@ -492,10 +536,25 @@ public class AstPrinter extends AstNodeVisitorBase {
         return scope != null && !scope.getAllEntries().isEmpty();
     }
 
+    /**
+     * Writes a scalar child branch.
+     *
+     * @param label branch label
+     * @param value scalar value
+     * @param range optional source range
+     * @param isLast whether this is the last sibling branch
+     */
     protected void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
         writeBranchLine(label + ": " + value + (range != null ? " " + range : ""), isLast);
     }
 
+    /**
+     * Writes a named AST-node child branch.
+     *
+     * @param label branch label
+     * @param node child node, or null
+     * @param isLast whether this is the last sibling branch
+     */
     protected void labeledNodeChild(String label, AstNode node, boolean isLast) {
         if (node == null) {
             writeBranchLine(label + ": <null>", isLast);
@@ -511,6 +570,13 @@ public class AstPrinter extends AstNodeVisitorBase {
         withChildren(() -> node.accept(this), isLast);
     }
 
+    /**
+     * Writes a list of AST nodes as one labeled child branch.
+     *
+     * @param label branch label
+     * @param nodes child nodes
+     * @param isLast whether this is the last sibling branch
+     */
     protected void nodesChild(String label, List<? extends AstNode> nodes, boolean isLast) {
         int size = nodes == null ? 0 : nodes.size();
         writeBranchLine(label + " (" + size + ")", isLast);
@@ -521,6 +587,12 @@ public class AstPrinter extends AstNodeVisitorBase {
         }, isLast);
     }
 
+    /**
+     * Writes one tree branch line with the current indentation.
+     *
+     * @param text branch text
+     * @param isLast whether this is the last sibling branch
+     */
     protected void writeBranchLine(String text, boolean isLast) {
         for (boolean last : isLastStack) {
             write(last ? "    " : "\u2502   ");
@@ -530,6 +602,12 @@ public class AstPrinter extends AstNodeVisitorBase {
         writeLine();
     }
 
+    /**
+     * Runs output logic one indentation level deeper.
+     *
+     * @param body output logic for child branches
+     * @param isLast whether the parent branch is the last sibling
+     */
     protected void withChildren(Runnable body, boolean isLast) {
         isLastStack.add(isLast);
         body.run();
@@ -542,6 +620,11 @@ public class AstPrinter extends AstNodeVisitorBase {
         }
     }
 
+    /**
+     * Visits child writer callbacks while passing sibling-position metadata.
+     *
+     * @param children child writer callbacks
+     */
     protected void visitMany(List<Consumer<Boolean>> children) {
         visitMany(children, Consumer::accept);
     }
@@ -558,19 +641,40 @@ public class AstPrinter extends AstNodeVisitorBase {
         return typeName.endsWith("AstNode") ? typeName.substring(0, typeName.length() - "AstNode".length()) : typeName;
     }
 
+    /**
+     * Quotes a string value for tree output.
+     *
+     * @param value string value, or null
+     * @return quoted value or {@code <null>}
+     */
     protected static String quote(String value) {
         return value == null ? "<null>" : "'" + value.replace("'", "\\'") + "'";
     }
 
+    /**
+     * Quotes string objects and formats all other values with
+     * {@link String#valueOf(Object)}.
+     *
+     * @param value value to format
+     * @return formatted value
+     */
     protected static String quoteValue(Object value) {
         return value instanceof String stringValue ? quote(stringValue) : String.valueOf(value);
     }
 
+    /**
+     * Writes a line without tree-prefix formatting.
+     *
+     * @param text line text
+     */
     protected void writeRawLine(String text) {
         write(text);
         writeLine();
     }
 
+    /**
+     * Writes an empty line.
+     */
     protected void writeBlankLine() {
         writeLine();
     }

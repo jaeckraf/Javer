@@ -26,6 +26,9 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Emits VM bytecode from a semantically checked AST.
+ */
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
@@ -34,6 +37,18 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
 
+    /**
+     * Creates a code generator with no active output writer.
+     */
+    public CodeGenerator() {
+    }
+
+    /**
+     * Generates bytecode for a complete compilation unit and writes it to disk.
+     *
+     * @param node root compilation unit
+     * @param outputFilePath target bytecode file path
+     */
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
         prepareOutputDirectory(outputFile);
@@ -354,7 +369,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(CallExpression node) {
         if (node.getFunctionName().equalsIgnoreCase("prints")) {
             node.getArguments().getFirst().accept(this);
-            writeLine("HPRINTS");
+            writeLine("PRINTS");
         } else if (node.getFunctionName().equalsIgnoreCase("printi")) {
             node.getArguments().getFirst().accept(this);
             writeLine("PRINTI");

@@ -2,7 +2,16 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
 
+/**
+ * Computes layout metadata such as struct byte sizes after type resolution.
+ */
 public class LayoutVisitor extends AstNodeVisitorBase {
+
+    /**
+     * Creates a layout pass.
+     */
+    public LayoutVisitor() {
+    }
 
     @Override
     public void visit(StructDeclaration node) {

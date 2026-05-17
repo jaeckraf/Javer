@@ -4,6 +4,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 
+/**
+ * Symbol table entry for a function and its generated frame metadata.
+ */
 public final class FunctionEntry extends SymbolEntry {
 
     private TypeInfo returnType = UnknownTypeInfo.INSTANCE;

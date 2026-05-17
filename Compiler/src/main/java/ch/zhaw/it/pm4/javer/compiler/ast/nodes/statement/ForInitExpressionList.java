@@ -7,6 +7,9 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
+/**
+ * For-loop initializer consisting of one or more expressions.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ForInitExpressionList extends AstNodeBase implements ForInit {
 

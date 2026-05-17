@@ -39,6 +39,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
+/**
+ * Assigns semantic type information to expression and type AST nodes.
+ */
 public class TypeCheckVisitor extends AstNodeVisitorBase {
 
     private static final Set<String> VOID_BUILT_INS = Set.of("printi", "prints", "println");
@@ -46,10 +49,18 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     private final DiagnosticBag diagnosticBag;
     private GlobalScope globalScope;
 
+    /**
+     * Creates a type-checking pass without diagnostic reporting.
+     */
     public TypeCheckVisitor() {
         this(null);
     }
 
+    /**
+     * Creates a type-checking pass.
+     *
+     * @param diagnosticBag optional collector for type diagnostics
+     */
     public TypeCheckVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
     }
