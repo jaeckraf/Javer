@@ -1,0 +1,9 @@
+=== Error Report ===
+File: src\test\resources\testcase\typecheck\if_branches\negative\input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] If condition must be bool, int, or double, but was: string
+  --> src\test\resources\testcase\typecheck\if_branches\negative\input.javer:3:5
+  |
+3 |     if ("hello") {
+  |     ^^
