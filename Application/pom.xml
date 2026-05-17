@@ -69,7 +69,6 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.23.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -159,36 +158,45 @@
             <!-- IDE mode -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
+                <artifactId>maven-antrun-plugin</artifactId>
                 <executions>
                     <execution>
                         <id>copy-tools-for-ide</id>
                         <phase>prepare-package</phase>
                         <goals>
-                            <goal>copy</goal>
+                            <goal>run</goal>
                         </goals>
                         <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>ch.zhaw.it.pm4</groupId>
-                                    <artifactId>Compiler</artifactId>
-                                    <version>${project.version}</version>
-                                    <classifier>all</classifier>
-                                    <type>jar</type>
-                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
-                                    <destFileName>compiler.jar</destFileName>
-                                </artifactItem>
-                                <artifactItem>
-                                    <groupId>ch.zhaw.it.pm4</groupId>
-                                    <artifactId>VM</artifactId>
-                                    <version>${project.version}</version>
-                                    <classifier>all</classifier>
-                                    <type>jar</type>
-                                    <outputDirectory>${project.build.directory}/tools</outputDirectory>
-                                    <destFileName>vm.jar</destFileName>
-                                </artifactItem>
-                            </artifactItems>
-                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <target>
+                                <property name="compiler.jar"
+                                          location="${project.basedir}/../Compiler/target/Compiler-${project.version}-all.jar"/>
+                                <property name="vm.jar"
+                                          location="${project.basedir}/../VM/target/VM-${project.version}-all.jar"/>
+
+                                <fail message="Compiler tool jar not found: ${compiler.jar}">
+                                    <condition>
+                                        <not>
+                                            <available file="${compiler.jar}" type="file"/>
+                                        </not>
+                                    </condition>
+                                </fail>
+
+                                <fail message="VM tool jar not found: ${vm.jar}">
+                                    <condition>
+                                        <not>
+                                            <available file="${vm.jar}" type="file"/>
+                                        </not>
+                                    </condition>
+                                </fail>
+
+                                <mkdir dir="${project.build.directory}/tools"/>
+                                <copy file="${compiler.jar}"
+                                      tofile="${project.build.directory}/tools/compiler.jar"
+                                      overwrite="true"/>
+                                <copy file="${vm.jar}"
+                                      tofile="${project.build.directory}/tools/vm.jar"
+                                      overwrite="true"/>
+                            </target>
                         </configuration>
                     </execution>
                 </executions>

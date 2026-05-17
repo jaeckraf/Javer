@@ -19,6 +19,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <argLine></argLine>
 
         <!-- one single Java version for all modules -->
         <maven.compiler.release>21</maven.compiler.release>
@@ -27,6 +29,8 @@
         <jacoco.version>0.8.14</jacoco.version>
         <jacoco.minimum-coverage>0.10</jacoco.minimum-coverage>
         <junit.version>5.12.1</junit.version>
+        <mockito.version>5.23.0</mockito.version>
+        <mockito.agent.skip>false</mockito.agent.skip>
 
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <maven.shade.plugin.version>3.6.1</maven.shade.plugin.version>
@@ -34,6 +38,7 @@
         <maven.clean.plugin.version>3.3.2</maven.clean.plugin.version>
         <maven.antrun.plugin.version>3.1.0</maven.antrun.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
+        <maven.surefire.plugin.version>3.2.5</maven.surefire.plugin.version>
         <maven.enforcer.plugin.version>3.5.0</maven.enforcer.plugin.version>
         <jpackage.plugin.version>1.7.4</jpackage.plugin.version>
     </properties>
@@ -52,6 +57,12 @@
                 <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -64,6 +75,7 @@
                     <version>${maven.compiler.plugin.version}</version>
                     <configuration>
                         <release>${maven.compiler.release}</release>
+                        <encoding>${project.build.sourceEncoding}</encoding>
                     </configuration>
                 </plugin>
 
@@ -95,6 +107,15 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-resources-plugin</artifactId>
                     <version>${maven.resources.plugin.version}</version>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven.surefire.plugin.version}</version>
+                    <configuration>
+                        <argLine>@{argLine} "-javaagent:${project.build.directory}/agents/mockito-core.jar" -Xshare:off -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8</argLine>
+                    </configuration>
                 </plugin>
 
                 <plugin>
@@ -138,6 +159,46 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-mockito-agent</id>
+                        <phase>generate-test-resources</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${mockito.agent.skip}</skip>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.mockito</groupId>
+                                    <artifactId>mockito-core</artifactId>
+                                    <version>${mockito.version}</version>
+                                    <type>jar</type>
+                                    <outputDirectory>${project.build.directory}/agents</outputDirectory>
+                                    <destFileName>mockito-core.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>local-fast</id>
+            <properties>
+                <skipTests>true</skipTests>
+                <maven.test.skip>true</maven.test.skip>
+                <jacoco.skip>true</jacoco.skip>
+                <mockito.agent.skip>true</mockito.agent.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

@@ -9,6 +9,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 
+/**
+ * Top-level symbol scope for functions, structs, and enums.
+ */
 public final class GlobalScope {
 
     private final Map<String, FunctionEntry> functions = new LinkedHashMap<>();

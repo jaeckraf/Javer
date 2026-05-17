@@ -91,7 +91,8 @@ class VMTest {
                 .code
                 _main:
                 ENTER, 0
-                DPRINTS, hello
+                PUSHR, hello
+                PRINTS
                 RET
                 
                 .data
@@ -109,7 +110,7 @@ class VMTest {
                 _main:
                 ENTER, 0
                 PUSHR, hello
-                HPRINTS
+                PRINTS
                 RET
                 
                 .data
@@ -132,11 +133,11 @@ class VMTest {
                 FLOAD4, 0
                 PUSHI, 0
                 PUSHR, hello
-                HSTORE4
+                STORE4
                 FLOAD4, 0
                 PUSHI, 0
-                HLOAD4
-                HPRINTS
+                LOAD4
+                PRINTS
                 RET
                 
                 .data
@@ -367,6 +368,46 @@ class VMTest {
     }
 
     @Test
+    void loadsIntegerFromDataAddress() throws Exception {
+        RunResult result = runProgram("""
+                .code
+                _main:
+                ENTER, 0
+                PUSHR, answer
+                PUSHI, 0
+                LOAD4
+                PRINTI
+                RET
+                
+                .data
+                answer 4 0000002A
+                """);
+
+        assertEquals("42", result.stdout());
+        assertEquals("", result.stderr());
+    }
+
+    @Test
+    void rejectsWriteToReadOnlyDataAddress() throws Exception {
+        RunResult result = runMain("""
+                .code
+                _main:
+                ENTER, 0
+                PUSHR, answer
+                PUSHI, 0
+                PUSHI, 7
+                STORE4
+                RET
+                
+                .data
+                answer 4 0000002A
+                """);
+
+        assertEquals("", result.stdout());
+        assertTrue(result.stderr().contains("Runtime error: data:answer is read-only"));
+    }
+
+    @Test
     void copiesDataBytesToHeap() throws Exception {
         RunResult result = runProgram("""
                 .code
@@ -381,11 +422,11 @@ class VMTest {
                 DCOPYH, values
                 FLOAD4, 0
                 PUSHI, 0
-                HLOAD4
+                LOAD4
                 PRINTI
                 FLOAD4, 0
                 PUSHI, 4
-                HLOAD4
+                LOAD4
                 PRINTI
                 RET
                 
@@ -510,14 +551,26 @@ class VMTest {
                 """);
 
         assertEquals("", result.stdout());
-        assertTrue(result.stderr().contains("Runtime error: heap access out of bounds"));
+        assertTrue(result.stderr().contains("Runtime error: heap:0x10000000 access out of bounds"));
+    }
+
+    @Test
+    void rejectsStackSizeAboveLimit() {
+        RunResult result = captureOutput(() -> VM.main(new String[]{
+                "--stack-size", "17M", "program.bytecode"
+        }));
+
+        assertEquals("", result.stdout());
+        assertTrue(result.stderr().contains("--stack-size must be between 1 and 16777216 bytes"));
     }
 
     @Test
     void reportsUsageWhenNoArgumentsArePassed() {
         RunResult result = captureMainWithoutFile();
 
-        assertEquals("Usage: java VM <filePath>", normalize(result.stdout()));
+        assertTrue(result.stdout().contains("Usage: java VM [options] <filePath>"));
+        assertTrue(result.stdout().contains("--stack-size <size>"));
+        assertTrue(result.stdout().contains("--dump-on-error"));
         assertEquals("", result.stderr());
     }
 
@@ -530,10 +583,13 @@ class VMTest {
         });
     }
 
-    private RunResult runMain(String bytecode) throws Exception {
+    private RunResult runMain(String bytecode, String... optionArgs) throws Exception {
         Path program = writeProgram(bytecode);
+        String[] args = new String[optionArgs.length + 1];
+        System.arraycopy(optionArgs, 0, args, 0, optionArgs.length);
+        args[args.length - 1] = program.toString();
 
-        return captureOutput(() -> VM.main(new String[]{program.toString()}));
+        return captureOutput(() -> VM.main(args));
     }
 
     private RunResult captureMainWithoutFile() {

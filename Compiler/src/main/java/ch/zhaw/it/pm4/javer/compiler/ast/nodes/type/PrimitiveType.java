@@ -5,6 +5,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node representing a built-in primitive type.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class PrimitiveType extends AstNodeBase implements TypeAstNode {
 

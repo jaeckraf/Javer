@@ -5,6 +5,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * Expression node representing access to a member on a receiver expression.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class MemberAccessExpression extends ExpressionAstNodeBase {
 

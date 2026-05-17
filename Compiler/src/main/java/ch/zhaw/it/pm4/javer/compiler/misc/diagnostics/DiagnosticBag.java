@@ -8,8 +8,14 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
+/**
+ * Collects diagnostics for one compilation run and formats user-facing error
+ * reports with source excerpts.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public class DiagnosticBag {
+
+    private static final int TAB_WIDTH = 4;
 
     private final int errorLimit;
     private final String filePath;
@@ -21,9 +27,10 @@ public class DiagnosticBag {
     /**
      * Initializes a new DiagnosticBag.
      *
-     * @param filePath   The path of the file being compiled.
+     * @param filePath The path of the file being compiled.
      * @param errorLimit The maximum number of errors before compilation aborts.
-     *                   // @param sourceCache The cache holding the raw source code text.
+     * @param compilationPhase initial compiler phase
+     * @param sourceCache The cache holding the raw source code text.
      */
     public DiagnosticBag(String filePath, int errorLimit, CompilationPhase compilationPhase, SourceCache sourceCache) {
         this.filePath = filePath;
@@ -34,14 +41,10 @@ public class DiagnosticBag {
     }
 
     /**
-     * Sets the current compiler phase (e.g., "Lexer", "Parser").
+     * Updates the phase that will be printed in diagnostic reports.
      *
-     * @param phase The name of the phase.
+     * @param phase current compiler phase
      */
-    public void setPhase(String phase) {
-        // TODO: Implement
-    }
-
     public void setPhase(CompilationPhase phase) {
         this.phase = phase;
     }
@@ -56,6 +59,13 @@ public class DiagnosticBag {
         // TODO: Implement error limit check (throw exception if exceeded)
     }
 
+    /**
+     * Adds a diagnostic at the given source location.
+     *
+     * @param location source location associated with the diagnostic
+     * @param severity diagnostic severity
+     * @param message user-facing message
+     */
     public void add(SourceLocation location, Severity severity, String message) {
         diagnostics.add(new Diagnostic(location, severity, message));
     }
@@ -87,12 +97,77 @@ public class DiagnosticBag {
             return sb.toString();
         }
 
-        for (Diagnostic d : diagnostics) {
-            sb.append(d.toString());
-            sb.append("\n");
+        for (int i = 0; i < diagnostics.size(); i++) {
+            sb.append(formatDiagnostic(diagnostics.get(i)));
+            if (i + 1 < diagnostics.size()) {
+                sb.append("\n");
+            }
         }
 
         return sb.toString();
+    }
+
+    private String formatDiagnostic(Diagnostic diagnostic) {
+        SourceLocation location = diagnostic.getLocation();
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("[")
+                .append(diagnostic.getSeverity().name())
+                .append("] ")
+                .append(diagnostic.getMessage())
+                .append("\n");
+
+        if (location == null) {
+            return sb.toString();
+        }
+
+        sb.append("  --> ")
+                .append(filePath)
+                .append(":")
+                .append(location.lineNumber())
+                .append(":")
+                .append(location.startColumn())
+                .append("\n");
+
+        if (sourceCache != null) {
+            appendSourceExcerpt(sb, location);
+        }
+
+        return sb.toString();
+    }
+
+    private void appendSourceExcerpt(StringBuilder sb, SourceLocation location) {
+        String rawLine = sourceCache.getLine(location.lineNumber());
+        String line = expandTabs(rawLine);
+        String lineNumber = Integer.toString(location.lineNumber());
+        String gutterPadding = " ".repeat(lineNumber.length());
+
+        sb.append(gutterPadding).append(" |").append("\n");
+        sb.append(lineNumber).append(" | ").append(line).append("\n");
+        sb.append(gutterPadding).append(" | ").append(markerFor(location)).append("\n");
+    }
+
+    private String markerFor(SourceLocation location) {
+        int start = Math.max(1, location.startColumn());
+        int end = Math.max(start, location.endColumn());
+        return " ".repeat(start - 1) + "^".repeat(end - start + 1);
+    }
+
+    private String expandTabs(String line) {
+        StringBuilder expanded = new StringBuilder();
+        int column = 1;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '\t') {
+                int spaces = TAB_WIDTH - ((column - 1) % TAB_WIDTH);
+                expanded.append(" ".repeat(spaces));
+                column += spaces;
+            } else {
+                expanded.append(c);
+                column++;
+            }
+        }
+        return expanded.toString();
     }
 
     /**

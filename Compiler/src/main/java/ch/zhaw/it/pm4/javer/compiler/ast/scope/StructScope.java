@@ -6,6 +6,9 @@ import java.util.Map;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 
+/**
+ * Symbol scope containing fields declared by a single struct.
+ */
 public final class StructScope {
 
     private final Map<String, FieldEntry> fields = new LinkedHashMap<>();

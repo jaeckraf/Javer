@@ -2,6 +2,9 @@ package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
 
+/**
+ * Symbol table entry for a struct declaration.
+ */
 public final class StructEntry extends SymbolEntry {
 
     private StructScope scope;

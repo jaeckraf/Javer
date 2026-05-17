@@ -8,6 +8,9 @@ import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 
+/**
+ * AST node for a struct declaration and its fields.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class StructDeclaration extends AstNodeBase implements DeclarationAstNode {
 

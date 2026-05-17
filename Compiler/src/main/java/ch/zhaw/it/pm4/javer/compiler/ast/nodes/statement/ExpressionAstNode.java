@@ -3,6 +3,9 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 
+/**
+ * Marker interface for AST nodes that produce expression values.
+ */
 public sealed interface ExpressionAstNode extends AstNode, StatementAstNode
         permits ExpressionAstNodeBase {
 

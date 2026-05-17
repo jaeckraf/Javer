@@ -10,6 +10,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * AST node for a function declaration, including return type, parameters, and body.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class FunctionDeclaration extends AstNodeBase implements DeclarationAstNode {
 

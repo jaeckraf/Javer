@@ -48,7 +48,7 @@ public class ParserLiteralTest {
 
     @Test
     void testParseHex() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_HEX, "0x1A"), token(TokenType.SPECIAL_END_OF_FILE, ""));
+        Parser parser = createParser(token(TokenType.LITERAL_HEX, "1A"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.INT, expr.getKind());
         assertEquals(0x1A, expr.getValue());
@@ -56,7 +56,7 @@ public class ParserLiteralTest {
 
     @Test
     void testParseBinary() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_BINARY, "0b1010"), token(TokenType.SPECIAL_END_OF_FILE, ""));
+        Parser parser = createParser(token(TokenType.LITERAL_BINARY, "1010"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.INT, expr.getKind());
         assertEquals(0b1010, expr.getValue());
@@ -64,7 +64,7 @@ public class ParserLiteralTest {
 
     @Test
     void testParseOctal() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_OCTAL, "0o12"), token(TokenType.SPECIAL_END_OF_FILE, ""));
+        Parser parser = createParser(token(TokenType.LITERAL_OCTAL, "12"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.INT, expr.getKind());
         assertEquals(012, expr.getValue());
@@ -96,7 +96,7 @@ public class ParserLiteralTest {
 
     @Test
     void testParseString() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_STRING, "\"hello\""), token(TokenType.SPECIAL_END_OF_FILE, ""));
+        Parser parser = createParser(token(TokenType.LITERAL_STRING, "hello"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.STRING, expr.getKind());
         assertEquals("hello", expr.getValue());
@@ -104,7 +104,7 @@ public class ParserLiteralTest {
 
     @Test
     void testParseChar() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_CHAR, "'a'"), token(TokenType.SPECIAL_END_OF_FILE, ""));
+        Parser parser = createParser(token(TokenType.LITERAL_CHAR, "a"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.CHAR, expr.getKind());
         assertEquals('a', expr.getValue());
@@ -112,7 +112,7 @@ public class ParserLiteralTest {
     
     @Test
     void testParseCharEscaped() throws Exception {
-        Parser parser = createParser(token(TokenType.LITERAL_CHAR, "'\\n'"), token(TokenType.SPECIAL_END_OF_FILE, ""));
+        Parser parser = createParser(token(TokenType.LITERAL_CHAR, "\n"), token(TokenType.SPECIAL_END_OF_FILE, ""));
         LiteralExpression<?> expr = (LiteralExpression<?>) invokePrivate(parser, "parseLiteralExpression");
         assertEquals(LiteralKind.CHAR, expr.getKind());
         assertEquals('\n', expr.getValue());

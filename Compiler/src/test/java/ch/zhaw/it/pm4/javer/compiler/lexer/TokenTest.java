@@ -45,4 +45,19 @@ class TokenTest {
             new Token(TokenType.SYMBOL_LEFT_PARENTHESIS, null, new SourceLocation(1, 2, 1));
         });
     }
+
+    @Test
+    @DisplayName("Should format token dump line with aligned fields")
+    void testTokenDumpFormat() {
+        Token token = new Token(TokenType.KEYWORD_FUNCTION, "fn", new SourceLocation(1, 2, 1));
+
+        assertEquals(String.format(
+                "TokenType: %35s, value: '%15s', position: [%3d : %3d : %3d ]",
+                TokenType.KEYWORD_FUNCTION,
+                "fn",
+                1,
+                1,
+                2
+        ), token.toString());
+    }
 }

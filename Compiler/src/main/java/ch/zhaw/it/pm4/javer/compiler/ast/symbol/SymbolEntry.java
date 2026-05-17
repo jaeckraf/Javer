@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
+/**
+ * Base class for named entries stored in compiler symbol tables.
+ */
 public abstract class SymbolEntry {
 
     private final String name;
