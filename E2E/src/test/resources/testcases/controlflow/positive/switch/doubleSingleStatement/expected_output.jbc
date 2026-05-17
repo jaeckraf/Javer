@@ -2,7 +2,7 @@
 _main:
 ENTER, 0
 PUSHR, string_0
-HPRINTS
+PRINTS
 PUSHD, 3.14
 DUPD
 PUSHD, 1.0
@@ -16,27 +16,27 @@ JUMP, case_body_3
 case_body_1:
 POPD
 PUSHR, string_1
-HPRINTS
+PRINTS
 JUMP, switch_end_0
 case_body_2:
 POPD
 PUSHR, string_2
-HPRINTS
+PRINTS
 PUSHR, string_3
-HPRINTS
+PRINTS
 PUSHD, 3.14
 PRINTD
 PUSHR, string_4
-HPRINTS
+PRINTS
 JUMP, switch_end_0
 case_body_3:
 POPD
 PUSHR, string_5
-HPRINTS
+PRINTS
 JUMP, switch_end_0
 switch_end_0:
 PUSHR, string_6
-HPRINTS
+PRINTS
 
 .data
 string_0 2 0054,0065,0073,0074,0069,006E,0067,0020,0064,006F,0075,0062,006C,0065,0020,0073,0077,0069,0074,0063,0068,003A,000A,0000

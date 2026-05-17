@@ -3,7 +3,7 @@ _main:
 ENTER, 0
 PUSHI, 0
 PUSHR, string_0
-HPRINTS
+PRINTS
 while_condition_0:
 PUSHI, 5
 JUMPF, while_end_1
@@ -23,30 +23,30 @@ JUMP, case_body_6
 case_body_3:
 POPI
 PUSHR, string_1
-HPRINTS
+PRINTS
 JUMP, switch_end_2
 case_body_4:
 POPI
 PUSHR, string_2
-HPRINTS
+PRINTS
 JUMP, switch_end_2
 case_body_5:
 POPI
 PUSHR, string_3
-HPRINTS
+PRINTS
 JUMP, while_end_1
 JUMP, switch_end_2
 case_body_6:
 POPI
 PUSHR, string_4
-HPRINTS
+PRINTS
 JUMP, switch_end_2
 switch_end_2:
 PUSHI, 1
 JUMP, while_condition_0
 while_end_1:
 PUSHR, string_5
-HPRINTS
+PRINTS
 
 .data
 string_0 2 0054,0065,0073,0074,0069,006E,0067,0020,0062,0072,0065,0061,006B,0020,0069,006E,0073,0069,0064,0065,0020,0073,0077,0069,0074,0063,0068,003A,000A,0000
