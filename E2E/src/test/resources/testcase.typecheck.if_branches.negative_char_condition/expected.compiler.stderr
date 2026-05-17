@@ -5,5 +5,5 @@ Phase: TYPE_CHECKING
 [ERROR] If condition must be bool, int, or double, but was: char
   --> src\test\resources\testcase\typecheck\if_branches\negative_char_condition\input.javer:3:5
   |
-3 |     if ("hello") {
+3 |     if ('A') {
   |     ^^
