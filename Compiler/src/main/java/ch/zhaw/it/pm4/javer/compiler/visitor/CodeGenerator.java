@@ -19,6 +19,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
@@ -198,6 +199,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (expression instanceof CallExpression call && isVoidReturningCall(call)) {
             return false;
         }
+        if (expression instanceof AssignExpression assign && assign.getTarget() instanceof IndexExpression) {
+            return false;
+        }
         return true;
     }
 
@@ -334,6 +338,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(AssignExpression node) {
+        if (node.getTarget() instanceof IndexExpression indexTarget) {
+            emitIndexAssign(indexTarget, node);
+            return;
+        }
         StorageEntry storage = storageOf(node.getTarget());
         if (storage == null) {
             return;
@@ -350,6 +358,26 @@ public class CodeGenerator extends AstNodeVisitorBase {
         }
         emitDup(type);
         emitFrameStore(storage);
+    }
+
+    private void emitIndexAssign(IndexExpression target, AssignExpression node) {
+        if (node.getOperator() != AssignOperator.ASSIGN) {
+            return;
+        }
+        StorageEntry storage = storageOf(target.getTarget());
+        if (storage == null || !(storage.getType() instanceof ArrayTypeInfo arrayType)) {
+            return;
+        }
+        TypeInfo elementType = arrayType.elementType();
+        emitFrameLoad(storage);
+        emitTyped(target.getIndex(), PrimitiveTypeInfo.INT);
+        int elementSize = sizeOf(elementType);
+        if (elementSize != 1) {
+            writeLine("PUSHI, " + elementSize);
+            writeLine("IMUL");
+        }
+        emitTyped(node.getValue(), elementType);
+        emitHeapStore(elementType);
     }
 
     private BinaryExpressionKind compoundAssignToBinary(AssignOperator operator) {
@@ -548,7 +576,39 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IndexExpression node) {
-        super.visit(node);
+        StorageEntry storage = storageOf(node.getTarget());
+        if (storage == null || !(storage.getType() instanceof ArrayTypeInfo arrayType)) {
+            return;
+        }
+        TypeInfo elementType = arrayType.elementType();
+        emitFrameLoad(storage);
+        emitTyped(node.getIndex(), PrimitiveTypeInfo.INT);
+        int elementSize = sizeOf(elementType);
+        if (elementSize != 1) {
+            writeLine("PUSHI, " + elementSize);
+            writeLine("IMUL");
+        }
+        emitHeapLoad(elementType);
+    }
+
+    private void emitHeapLoad(TypeInfo type) {
+        int size = sizeOf(type);
+        writeLine(switch (size) {
+            case 1 -> "HLOAD1";
+            case 2 -> "HLOAD2";
+            case 8 -> "HLOAD8";
+            default -> "HLOAD4";
+        });
+    }
+
+    private void emitHeapStore(TypeInfo type) {
+        int size = sizeOf(type);
+        writeLine(switch (size) {
+            case 1 -> "HSTORE1";
+            case 2 -> "HSTORE2";
+            case 8 -> "HSTORE8";
+            default -> "HSTORE4";
+        });
     }
 
     @Override
@@ -560,12 +620,50 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(NewExpression node) {
-        super.visit(node);
+        if (!(node.getResultingType() instanceof ArrayTypeInfo arrayType)) {
+            return;
+        }
+        TypeInfo elementType = arrayType.elementType();
+        int elementSize = sizeOf(elementType);
+        ArrayInitExpression init = node.getArrayInit();
+
+        if (node.getDimensions().isEmpty()) {
+            if (init == null) {
+                return;
+            }
+            writeLine("PUSHI, " + (init.getElements().size() * elementSize));
+        } else {
+            emitTyped(node.getDimensions().get(0), PrimitiveTypeInfo.INT);
+            if (elementSize != 1) {
+                writeLine("PUSHI, " + elementSize);
+                writeLine("IMUL");
+            }
+        }
+        writeLine("NEW");
+
+        if (init != null) {
+            initializeArrayElements(init.getElements(), elementType, elementSize);
+        }
     }
 
     @Override
     public void visit(ArrayInitExpression node) {
-        super.visit(node);
+        TypeInfo elementType = node.getResultingType() instanceof ArrayTypeInfo arrayType
+                ? arrayType.elementType()
+                : UnknownTypeInfo.INSTANCE;
+        int elementSize = sizeOf(elementType);
+        writeLine("PUSHI, " + (node.getElements().size() * elementSize));
+        writeLine("NEW");
+        initializeArrayElements(node.getElements(), elementType, elementSize);
+    }
+
+    private void initializeArrayElements(List<ExpressionAstNode> elements, TypeInfo elementType, int elementSize) {
+        for (int i = 0; i < elements.size(); i++) {
+            writeLine("DUPI");
+            writeLine("PUSHI, " + (i * elementSize));
+            emitTyped(elements.get(i), elementType);
+            emitHeapStore(elementType);
+        }
     }
 
     @Override
