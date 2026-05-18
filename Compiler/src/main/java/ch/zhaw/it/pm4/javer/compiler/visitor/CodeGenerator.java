@@ -154,8 +154,21 @@ public class CodeGenerator extends AstNodeVisitorBase {
             node.getBody().accept(this);
         }
 
-        emitFallthroughReturn(function);
+        if (!endsWithReturn(node.getBody())) {
+            emitFallthroughReturn(function);
+        }
         currentFunction = null;
+    }
+
+    private boolean endsWithReturn(BlockStatement body) {
+        if (body == null) {
+            return false;
+        }
+        List<StatementAstNode> statements = body.getStatements();
+        if (statements.isEmpty()) {
+            return false;
+        }
+        return statements.get(statements.size() - 1) instanceof ReturnStatement;
     }
 
     private void emitFallthroughReturn(FunctionEntry function) {
