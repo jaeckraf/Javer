@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.lexer;
 
 /**
- * Enum representing different types of tokens.
+ * Token kinds produced by the lexer.
  */
 public enum TokenType {
     // Literals

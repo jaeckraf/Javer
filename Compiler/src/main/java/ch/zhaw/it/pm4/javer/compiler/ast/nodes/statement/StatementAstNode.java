@@ -2,6 +2,9 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 
+/**
+ * Marker interface for executable statement nodes.
+ */
 public sealed interface StatementAstNode extends AstNode
         permits ExpressionAstNode,
         BlockStatement,

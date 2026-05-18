@@ -9,8 +9,23 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 
+/**
+ * Default AST visitor implementation that recursively traverses child nodes and
+ * delegates leaf behavior to {@link #visitDefault(AstNode)}.
+ */
 public abstract class AstNodeVisitorBase implements AstNodeVisitor {
 
+    /**
+     * Creates a visitor with default recursive traversal behavior.
+     */
+    protected AstNodeVisitorBase() {
+    }
+
+    /**
+     * Handles leaf nodes or nodes without specialized behavior in a subclass.
+     *
+     * @param node visited node
+     */
     protected void visitDefault(AstNode node) {
     }
 

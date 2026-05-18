@@ -1,5 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
+/**
+ * Symbol table entry for a value declared inside an enum.
+ */
 public final class EnumValueEntry extends SymbolEntry {
 
     private final EnumEntry ownerEnum;

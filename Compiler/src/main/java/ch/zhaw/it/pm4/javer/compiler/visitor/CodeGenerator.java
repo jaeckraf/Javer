@@ -38,6 +38,9 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Emits VM bytecode from a semantically checked AST.
+ */
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
@@ -47,6 +50,18 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
 
+    /**
+     * Creates a code generator with no active output writer.
+     */
+    public CodeGenerator() {
+    }
+
+    /**
+     * Generates bytecode for a complete compilation unit and writes it to disk.
+     *
+     * @param node root compilation unit
+     * @param outputFilePath target bytecode file path
+     */
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
         prepareOutputDirectory(outputFile);

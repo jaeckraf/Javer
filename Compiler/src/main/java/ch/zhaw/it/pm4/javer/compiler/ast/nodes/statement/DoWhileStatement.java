@@ -5,6 +5,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+/**
+ * Statement node representing a do-while loop.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class DoWhileStatement extends AstNodeBase implements StatementAstNode {
 

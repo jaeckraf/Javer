@@ -31,6 +31,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
+/**
+ * Resolves names in expressions and types to previously declared symbols.
+ */
 public class NameResolutionVisitor extends AstNodeVisitorBase {
 
     private static final Set<String> BUILT_IN_FUNCTIONS = Set.of("printb", "printc", "printi", "printd", "prints");
@@ -41,6 +44,11 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
     private BlockScope currentBlock;
     private int currentVariableDeclarationOrder;
 
+    /**
+     * Creates a name-resolution pass.
+     *
+     * @param diagnosticBag collector for unresolved or ambiguous names
+     */
     public NameResolutionVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
     }

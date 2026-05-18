@@ -2,6 +2,11 @@ package ch.zhaw.it.pm4.javer.compiler.ast.typeinfo;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 
+/**
+ * Resolved type information for a primitive value.
+ *
+ * @param kind primitive type kind
+ */
 public record PrimitiveTypeInfo(PrimitiveTypeKind kind) implements TypeInfo {
 
     public static final PrimitiveTypeInfo INT = new PrimitiveTypeInfo(PrimitiveTypeKind.INT);

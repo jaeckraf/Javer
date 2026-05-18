@@ -3,14 +3,18 @@ package ch.zhaw.it.pm4.javer.test;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -19,12 +23,25 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public final class E2EApplicationTest {
 
     private static final Path DEFAULT_CASE_ROOT = defaultCaseRoot();
+    private static final Path DEFAULT_OUTPUT_ROOT = Path.of("target", "e2e-output");
 
     private static final String DEFAULT_COMPILER_MAIN_CLASS =
             "ch.zhaw.it.pm4.javer.compiler.Compiler";
 
     private static final String DEFAULT_VM_MAIN_CLASS =
             "ch.zhaw.it.pm4.javer.vm.VM";
+
+    private static final String COMPILER_MODULE = "Compiler";
+    private static final String MISC_MODULE = "Misc";
+    private static final String VM_MODULE = "VM";
+
+    private static final List<String> PROJECT_MODULES = List.of(
+            MISC_MODULE,
+            COMPILER_MODULE,
+            VM_MODULE,
+            "Application",
+            "E2E"
+    );
 
     private static final String INPUT_SOURCE_FILE = "input.javer";
     private static final String COMPILER_STDOUT_FILE = "expected.compiler.stdout";
@@ -55,6 +72,10 @@ public final class E2EApplicationTest {
                 ? Path.of(args[0])
                 : Path.of(System.getProperty("e2e.resources", DEFAULT_CASE_ROOT.toString()));
 
+        Path outputRoot = args.length >= 2
+                ? Path.of(args[1])
+                : Path.of(System.getProperty("e2e.output", DEFAULT_OUTPUT_ROOT.toString()));
+
         long timeoutSeconds = Long.parseLong(
                 System.getProperty("e2e.timeout.seconds", String.valueOf(DEFAULT_TIMEOUT_SECONDS))
         );
@@ -67,7 +88,7 @@ public final class E2EApplicationTest {
         List<CaseResult> results = new ArrayList<>();
 
         for (Path caseDirectory : caseDirectories) {
-            CaseResult result = runCase(caseRoot, caseDirectory, timeoutSeconds);
+            CaseResult result = runCase(caseRoot, caseDirectory, outputRoot, timeoutSeconds);
             results.add(result);
 
             if (result.passed()) {
@@ -114,6 +135,7 @@ public final class E2EApplicationTest {
     private static CaseResult runCase(
             Path caseRoot,
             Path caseDirectory,
+            Path outputRoot,
             long timeoutSeconds
     ) {
         String caseName = caseRoot.relativize(caseDirectory).toString().replace('\\', '/');
@@ -140,7 +162,6 @@ public final class E2EApplicationTest {
                         failures,
                         VM_STDOUT_FILE,
                         VM_STDERR_FILE,
-                        ACTUAL_BYTECODE_FILE,
                         EXPECTED_BYTECODE_FILE
                 );
             }
@@ -151,6 +172,7 @@ public final class E2EApplicationTest {
 
             return runCompilerAndMaybeVmCase(
                     caseDirectory,
+                    outputRoot,
                     timeoutSeconds,
                     caseName,
                     expectsCompilerSuccess,
@@ -164,12 +186,14 @@ public final class E2EApplicationTest {
 
     private static CaseResult runCompilerAndMaybeVmCase(
             Path caseDirectory,
+            Path outputRoot,
             long timeoutSeconds,
             String caseName,
             boolean expectsCompilerSuccess,
             List<String> failures
     ) throws Exception {
-        Path generatedBytecodeFile = caseDirectory.resolve(ACTUAL_BYTECODE_FILE);
+        Path generatedBytecodeFile = generatedBytecodeFile(outputRoot, caseName);
+        prepareGeneratedBytecodeFile(generatedBytecodeFile);
 
         RunResult compilerResult = runCompilerProcess(
                 caseDirectory.resolve(INPUT_SOURCE_FILE),
@@ -196,6 +220,10 @@ public final class E2EApplicationTest {
         }
 
         if (!expectsCompilerSuccess) {
+            if (Files.exists(generatedBytecodeFile)) {
+                failures.add(caseName + " compiler created bytecode although compilation was expected to fail: "
+                        + generatedBytecodeFile);
+            }
             return new CaseResult(caseName, "COMPILER-ERROR", failures);
         }
 
@@ -244,6 +272,21 @@ public final class E2EApplicationTest {
         return new CaseResult(caseName, "COMPILER+VM", failures);
     }
 
+    private static Path generatedBytecodeFile(Path outputRoot, String caseName) throws Exception {
+        Path caseOutputDirectory = outputRoot.resolve(Path.of(caseName));
+        Files.createDirectories(caseOutputDirectory);
+        return caseOutputDirectory.resolve(ACTUAL_BYTECODE_FILE);
+    }
+
+    private static void prepareGeneratedBytecodeFile(Path generatedBytecodeFile) throws Exception {
+        Path parent = generatedBytecodeFile.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
+        Files.deleteIfExists(generatedBytecodeFile);
+    }
+
     private static List<Path> discoverCaseDirectories(Path caseRoot) throws Exception {
         try (Stream<Path> stream = Files.walk(caseRoot)) {
             return stream
@@ -264,8 +307,10 @@ public final class E2EApplicationTest {
         List<String> command = commandFromProperty(
                 "e2e.compiler.command",
                 "e2e.compiler.jar",
+                "e2e.compiler.classpath",
                 "e2e.compiler.mainClass",
-                DEFAULT_COMPILER_MAIN_CLASS
+                DEFAULT_COMPILER_MAIN_CLASS,
+                defaultCompilerClassPath()
         );
 
         command.add("--in-file");
@@ -283,8 +328,10 @@ public final class E2EApplicationTest {
         List<String> command = commandFromProperty(
                 "e2e.vm.command",
                 "e2e.vm.jar",
+                "e2e.vm.classpath",
                 "e2e.vm.mainClass",
-                DEFAULT_VM_MAIN_CLASS
+                DEFAULT_VM_MAIN_CLASS,
+                defaultVmClassPath()
         );
 
         command.add(bytecodeFile.toString());
@@ -295,8 +342,10 @@ public final class E2EApplicationTest {
     private static List<String> commandFromProperty(
             String commandProperty,
             String jarProperty,
+            String classPathProperty,
             String mainClassProperty,
-            String defaultMainClass
+            String defaultMainClass,
+            String defaultClassPath
     ) {
         String explicitCommand = System.getProperty(commandProperty);
         if (explicitCommand != null && !explicitCommand.isBlank()) {
@@ -313,13 +362,140 @@ public final class E2EApplicationTest {
         }
 
         String mainClass = System.getProperty(mainClassProperty, defaultMainClass);
+        String classPath = System.getProperty(classPathProperty);
+        if (classPath == null || classPath.isBlank()) {
+            classPath = defaultClassPath;
+        }
 
         return new ArrayList<>(List.of(
                 javaExecutable(),
                 "-cp",
-                System.getProperty("java.class.path"),
+                classPath,
                 mainClass
         ));
+    }
+
+    private static String defaultCompilerClassPath() {
+        return isolatedClassPath(Set.of(COMPILER_MODULE, MISC_MODULE));
+    }
+
+    private static String defaultVmClassPath() {
+        return isolatedClassPath(Set.of(VM_MODULE));
+    }
+
+    private static String isolatedClassPath(Set<String> includedProjectModules) {
+        List<String> classPathEntries = splitClassPath(System.getProperty("java.class.path", ""));
+        List<Path> projectRoots = stablePathRoots();
+        List<String> filteredEntries = new ArrayList<>();
+        Set<String> seenEntries = new LinkedHashSet<>();
+
+        for (String classPathEntry : classPathEntries) {
+            if (classPathEntry.isBlank() || !seenEntries.add(classPathEntry)) {
+                continue;
+            }
+
+            ProjectClasspathEntry projectClasspathEntry = projectClasspathEntry(classPathEntry, projectRoots);
+            if (projectClasspathEntry == null
+                    || (includedProjectModules.contains(projectClasspathEntry.moduleName())
+                    && projectClasspathEntry.runtimeEntry())) {
+                filteredEntries.add(classPathEntry);
+            }
+        }
+
+        return String.join(File.pathSeparator, filteredEntries);
+    }
+
+    private static List<String> splitClassPath(String classPath) {
+        if (classPath == null || classPath.isBlank()) {
+            return List.of();
+        }
+
+        return Stream.of(classPath.split(java.util.regex.Pattern.quote(File.pathSeparator)))
+                .filter(entry -> !entry.isBlank())
+                .toList();
+    }
+
+    private static ProjectClasspathEntry projectClasspathEntry(String classPathEntry, List<Path> projectRoots) {
+        Path path;
+        try {
+            path = Path.of(classPathEntry).toAbsolutePath().normalize();
+        } catch (InvalidPathException exception) {
+            return null;
+        }
+
+        for (Path projectRoot : projectRoots) {
+            for (String projectModule : PROJECT_MODULES) {
+                Path moduleDirectory = projectRoot.resolve(projectModule).normalize();
+                if (isSameOrChild(path, moduleDirectory)) {
+                    return new ProjectClasspathEntry(
+                            projectModule,
+                            isRuntimeEntry(path, moduleDirectory, projectModule)
+                    );
+                }
+            }
+        }
+
+        String artifactModule = projectArtifactModuleName(path);
+        if (artifactModule != null) {
+            return new ProjectClasspathEntry(artifactModule, true);
+        }
+
+        return null;
+    }
+
+    private static boolean isRuntimeEntry(Path path, Path moduleDirectory, String moduleName) {
+        Path targetDirectory = moduleDirectory.resolve("target").normalize();
+        Path testClassesDirectory = targetDirectory.resolve("test-classes").normalize();
+
+        if (path.equals(testClassesDirectory) || path.startsWith(testClassesDirectory)) {
+            return false;
+        }
+
+        return path.equals(targetDirectory.resolve("classes").normalize())
+                || (path.startsWith(moduleDirectory)
+                && isModuleJar(path, targetDirectory, moduleName));
+    }
+
+    private static boolean isModuleJar(Path path, Path targetDirectory, String moduleName) {
+        Path parent = path.getParent();
+        Path fileName = path.getFileName();
+        if (parent == null || fileName == null || !parent.normalize().equals(targetDirectory)) {
+            return false;
+        }
+
+        String name = fileName.toString();
+        return name.startsWith(moduleName + "-")
+                && name.endsWith(".jar")
+                && !name.contains("-sources")
+                && !name.contains("-javadoc")
+                && !name.contains("-tests");
+    }
+
+    private static String projectArtifactModuleName(Path path) {
+        Path fileName = path.getFileName();
+        if (fileName == null) {
+            return null;
+        }
+
+        String name = fileName.toString();
+        for (String projectModule : PROJECT_MODULES) {
+            if (name.startsWith(projectModule + "-")
+                    && name.endsWith(".jar")
+                    && isProjectArtifactPath(path, projectModule)) {
+                return projectModule;
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean isProjectArtifactPath(Path path, String projectModule) {
+        String normalizedPath = path.toString().replace('\\', '/');
+        return normalizedPath.contains("/ch/zhaw/it/pm4/" + projectModule + "/");
+    }
+
+    private static boolean isSameOrChild(Path path, Path parent) {
+        return path.equals(parent) || path.startsWith(parent);
     }
 
     private static RunResult runProcess(List<String> command, long timeoutSeconds) throws Exception {
@@ -579,5 +755,8 @@ public final class E2EApplicationTest {
         boolean passed() {
             return failures.isEmpty();
         }
+    }
+
+    private record ProjectClasspathEntry(String moduleName, boolean runtimeEntry) {
     }
 }

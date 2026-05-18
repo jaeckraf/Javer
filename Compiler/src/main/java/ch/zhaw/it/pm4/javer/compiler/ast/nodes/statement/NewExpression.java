@@ -6,6 +6,9 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
 
+/**
+ * Expression node representing allocation with {@code new}.
+ */
 @JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class NewExpression extends ExpressionAstNodeBase {
 

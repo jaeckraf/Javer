@@ -41,6 +41,10 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
+/**
+ * Builds scopes and symbol-table entries for declarations before name
+ * resolution.
+ */
 public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
@@ -50,6 +54,12 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     private BlockScope currentBlock;
     private int nextVariableDeclarationOrder;
 
+    /**
+     * Creates a declaration pass.
+     *
+     * @param diagnosticBag collector for duplicate symbols and invalid
+     *                      declarations
+     */
     public SymbolDeclarationVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
     }

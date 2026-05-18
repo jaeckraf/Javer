@@ -21,7 +21,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Formats symbol-table information as readable tables for compiler diagnostics
+ * and expert output.
+ */
 public final class SymbolTableAstPrinter extends AstPrinter {
+
+    /**
+     * Creates a symbol-table printer.
+     */
+    public SymbolTableAstPrinter() {
+    }
 
     @Override
     protected void writeRoot(CompilationUnit node) {
