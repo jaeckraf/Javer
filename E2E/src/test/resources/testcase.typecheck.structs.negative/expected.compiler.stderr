@@ -1,0 +1,18 @@
+=== Error Report ===
+File: src\test\resources\testcase\typecheck\for_loop\negative_array_condition\input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] For condition must be bool, int, or double, but was: int[]
+  --> src\test\resources\testcase\typecheck\for_loop\negative_array_condition\input.javer:5:5
+  |
+5 |     for (; values ;) {
+  |     ^^^
+=== Error Report ===
+File: src\test\resources\testcase\typecheck\structs\negative\input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] Cannot assign string to int.
+  --> src\test\resources\testcase\typecheck\structs\negative\input.javer:9:5
+  |
+9 |     p.x = "hello";
+  |     ^
