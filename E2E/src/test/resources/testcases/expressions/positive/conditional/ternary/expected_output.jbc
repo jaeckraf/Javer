@@ -1,0 +1,46 @@
+.code
+_main:
+ENTER, 21
+PUSHI, 5
+FSTORE4, 0
+PUSHI, 10
+FSTORE4, 4
+FLOAD4, 0
+FLOAD4, 4
+IGT
+JUMPF, cond_false_0
+FLOAD4, 0
+JUMP, cond_end_1
+cond_false_0:
+FLOAD4, 4
+cond_end_1:
+FSTORE4, 8
+FLOAD4, 0
+FLOAD4, 4
+ILT
+JUMPF, cond_false_2
+FLOAD4, 0
+JUMP, cond_end_3
+cond_false_2:
+FLOAD4, 4
+cond_end_3:
+FSTORE4, 12
+FLOAD4, 8
+PRINTI
+FLOAD4, 12
+PRINTI
+PUSHB, 1
+FSTORE1, 16
+FLOAD1, 16
+JUMPF, cond_false_4
+PUSHI, 1
+JUMP, cond_end_5
+cond_false_4:
+PUSHI, 2
+cond_end_5:
+FSTORE4, 17
+FLOAD4, 17
+PRINTI
+RET
+
+.data

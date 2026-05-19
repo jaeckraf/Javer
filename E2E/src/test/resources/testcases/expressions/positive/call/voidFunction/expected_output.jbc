@@ -1,0 +1,14 @@
+.code
+_greet:
+ENTER, 0
+PUSHR, string_0
+PRINTS
+RET
+_main:
+ENTER, 0
+CALL, _greet, 0
+CALL, _greet, 0
+RET
+
+.data
+string_0 2 0068,0069,0000

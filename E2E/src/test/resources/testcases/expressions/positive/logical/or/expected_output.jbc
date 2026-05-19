@@ -1,0 +1,42 @@
+.code
+_main:
+ENTER, 2
+PUSHB, 1
+FSTORE1, 0
+PUSHB, 0
+FSTORE1, 1
+FLOAD1, 0
+JUMPT, or_true_0
+FLOAD1, 0
+JUMP, or_end_1
+or_true_0:
+PUSHB, 1
+or_end_1:
+PRINTB
+FLOAD1, 0
+JUMPT, or_true_2
+FLOAD1, 1
+JUMP, or_end_3
+or_true_2:
+PUSHB, 1
+or_end_3:
+PRINTB
+FLOAD1, 1
+JUMPT, or_true_4
+FLOAD1, 0
+JUMP, or_end_5
+or_true_4:
+PUSHB, 1
+or_end_5:
+PRINTB
+FLOAD1, 1
+JUMPT, or_true_6
+FLOAD1, 1
+JUMP, or_end_7
+or_true_6:
+PUSHB, 1
+or_end_7:
+PRINTB
+RET
+
+.data

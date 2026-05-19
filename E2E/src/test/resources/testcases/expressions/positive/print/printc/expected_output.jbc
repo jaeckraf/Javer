@@ -1,0 +1,12 @@
+.code
+_main:
+ENTER, 0
+PUSHC, 72
+PRINTC
+PUSHC, 105
+PRINTC
+PUSHC, 33
+PRINTC
+RET
+
+.data

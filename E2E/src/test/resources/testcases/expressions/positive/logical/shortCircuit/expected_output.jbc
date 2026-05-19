@@ -1,0 +1,33 @@
+.code
+_sideEffectTrue:
+ENTER, 0
+PUSHR, string_0
+PRINTS
+PUSHB, 1
+RETB
+_main:
+ENTER, 2
+PUSHB, 0
+JUMPF, and_false_0
+CALL, _sideEffectTrue, 0
+JUMP, and_end_1
+and_false_0:
+PUSHB, 0
+and_end_1:
+FSTORE1, 0
+PUSHB, 1
+JUMPT, or_true_2
+CALL, _sideEffectTrue, 0
+JUMP, or_end_3
+or_true_2:
+PUSHB, 1
+or_end_3:
+FSTORE1, 1
+FLOAD1, 0
+PRINTB
+FLOAD1, 1
+PRINTB
+RET
+
+.data
+string_0 2 0063,0061,006C,006C,0065,0064,0000

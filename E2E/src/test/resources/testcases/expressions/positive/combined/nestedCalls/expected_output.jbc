@@ -1,0 +1,25 @@
+.code
+_doubleIt:
+ENTER, 0
+FLOAD4, -4
+PUSHI, 2
+IMUL
+RETI
+_addOne:
+ENTER, 0
+FLOAD4, -4
+PUSHI, 1
+IADD
+RETI
+_main:
+ENTER, 4
+PUSHI, 3
+CALL, _addOne, 4
+CALL, _doubleIt, 4
+CALL, _addOne, 4
+FSTORE4, 0
+FLOAD4, 0
+PRINTI
+RET
+
+.data

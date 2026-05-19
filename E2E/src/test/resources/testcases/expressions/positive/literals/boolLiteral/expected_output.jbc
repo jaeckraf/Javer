@@ -1,0 +1,14 @@
+.code
+_main:
+ENTER, 2
+PUSHB, 1
+FSTORE1, 0
+PUSHB, 0
+FSTORE1, 1
+FLOAD1, 0
+PRINTB
+FLOAD1, 1
+PRINTB
+RET
+
+.data
