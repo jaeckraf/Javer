@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src\test\resources\testcase\typecheck\if_branches\negative_char_condition\input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] If condition must be bool, int, or double, but was: int[]
-  --> src\test\resources\testcase\typecheck\if_branches\negative_char_condition\input.javer:3:5
-  |
-3 |     if (numbers) {
-  |     ^^
