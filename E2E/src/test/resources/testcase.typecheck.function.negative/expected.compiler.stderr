@@ -1,0 +1,45 @@
+=== Error Report ===
+File: src\test\resources\testcase\typecheck\function\negative\input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] Return type mismatch. Expected: int, actual: bool
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:2:5
+  |
+2 |     return true;
+  |     ^^^^^^
+
+[ERROR] Return type mismatch. Expected: double, actual: string
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:6:5
+  |
+6 |     return "hello";
+  |     ^^^^^^
+
+[ERROR] Return type mismatch. Expected: bool, actual: int
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:10:5
+   |
+10 |     return 1;
+   |     ^^^^^^
+
+[ERROR] Return type mismatch. Expected: char, actual: string
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:14:5
+   |
+14 |     return "A";
+   |     ^^^^^^
+
+[ERROR] Return type mismatch. Expected: string, actual: bool
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:18:5
+   |
+18 |     return false;
+   |     ^^^^^^
+
+[ERROR] Void function must not return a value.
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:22:5
+   |
+22 |     return 5;
+   |     ^^^^^^
+
+[ERROR] Missing return value. Expected: int
+  --> src\test\resources\testcase\typecheck\function\negative\input.javer:26:5
+   |
+26 |     return;
+   |     ^^^^^^

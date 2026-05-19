@@ -1,0 +1,55 @@
+fn void main() {
+
+    // wrong primitive assignments
+    let int a = true;
+    let double d = "hello";
+    let boolean flag = 1;
+    let char c = 100;
+    let string s = false;
+
+    // invalid arithmetic
+    let int x = 10;
+    x = x + true;
+    x = x - "1";
+    x = x * false;
+    x = x / "2";
+    x = x % 3.14;
+
+    // invalid implicit conversions
+    let int i = 5;
+    let double decimal = 3.14;
+    i = decimal;
+
+    // chained assignment mismatch
+    let int v1 = 0;
+    let double v2 = 0.0;
+    let int v3 = 0;
+
+    v1 = v2 = v3 = 42;
+
+    // invalid expression assignment
+    let boolean b = true;
+    x = (b + 2) * 3;
+
+    // invalid comparisons
+    let boolean comp1 = 5 > true;
+    let boolean comp2 = "a" == 1;
+    let boolean comp3 = 3.14 < false;
+
+    // invalid logical operators
+    let boolean logic1 = true && 5;
+    let boolean logic2 = "hello" || false;
+
+    // invalid bitwise assignments
+    let int bitwise = 6;
+    bitwise = bitwise & true;
+    bitwise = bitwise | "1";
+    bitwise = bitwise ^ false;
+    bitwise = bitwise << true;
+    bitwise = bitwise >> "2";
+
+    // assigning comparison result to non-boolean
+    let int wrongResult = 10 > 5;
+
+    return;
+}

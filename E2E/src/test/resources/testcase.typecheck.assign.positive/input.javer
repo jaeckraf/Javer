@@ -1,0 +1,64 @@
+fn void main() {
+
+    // primitive assignments
+    let int a = 5;
+    a = 10;
+
+    let double d = 3.14;
+    d = 9.81;
+
+    let boolean flag = true;
+    flag = false;
+
+    let char c = 'A';
+    c = 'B';
+
+    let string s = "hello";
+    s = "world";
+
+    // arithmetic assignments
+    let int x = 10;
+
+    x = x + 5;
+    x = x - 2;
+    x = x * 3;
+    x = x / 2;
+    x = x % 2;
+
+    // implicit int -> double conversion
+    let double converted = 0.0;
+    converted = 5;
+
+    // chained assignments
+    let int v1 = 0;
+    let int v2 = 0;
+    let int v3 = 0;
+
+    v1 = v2 = v3 = 42;
+
+    // expression assignments
+    let int left = 5;
+    let int right = 10;
+
+    left = (left + right) * 2;
+
+    let double complexDouble = (3 + 2.5) * 4;
+
+    // comparison expressions assigned to boolean
+    let boolean greater = 10 > 5;
+    let boolean equal = 5 == 5;
+    let boolean logic = true && false;
+
+    // bitwise assignments
+    let int bitwise = 6;
+
+    bitwise = bitwise & 3;
+    bitwise = bitwise | 1;
+    bitwise = bitwise ^ 2;
+    bitwise = bitwise << 1;
+    bitwise = bitwise >> 1;
+
+    call prints("assignment test completed\n");
+
+    return;
+}

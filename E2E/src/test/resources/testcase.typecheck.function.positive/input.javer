@@ -1,0 +1,16 @@
+fn int add(int a, int b) {
+    return a + b;
+}
+
+fn double toDouble(int value) {
+    return value;
+}
+
+fn void main() {
+    let int result = call add(2, 3);
+    let double converted = call toDouble(5);
+
+    call prints("function test completed\n");
+
+    return;
+}
