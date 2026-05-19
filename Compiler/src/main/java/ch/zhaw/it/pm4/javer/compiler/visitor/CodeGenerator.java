@@ -591,20 +591,20 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private void emitHeapLoad(TypeInfo type) {
         int size = sizeOf(type);
         writeLine(switch (size) {
-            case 1 -> "HLOAD1";
-            case 2 -> "HLOAD2";
-            case 8 -> "HLOAD8";
-            default -> "HLOAD4";
+            case 1 -> "LOAD1";
+            case 2 -> "LOAD2";
+            case 8 -> "LOAD8";
+            default -> "LOAD4";
         });
     }
 
     private void emitHeapStore(TypeInfo type) {
         int size = sizeOf(type);
         writeLine(switch (size) {
-            case 1 -> "HSTORE1";
-            case 2 -> "HSTORE2";
-            case 8 -> "HSTORE8";
-            default -> "HSTORE4";
+            case 1 -> "STORE1";
+            case 2 -> "STORE2";
+            case 8 -> "STORE8";
+            default -> "STORE4";
         });
     }
 
@@ -715,13 +715,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitPrintString(ExpressionAstNode argument) {
-        if (argument instanceof LiteralExpression<?> literal && literal.getKind() == LiteralKind.STRING) {
-            DataEntry entry = dataSection.internString((String) literal.getValue());
-            writeLine("DPRINTS, " + entry.getLabel());
-            return;
-        }
         argument.accept(this);
-        writeLine("HPRINTS");
+        writeLine("PRINTS");
     }
 
     private boolean isPrintBuiltin(String name) {
