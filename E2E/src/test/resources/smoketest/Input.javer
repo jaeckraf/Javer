@@ -1,3 +1,14 @@
+struct s {
+    int a;
+}
+
 fn void main() {
 
+    let struct s s = new struct s[2] {null, null};
+    call f(s[0]);
 }
+
+fn void f(struct s s) {
+    s.a = 3;
+}
+
