@@ -1048,7 +1048,8 @@ public class VM {
     }
 
     private int frameAddress(int offset, String sourceName) {
-        return checkedAddress(fp + offset, sourceName);
+        int localBytes = readInt(checkedAddress(fp + FRAME_LOCAL_BYTES_OFFSET, sourceName));
+        return checkedAddress(fp - localBytes + offset, sourceName);
     }
 
     private int checkedAddress(long address, String sourceName) {
