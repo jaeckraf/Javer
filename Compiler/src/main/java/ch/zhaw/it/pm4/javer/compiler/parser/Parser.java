@@ -234,6 +234,12 @@ public class Parser {
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
+    private void reportInvalidTokenMapping(Token token, String context) {
+        String message = "Invalid " + context + ": " + formatFoundToken(token) + ".";
+        JaverLogger.error(message);
+        diagnosticBag.add(diagnosticLocation(token), Severity.ERROR, message);
+    }
+
     private SourceLocation expectedTokenLocation() {
         Token current = currentToken();
         if (current.getTokenType() == TokenType.SPECIAL_END_OF_FILE || currentPosition == 0) {
@@ -269,7 +275,7 @@ public class Parser {
         }
 
         if (!literalNames.isEmpty()) {
-            tokenNames.add(0, "Literal: (" + String.join(", ", literalNames) + ")");
+            tokenNames.addFirst("Literal: (" + String.join(", ", literalNames) + ")");
         }
 
         return String.join(", ", tokenNames);
@@ -630,8 +636,6 @@ public class Parser {
         return located(ReturnStatement.builder(expression).build(), startToken);
     }
 
-    private VarDeclarationStatement parseVarDeclarationStatement() { return parseVarDeclarationStatement(true); }
-
     private VarDeclarationStatement parseVarDeclarationStatement(boolean expectSemicolon) {
         Token startToken = expectTokenType(TokenType.KEYWORD_LET);
         TypeAstNode type = parseType();
@@ -941,7 +945,10 @@ public class Parser {
             case OPERATOR_GREATER_EQUAL -> BinaryExpressionKind.GREATER_EQUALS;
             case OPERATOR_BITSHIFT_LEFT -> BinaryExpressionKind.SHIFT_LEFT;
             case OPERATOR_BITSHIFT_RIGHT -> BinaryExpressionKind.SHIFT_RIGHT;
-            default -> BinaryExpressionKind.INVALID;
+            default -> {
+                reportInvalidTokenMapping(token, "binary operator");
+                yield BinaryExpressionKind.INVALID;
+            }
         };
     }
 
@@ -953,7 +960,10 @@ public class Parser {
             case OPERATOR_BITWISE_NOT -> UnaryExpressionKind.BITWISE_NOT;
             case OPERATOR_INCREMENT -> UnaryExpressionKind.PRE_INCREMENT;
             case OPERATOR_DECREMENT -> UnaryExpressionKind.PRE_DECREMENT;
-            default -> UnaryExpressionKind.INVALID;
+            default -> {
+                reportInvalidTokenMapping(token, "unary operator");
+                yield UnaryExpressionKind.INVALID;
+            }
         };
     }
 
@@ -961,7 +971,10 @@ public class Parser {
         return switch (token.getTokenType()) {
             case OPERATOR_INCREMENT -> PostfixOperationKind.INCREMENT;
             case OPERATOR_DECREMENT -> PostfixOperationKind.DECREMENT;
-            default -> PostfixOperationKind.INVALID;
+            default -> {
+                reportInvalidTokenMapping(token, "postfix operator");
+                yield PostfixOperationKind.INVALID;
+            }
         };
     }
 
@@ -978,7 +991,10 @@ public class Parser {
             case OPERATOR_BITWISE_XOR_ASSIGN -> AssignOperator.BITWISE_XOR_ASSIGN;
             case OPERATOR_BITSHIFT_LEFT_ASSIGN -> AssignOperator.LEFT_SHIFT_ASSIGN;
             case OPERATOR_BITSHIFT_RIGHT_ASSIGN -> AssignOperator.RIGHT_SHIFT_ASSIGN;
-            default -> AssignOperator.INVALID;
+            default -> {
+                reportInvalidTokenMapping(token, "assignment operator");
+                yield AssignOperator.INVALID;
+            }
         };
     }
 
@@ -989,7 +1005,10 @@ public class Parser {
             case TYPE_BOOLEAN -> PrimitiveTypeKind.BOOL;
             case TYPE_STRING -> PrimitiveTypeKind.STRING;
             case TYPE_CHARACTER -> PrimitiveTypeKind.CHAR;
-            default -> PrimitiveTypeKind.INVALID;
+            default -> {
+                reportInvalidTokenMapping(token, "primitive type");
+                yield PrimitiveTypeKind.INVALID;
+            }
         };
     }
 
@@ -997,7 +1016,10 @@ public class Parser {
         return switch (token.getTokenType()) {
             case TYPE_STRUCT -> NameTypeKind.STRUCT;
             case TYPE_ENUM -> NameTypeKind.ENUM;
-            default -> NameTypeKind.INVALID;
+            default -> {
+                reportInvalidTokenMapping(token, "named type");
+                yield NameTypeKind.INVALID;
+            }
         };
     }
 }

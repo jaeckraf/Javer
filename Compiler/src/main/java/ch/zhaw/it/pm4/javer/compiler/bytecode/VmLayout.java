@@ -1,7 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.bytecode;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 
@@ -20,11 +23,17 @@ public final class VmLayout {
     }
 
     public static int stackBytes(TypeInfo type) {
-        return PrimitiveTypeInfo.DOUBLE.equals(type) ? DOUBLE_BYTES : WORD_BYTES;
+        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
+            return DOUBLE_BYTES;
+        }
+        if (isWordStackType(type)) {
+            return WORD_BYTES;
+        }
+        throw new IllegalArgumentException("Type has no stack representation: " + type);
     }
 
     public static int returnBytes(TypeInfo type) {
-        if (type == null || type instanceof VoidTypeInfo) {
+        if (type instanceof VoidTypeInfo) {
             return 0;
         }
         return stackBytes(type);
@@ -36,10 +45,24 @@ public final class VmLayout {
                 case BOOL -> MemoryWidth.BYTE;
                 case CHAR -> MemoryWidth.CHAR;
                 case DOUBLE -> MemoryWidth.DOUBLE;
-                case INT, STRING, INVALID -> MemoryWidth.WORD;
+                case INT, STRING -> MemoryWidth.WORD;
+                case INVALID -> throw new IllegalArgumentException("Invalid primitive type has no memory width.");
             };
         }
-        return MemoryWidth.WORD;
+        if (type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo) {
+            return MemoryWidth.WORD;
+        }
+        throw new IllegalArgumentException("Type has no memory width: " + type);
+    }
+
+    private static boolean isWordStackType(TypeInfo type) {
+        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
+            return switch (kind) {
+                case BOOL, CHAR, INT, STRING -> true;
+                case DOUBLE, INVALID -> false;
+            };
+        }
+        return type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo;
     }
 
     public enum MemoryWidth {

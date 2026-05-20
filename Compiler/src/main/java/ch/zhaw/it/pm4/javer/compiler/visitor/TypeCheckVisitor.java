@@ -238,7 +238,10 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 yield PrimitiveTypeInfo.INT;
             }
 
-            case INVALID -> UnknownTypeInfo.INSTANCE;
+            case INVALID -> {
+                report(node, "Invalid binary operator.");
+                yield UnknownTypeInfo.INSTANCE;
+            }
         };
 
         node.setResultingType(result);
@@ -445,7 +448,10 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 yield operandType;
             }
 
-            case INVALID -> UnknownTypeInfo.INSTANCE;
+            case INVALID -> {
+                report(node, "Invalid unary operator.");
+                yield UnknownTypeInfo.INSTANCE;
+            }
         };
 
         node.setResultingType(result);
@@ -473,7 +479,10 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 yield operandType;
             }
 
-            case INVALID -> UnknownTypeInfo.INSTANCE;
+            case INVALID -> {
+                report(node, "Invalid postfix operator.");
+                yield UnknownTypeInfo.INSTANCE;
+            }
         };
 
         node.setResultingType(result);
@@ -532,7 +541,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         boolean isStruct = type instanceof StructTypeInfo;
 
         if (isArray) {
-            node.setResultingType(type);
+            node.setResultingType(new ArrayTypeInfo(type));
             return;
         }
 
