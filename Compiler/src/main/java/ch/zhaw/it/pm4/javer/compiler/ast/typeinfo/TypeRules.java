@@ -2,8 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.ast.typeinfo;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignOperator;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-
 /**
  * Central semantic type rules shared by semantic analysis and code generation.
  */
@@ -27,7 +25,8 @@ public final class TypeRules {
     public static boolean isReferenceType(TypeInfo type) {
         return PrimitiveTypeInfo.STRING.equals(type)
                 || type instanceof ArrayTypeInfo
-                || type instanceof StructTypeInfo;
+                || type instanceof StructTypeInfo
+                || type instanceof EnumTypeInfo;
     }
 
     public static boolean isNumeric(TypeInfo type) {
@@ -204,14 +203,8 @@ public final class TypeRules {
                 case STRING, INVALID -> null;
             };
         }
-        if (type instanceof EnumTypeInfo(EnumEntry entry)
-                && entry != null
-                && entry.getScope() != null
-                && !entry.getScope().getValues().isEmpty()) {
-            return entry.getScope().getValues().values().iterator().next().getValue();
-        }
         if (type instanceof EnumTypeInfo) {
-            return 0;
+            return null;
         }
         return null;
     }

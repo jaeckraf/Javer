@@ -876,7 +876,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLine("PUSHI, " + enumValue.getOffsetBytes());
             writeLine("IADD");
         }
-        writeLine("LOAD4");
     }
 
     @Override
@@ -951,8 +950,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             return;
         }
         if (type instanceof EnumTypeInfo) {
-            writeLine("POP, " + VmLayout.WORD_BYTES);
-            writeLine("PUSHI, 1");
+            return;
         }
     }
 
@@ -986,9 +984,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitDefaultValue(TypeInfo type, Object value) {
-        if (type instanceof EnumTypeInfo(EnumEntry entry)) {
-            writeLine("PUSHR, " + entry.getDataLabel());
-            writeLine("LOAD4");
+        if (type instanceof EnumTypeInfo) {
+            writeLine("PUSHI, 0");
             return;
         }
         if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
