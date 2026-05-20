@@ -56,6 +56,6 @@ public class Diagnostic {
 
     @Override
     public String toString() {
-        return String.format("[%s] at %s: %s", severity.name(), location.toString(), message);
+        return String.format("[%s] at %s: %s", severity.name(), location == null ? "<unknown>" : location.toString(), message);
     }
 }

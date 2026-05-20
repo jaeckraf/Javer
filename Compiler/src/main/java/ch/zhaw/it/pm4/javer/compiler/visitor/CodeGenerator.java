@@ -15,10 +15,10 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Emits VM bytecode from a semantically checked AST.
@@ -35,16 +36,18 @@ import java.util.Locale;
 @JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
 
-    private BufferedWriter writer;
+    private final DiagnosticBag diagnostics;
+    private StringBuilder output;
     private DataSection dataSection;
     private FunctionEntry currentFunction;
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
 
     /**
-     * Creates a code generator with no active output writer.
+     * Creates a code generator that reports invariant failures as diagnostics.
      */
-    public CodeGenerator() {
+    public CodeGenerator(DiagnosticBag diagnostics) {
+        this.diagnostics = Objects.requireNonNull(diagnostics, "DiagnosticBag must not be null");
     }
 
     /**
@@ -55,33 +58,43 @@ public class CodeGenerator extends AstNodeVisitorBase {
      */
     public void generate(CompilationUnit node, String outputFilePath) {
         Path outputFile = Path.of(outputFilePath);
-        prepareOutputDirectory(outputFile);
-
-        try (BufferedWriter outputWriter = Files.newBufferedWriter(
-                outputFile,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE)) {
-
-            writer = outputWriter;
+        try {
+            output = new StringBuilder();
             loopContexts.clear();
             nextLabelId = 0;
             node.accept(this);
+
+            if (diagnostics.hasErrors()) {
+                deleteOutputFile(outputFile);
+                return;
+            }
+
+            prepareOutputDirectory(outputFile);
+            Files.writeString(
+                    outputFile,
+                    output.toString(),
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE);
+        } catch (RuntimeException exception) {
+            reportCodegenError("Code generation failed: " + diagnosticMessage(exception));
+            deleteOutputFile(outputFile);
         } catch (IOException exception) {
-            throw new UncheckedIOException("Could not write generated code to " + outputFile, exception);
+            reportCodegenError("Could not write generated code to " + outputFile + ": " + diagnosticMessage(exception));
+            deleteOutputFile(outputFile);
         } finally {
-            writer = null;
+            output = null;
+            dataSection = null;
+            currentFunction = null;
         }
     }
 
     protected void writeLine(String line) {
-        try {
-            writer.write(line);
-            writer.newLine();
-        } catch (IOException exception) {
-            throw new UncheckedIOException("Could not write generated code.", exception);
+        if (output == null) {
+            throw new IllegalStateException("No active code generation buffer.");
         }
+        output.append(line).append(System.lineSeparator());
     }
 
     private void writeLabel(String label) {
@@ -92,17 +105,30 @@ public class CodeGenerator extends AstNodeVisitorBase {
         return prefix + "_" + nextLabelId++;
     }
 
-    private void prepareOutputDirectory(Path outputFile) {
+    private void prepareOutputDirectory(Path outputFile) throws IOException {
         Path parent = outputFile.toAbsolutePath().getParent();
         if (parent == null) {
             return;
         }
 
+        Files.createDirectories(parent);
+    }
+
+    private void deleteOutputFile(Path outputFile) {
         try {
-            Files.createDirectories(parent);
+            Files.deleteIfExists(outputFile);
         } catch (IOException exception) {
-            throw new UncheckedIOException("Could not create output directory " + parent, exception);
+            reportCodegenError("Could not delete incomplete output file " + outputFile + ": " + diagnosticMessage(exception));
         }
+    }
+
+    private void reportCodegenError(String message) {
+        diagnostics.add(null, Severity.ERROR, message);
+    }
+
+    private String diagnosticMessage(Exception exception) {
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? exception.getClass().getSimpleName() : message;
     }
 
     @Override

@@ -42,6 +42,10 @@ public class Parser {
             TokenType.TYPE_STRING, TokenType.TYPE_CHARACTER
     );
 
+    private static final Set<TokenType> FIRST_INTEGER_LITERAL = EnumSet.of(
+            TokenType.LITERAL_INTEGER, TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
+    );
+
     private static final Set<TokenType> FIRST_TYPE = EnumSet.of(
             TokenType.TYPE_INTEGER, TokenType.TYPE_DOUBLE, TokenType.TYPE_BOOLEAN,
             TokenType.TYPE_STRING, TokenType.TYPE_CHARACTER, TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM
@@ -240,6 +244,11 @@ public class Parser {
         diagnosticBag.add(diagnosticLocation(token), Severity.ERROR, message);
     }
 
+    private void reportSyntaxError(Token token, String message) {
+        JaverLogger.error(message);
+        diagnosticBag.add(diagnosticLocation(token), Severity.ERROR, message);
+    }
+
     private SourceLocation expectedTokenLocation() {
         Token current = currentToken();
         if (current.getTokenType() == TokenType.SPECIAL_END_OF_FILE || currentPosition == 0) {
@@ -353,8 +362,8 @@ public class Parser {
         EnumItem.Builder builder = EnumItem.builder(name.getValue());
         if (matchCurrentToken(TokenType.OPERATOR_ASSIGN)) {
             match(TokenType.OPERATOR_ASSIGN);
-            Token value = expectTokenType(TokenType.LITERAL_INTEGER);
-            builder.value(parseInteger(value));
+            Token value = expectTokenTypes(FIRST_INTEGER_LITERAL);
+            builder.value(parseIntegerConstant(value));
         }
         skipErrors(FOLLOW_ENUM_ITEM, FOLLOW_ENUM_ITEM, true);
         return located(builder.build(), name);
@@ -827,17 +836,70 @@ public class Parser {
         List<ExpressionAstNode> dimensions = parseNewArrayDimensions();
         NewExpression.Builder builder = NewExpression.builder(type).dimensions(dimensions);
         if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) builder.arrayInit(parseArrayInitExpression());
-        return located(builder.build(), startToken);
+        NewExpression expression = builder.build();
+        validateNewExpression(expression, startToken);
+        return located(expression, startToken);
     }
 
     private List<ExpressionAstNode> parseNewArrayDimensions() {
         List<ExpressionAstNode> dimensions = new ArrayList<>();
         while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
             match(TokenType.SYMBOL_LEFT_BRACKET);
+            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACKET)) {
+                reportSyntaxError(currentToken(), "Array dimensions in a new expression must contain an expression.");
+                dimensions.add(errorExpression());
+                match(TokenType.SYMBOL_RIGHT_BRACKET);
+                continue;
+            }
             dimensions.add(parseExpression());
             match(TokenType.SYMBOL_RIGHT_BRACKET);
         }
         return dimensions;
+    }
+
+    private void validateNewExpression(NewExpression expression, Token startToken) {
+        TypeAstNode type = expression.getType();
+        boolean hasDimensions = !expression.getDimensions().isEmpty();
+        boolean hasInitializer = expression.getArrayInit() != null;
+
+        if (hasInitializer && !hasDimensions) {
+            if (isStructType(type)) {
+                reportSyntaxError(startToken, "Struct initializers are not allowed; initializers only apply to arrays.");
+            } else {
+                reportSyntaxError(startToken, "Array initializer in a new expression requires explicit dimensions.");
+            }
+            return;
+        }
+
+        if (hasDimensions) {
+            return;
+        }
+
+        if (isPrimitiveType(type)) {
+            PrimitiveType primitiveType = (PrimitiveType) type;
+            if (primitiveType.getKind() == PrimitiveTypeKind.STRING) {
+                reportSyntaxError(startToken, "'new string' is not allowed.");
+            } else {
+                reportSyntaxError(startToken, "'new' for primitive values requires array dimensions.");
+            }
+            return;
+        }
+
+        if (isEnumType(type)) {
+            reportSyntaxError(startToken, "'new' can only allocate structs or arrays, not enum values.");
+        }
+    }
+
+    private boolean isPrimitiveType(TypeAstNode type) {
+        return type instanceof PrimitiveType;
+    }
+
+    private boolean isStructType(TypeAstNode type) {
+        return type instanceof NamedType namedType && namedType.getKind() == NameTypeKind.STRUCT;
+    }
+
+    private boolean isEnumType(TypeAstNode type) {
+        return type instanceof NamedType namedType && namedType.getKind() == NameTypeKind.ENUM;
     }
 
     private LiteralExpression<?> parseLiteralExpression() {
@@ -861,33 +923,18 @@ public class Parser {
         }
         if (matchCurrentToken(TokenType.LITERAL_HEX)) {
             Token token = expectTokenType(TokenType.LITERAL_HEX);
-            try {
-                int parsed = Integer.parseInt(token.getValue(), 16);
-                return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
-            } catch (NumberFormatException ex) {
-                return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
-            }
+            return located(new LiteralExpression<>(LiteralKind.INT, parseIntegerConstant(token)), token);
         }
         if (matchCurrentToken(TokenType.LITERAL_BINARY)) {
             Token token = expectTokenType(TokenType.LITERAL_BINARY);
-            try {
-                int parsed = Integer.parseInt(token.getValue(), 2);
-                return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
-            } catch (NumberFormatException ex) {
-                return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
-            }
+            return located(new LiteralExpression<>(LiteralKind.INT, parseIntegerConstant(token)), token);
         }
         if (matchCurrentToken(TokenType.LITERAL_OCTAL)) {
             Token token = expectTokenType(TokenType.LITERAL_OCTAL);
-            try {
-                int parsed = Integer.parseInt(token.getValue(), 8);
-                return located(new LiteralExpression<>(LiteralKind.INT, parsed), token);
-            } catch (NumberFormatException ex) {
-                return located(new LiteralExpression<>(LiteralKind.INT, 0), token);
-            }
+            return located(new LiteralExpression<>(LiteralKind.INT, parseIntegerConstant(token)), token);
         }
         Token token = expectTokenType(TokenType.LITERAL_INTEGER);
-        return located(new LiteralExpression<>(LiteralKind.INT, parseInteger(token)), token);
+        return located(new LiteralExpression<>(LiteralKind.INT, parseIntegerConstant(token)), token);
     }
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
@@ -915,9 +962,23 @@ public class Parser {
         return located(new LiteralExpression<>(LiteralKind.INT, 0), currentToken());
     }
 
-    private int parseInteger(Token token) {
-        try { return Integer.parseInt(token.getValue()); }
-        catch (NumberFormatException ignored) { return 0; }
+    private int parseIntegerConstant(Token token) {
+        int radix = switch (token.getTokenType()) {
+            case LITERAL_HEX -> 16;
+            case LITERAL_BINARY -> 2;
+            case LITERAL_OCTAL -> 8;
+            default -> 10;
+        };
+
+        try {
+            if (radix == 10) {
+                return Integer.parseInt(token.getValue());
+            }
+            return Integer.parseUnsignedInt(token.getValue(), radix);
+        } catch (NumberFormatException ignored) {
+            reportSyntaxError(token, "Invalid integer literal: " + formatFoundToken(token) + ".");
+            return 0;
+        }
     }
 
     private double parseDouble(Token token) {

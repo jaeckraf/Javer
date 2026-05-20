@@ -32,13 +32,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     private TypeInfo currentFunctionReturnType = UnknownTypeInfo.INSTANCE;
 
     /**
-     * Creates a type-checking pass without diagnostic reporting.
-     */
-    public TypeCheckVisitor() {
-        this(null);
-    }
-
-    /**
      * Creates a type-checking pass.
      *
      * @param diagnosticBag optional collector for type diagnostics

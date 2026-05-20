@@ -175,7 +175,7 @@ public class Compiler {
 
     private void generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        new CodeGenerator().generate(node, options.getOutputFilePath());
+        new CodeGenerator(context.getDiagnosticBag()).generate(node, options.getOutputFilePath());
     }
 
     private static void configureLogging(CompilerOptions options) {

@@ -23,6 +23,8 @@ public class DiagnosticBag {
 
     private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
+    private int errorCount;
+    private boolean errorLimitReached;
 
     /**
      * Initializes a new DiagnosticBag.
@@ -55,8 +57,11 @@ public class DiagnosticBag {
      * @param diagnostic The diagnostic to add.
      */
     public void add(Diagnostic diagnostic) {
+        if (errorLimitReached) {
+            return;
+        }
         diagnostics.add(diagnostic);
-        // TODO: Implement error limit check (throw exception if exceeded)
+        enforceErrorLimit(diagnostic);
     }
 
     /**
@@ -67,7 +72,29 @@ public class DiagnosticBag {
      * @param message user-facing message
      */
     public void add(SourceLocation location, Severity severity, String message) {
-        diagnostics.add(new Diagnostic(location, severity, message));
+        add(new Diagnostic(location, severity, message));
+    }
+
+    private void enforceErrorLimit(Diagnostic diagnostic) {
+        if (!isError(diagnostic)) {
+            return;
+        }
+
+        errorCount++;
+        if (errorLimit <= 0 || errorCount < errorLimit) {
+            return;
+        }
+
+        errorLimitReached = true;
+        diagnostics.add(new Diagnostic(
+                null,
+                Severity.SEVERE,
+                "Diagnostic limit of " + errorLimit + " error(s) reached; further diagnostics suppressed."));
+    }
+
+    private boolean isError(Diagnostic diagnostic) {
+        Severity severity = diagnostic.getSeverity();
+        return severity == Severity.ERROR || severity == Severity.SEVERE;
     }
 
     /**
@@ -174,6 +201,8 @@ public class DiagnosticBag {
      * Clears all diagnostics from the bag, preparing it for the next compiler phase.
      */
     public void flush() {
-        // TODO: Implement
+        diagnostics.clear();
+        errorCount = 0;
+        errorLimitReached = false;
     }
 }
