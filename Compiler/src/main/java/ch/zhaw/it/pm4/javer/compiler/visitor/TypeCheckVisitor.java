@@ -1,7 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import java.util.Set;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
@@ -28,8 +26,6 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
  * Assigns semantic type information to expression and type AST nodes.
  */
 public class TypeCheckVisitor extends AstNodeVisitorBase {
-
-    private static final Set<String> VOID_BUILT_INS = Set.of("printi", "prints", "println");
 
     private final DiagnosticBag diagnosticBag;
     private GlobalScope globalScope;
@@ -133,21 +129,21 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         }
 
         // Typprüfung
-        if (!isAssignable(expectedReturnType, actualReturnType)) {
+        if (isNotAssignable(expectedReturnType, actualReturnType)) {
             report(node, "Return type mismatch. Expected: " + expectedReturnType + ", actual: " + actualReturnType);
         }
     }
 
-    private boolean isAssignable(TypeInfo expected, TypeInfo actual) {
+    private boolean isNotAssignable(TypeInfo expected, TypeInfo actual) {
         if (expected instanceof UnknownTypeInfo || actual instanceof UnknownTypeInfo) {
-            return true;
+            return false;
         }
 
         if (expected.equals(actual)) {
-            return true;
+            return false;
         }
 
-        return PrimitiveTypeInfo.DOUBLE.equals(expected) && PrimitiveTypeInfo.INT.equals(actual);
+        return !PrimitiveTypeInfo.DOUBLE.equals(expected) || !PrimitiveTypeInfo.INT.equals(actual);
     }
 
     private void report(AstNode node, String message) {
@@ -165,10 +161,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         FunctionEntry function = node.getResolvedFunction();
         if (function == null) {
-            if (VOID_BUILT_INS.contains(node.getFunctionName())) {
-                node.setResultingType(VoidTypeInfo.INSTANCE);
-                return;
-            }
             report(node, "Unknown function: " + node.getFunctionName());
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
@@ -187,7 +179,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             TypeInfo expected = parameter.getType();
             TypeInfo actual = node.getArguments().get(index).getResultingType();
 
-            if (!isAssignable(expected, actual)) {
+            if (isNotAssignable(expected, actual)) {
                 report(node, "Argument " + (index + 1) + " type mismatch: expected "
                         + expected + ", got " + actual);
             }
@@ -207,7 +199,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getOperator()) {
             case OR, AND -> {
-                if (!isBoolean(left) || !isBoolean(right)) {
+                if (isNotBoolean(left) || isNotBoolean(right)) {
                     report(node, "Logical operator requires boolean operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -239,7 +231,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> {
-                if (!isInteger(left) || !isInteger(right)) {
+                if (isNotInteger(left) || isNotInteger(right)) {
                     report(node, "Bitwise and shift operators require integer operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -252,12 +244,12 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.setResultingType(result);
     }
 
-    private boolean isBoolean(TypeInfo type) {
-        return PrimitiveTypeInfo.BOOL.equals(type);
+    private boolean isNotBoolean(TypeInfo type) {
+        return !PrimitiveTypeInfo.BOOL.equals(type);
     }
 
-    private boolean isInteger(TypeInfo type) {
-        return PrimitiveTypeInfo.INT.equals(type);
+    private boolean isNotInteger(TypeInfo type) {
+        return !PrimitiveTypeInfo.INT.equals(type);
     }
 
     private boolean isNumeric(TypeInfo type) {
@@ -290,7 +282,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 ? UnknownTypeInfo.INSTANCE
                 : node.getValue().getResultingType();
 
-        if (!isAssignableTarget(node.getTarget())) {
+        if (isNotAssignableTarget(node.getTarget())) {
             report(node, "Left side of assignment is not assignable.");
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
@@ -300,7 +292,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         switch (node.getOperator()) {
             case ASSIGN -> {
-                if (!isAssignable(targetType, valueType)) {
+                if (isNotAssignable(targetType, valueType)) {
                     report(node, "Cannot assign " + valueType + " to " + targetType + ".");
                     valid = false;
                 }
@@ -317,7 +309,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
             case BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN,
                  LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN -> {
-                if (!isInteger(targetType) || !isInteger(valueType)) {
+                if (isNotInteger(targetType) || isNotInteger(valueType)) {
                     report(node, "Bitwise/shift assignment requires integer operands.");
                     valid = false;
                 }
@@ -336,12 +328,10 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.setResultingType(targetType);
     }
 
-
-
-    private boolean isAssignableTarget(ExpressionAstNode target) {
-        return target instanceof NameExpression
-                || target instanceof MemberAccessExpression
-                || target instanceof IndexExpression;
+    private boolean isNotAssignableTarget(ExpressionAstNode target) {
+        return !(target instanceof NameExpression)
+                && !(target instanceof MemberAccessExpression)
+                && !(target instanceof IndexExpression);
     }
 
     @Override
@@ -410,7 +400,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     }
 
 
-
     @Override
     public void visit(UnaryExpression node) {
         super.visit(node);
@@ -421,7 +410,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getKind()) {
             case LOGICAL_NOT -> {
-                if (!isBoolean(operandType)) {
+                if (isNotBoolean(operandType)) {
                     report(node, "Logical not requires boolean operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -429,7 +418,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case BITWISE_NOT -> {
-                if (!isInteger(operandType)) {
+                if (isNotInteger(operandType)) {
                     report(node, "Bitwise not requires integer operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -449,7 +438,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                     report(node, "Pre increment/decrement requires int or double operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
-                if (!isAssignableTarget(node.getOperand())) {
+                if (isNotAssignableTarget(node.getOperand())) {
                     report(node, "Pre increment/decrement requires assignable operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -477,7 +466,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                     report(node, "Post increment/decrement requires int or double operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
-                if (!isAssignableTarget(node.getOperand())) {
+                if (isNotAssignableTarget(node.getOperand())) {
                     report(node, "Post increment/decrement requires assignable operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -497,7 +486,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         TypeInfo targetType = node.getTarget().getResultingType();
         TypeInfo indexType = node.getIndex().getResultingType();
 
-        if (!(targetType instanceof ArrayTypeInfo arrayType)) {
+        if (!(targetType instanceof ArrayTypeInfo(TypeInfo elementType))) {
             report(node, "Indexing is only allowed on arrays.");
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
@@ -509,7 +498,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             return;
         }
 
-        node.setResultingType(arrayType.elementType());
+        node.setResultingType(elementType);
     }
 
 
@@ -532,7 +521,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
-
 
 
     @Override
@@ -584,7 +572,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         TypeInfo arrayType = allSameType ? firstElementType : UnknownTypeInfo.INSTANCE;
         node.setResultingType(new ArrayTypeInfo(arrayType));
     }
-
 
 
     private TypeInfo numericResult(TypeInfo left, TypeInfo right) {

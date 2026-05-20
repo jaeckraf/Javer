@@ -20,7 +20,6 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <argLine></argLine>
 
         <!-- one single Java version for all modules -->
         <maven.compiler.release>21</maven.compiler.release>
@@ -196,6 +195,10 @@
             <properties>
                 <skipTests>true</skipTests>
                 <maven.test.skip>true</maven.test.skip>
+                <maven.test.skip.exec>true</maven.test.skip.exec>
+                <surefire.skip>true</surefire.skip>
+                <skipITs>true</skipITs>
+                <failsafe.skip>true</failsafe.skip>
                 <jacoco.skip>true</jacoco.skip>
                 <mockito.agent.skip>true</mockito.agent.skip>
             </properties>

@@ -15,6 +15,7 @@ public final class FunctionEntry extends SymbolEntry {
     private int parameterBytes;
     private int localBytes;
     private int frameSizeBytes;
+    private boolean builtIn;
 
     public FunctionEntry(String name) {
         this(name, "_" + name);
@@ -66,5 +67,13 @@ public final class FunctionEntry extends SymbolEntry {
 
     public int getFrameSizeBytes() {
         return frameSizeBytes;
+    }
+
+    public boolean isBuiltIn() {
+        return builtIn;
+    }
+
+    public void setBuiltIn(boolean builtIn) {
+        this.builtIn = builtIn;
     }
 }

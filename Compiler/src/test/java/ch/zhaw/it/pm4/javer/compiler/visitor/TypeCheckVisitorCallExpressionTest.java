@@ -9,6 +9,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
+import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
@@ -49,6 +50,7 @@ class TypeCheckVisitorCallExpressionTest {
     @Test
     void testVoidBuiltInFunction() {
         CallExpression expr = new CallExpression("prints", List.of(stringLit("hi")));
+        expr.setResolvedFunction(BuiltInFunction.PRINTS.createSymbol());
         expr.accept(visitor);
         assertEquals(VoidTypeInfo.INSTANCE, expr.getResultingType());
         assertFalse(bag.hasErrors());

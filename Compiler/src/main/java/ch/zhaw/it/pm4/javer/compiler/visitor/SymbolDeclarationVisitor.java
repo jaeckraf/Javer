@@ -14,11 +14,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
@@ -38,6 +34,8 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
+import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
@@ -68,11 +66,18 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     public void visit(CompilationUnit node) {
         globalScope = node.getGlobalScope();
 
+        registerBuiltInFunctions();
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             registerTopLevelDeclaration(declaration);
         }
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
+        }
+    }
+
+    private void registerBuiltInFunctions() {
+        for (BuiltInFunction builtIn : BuiltInFunction.all()) {
+            globalScope.defineFunction(builtIn.createSymbol());
         }
     }
 
@@ -176,22 +181,21 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         int parameterBytes = node.getParameters().stream()
                 .map(FunctionParameter::getType)
                 .map(this::resolveType)
-                .mapToInt(TypeInfo::sizeBytes)
+                .mapToInt(VmLayout::stackBytes)
                 .sum();
         function.setParameterBytes(parameterBytes);
 
-        int offsetBytes = -parameterBytes;
+        int offsetBytes = VmLayout.FRAME_HEADER_BYTES + parameterBytes;
         for (FunctionParameter parameter : node.getParameters()) {
             TypeInfo type = resolveType(parameter.getType());
-            int sizeBytes = type.sizeBytes();
+            int sizeBytes = VmLayout.stackBytes(type);
+            offsetBytes -= sizeBytes;
             ParameterEntry entry = new ParameterEntry(parameter.getName(), type, sizeBytes, offsetBytes);
             parameter.setSymbolEntry(entry);
 
             if (!functionScope.defineParameter(entry)) {
                 diagnosticBag.add(parameter.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + parameter.getName());
             }
-
-            offsetBytes += sizeBytes;
         }
     }
 
@@ -265,7 +269,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         }
 
         TypeInfo type = resolveType(node.getType());
-        int sizeBytes = type.sizeBytes();
+        int sizeBytes = VmLayout.memoryWidth(type).bytes();
         int offsetBytes = currentFunction != null ? currentFunction.allocateLocalBytes(sizeBytes) : 0;
         VariableEntry entry = new VariableEntry(
                 node.getName(),
@@ -321,8 +325,8 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     }
 
     private static Object defaultValueOf(TypeInfo type) {
-        if (type instanceof PrimitiveTypeInfo primitiveType) {
-            return switch (primitiveType.kind()) {
+        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
+            return switch (kind) {
                 case BOOL -> false;
                 case CHAR -> '\0';
                 case INT -> 0;
