@@ -447,23 +447,8 @@ public class VM {
                 int address = vm.popInt();
                 vm.writeDouble(address, value);
             });
-            case NEW -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.allocateHeapRegion(vm.popInt())));
-            case NEWN -> {
-                ensureOperandCount(parts, 3, instrName, lineNumber);
-                int elementSize = parseIntOperand(parts[1], instrName, lineNumber);
-                int dimensionCount = parseIntOperand(parts[2], instrName, lineNumber);
-                if (elementSize != 1 && elementSize != 2 && elementSize != 4 && elementSize != 8) {
-                    throw new ParseException("Line " + lineNumber + ": NEWN element size must be 1, 2, 4 or 8, got " + elementSize);
-                }
-                if (dimensionCount <= 0) {
-                    throw new ParseException("Line " + lineNumber + ": NEWN dimension count must be positive, got " + dimensionCount);
-                }
-                yield vm -> vm.executeNewNestedArray(elementSize, dimensionCount);
-            }
+            case NEW -> noOperand(parts, instrName, lineNumber, VM::executeNew);
             case MEMCPY -> noOperand(parts, instrName, lineNumber, VM::executeMemcopy);
-            case TRAP -> noOperand(parts, instrName, lineNumber, vm -> {
-                throw new VMExecutionException("Runtime trap");
-            });
             case POP -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 int size = parseStackValueSize(parts[1], instrName, lineNumber, false);
@@ -988,33 +973,9 @@ public class VM {
         System.arraycopy(source.region().bytes(), source.offset(), target.region().bytes(), target.offset(), size);
     }
 
-    private void executeNewNestedArray(int elementSize, int dimensionCount) {
-        int[] dimensions = new int[dimensionCount];
-        for (int i = dimensionCount - 1; i >= 0; i--) {
-            dimensions[i] = popInt();
-        }
-        pushInt(allocateNestedArray(dimensions, 0, elementSize));
-    }
-
-    private int allocateNestedArray(int[] dimensions, int depth, int elementSize) {
-        int length = dimensions[depth];
-        if (length < 0) {
-            throw new VMExecutionException("Negative array dimension: " + length);
-        }
-        int slotSize = depth + 1 == dimensions.length ? elementSize : Integer.BYTES;
-        int byteCount;
-        try {
-            byteCount = Math.multiplyExact(length, slotSize);
-        } catch (ArithmeticException exception) {
-            throw new VMExecutionException("Array allocation size overflow");
-        }
-        int base = allocateHeapRegion(byteCount);
-        if (depth + 1 < dimensions.length) {
-            for (int i = 0; i < length; i++) {
-                writeInt(base + i * Integer.BYTES, allocateNestedArray(dimensions, depth + 1, elementSize));
-            }
-        }
-        return base;
+    private void executeNew() {
+        int size = popInt();
+        pushInt(allocateHeapRegion(size));
     }
 
     private void pushFrame(int returnPc, int argBytes) {
@@ -1275,7 +1236,7 @@ public class VM {
         LOCAL,
         LOAD1, LOAD2, LOAD4, LOAD8,
         STORE1, STORE2, STORE4, STORE8,
-        NEW, NEWN, MEMCPY, TRAP,
+        NEW, MEMCPY,
         POP, DUP,
         IADD, ISUB, IMUL, IDIV, IMOD,
         DADD, DSUB, DMUL, DDIV,

@@ -55,7 +55,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
      * Creates a code generator that reports invariant failures as diagnostics.
      */
     public CodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
-        this.diagnostics = Objects.requireNonNull(diagnostics, "DiagnosticBag must not be null");
+        this.diagnostics = diagnostics;
         this.outputFile = Path.of(outputFilePath);
         prepareOutputDirectory();
     }
@@ -699,13 +699,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
         ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getResultingType();
         TypeInfo elementType = arrayType.elementType();
         ArrayInitExpression init = node.getArrayInit();
-
-        if (init == null && node.getDimensions().size() > 1) {
-            emitNestedArrayAllocation(node.getDimensions(), node.getResultingType());
-            return;
-        }
-
-        int elementSize = memoryBytes(elementType);
+        TypeInfo allocationElementType = init == null
+                ? TypeRules.leafElementType(node.getResultingType())
+                : elementType;
+        int elementSize = memoryBytes(allocationElementType);
         emitArrayAllocation(node.getDimensions(), init, elementSize);
 
         if (init != null) {
@@ -754,32 +751,17 @@ public class CodeGenerator extends AstNodeVisitorBase {
         }
 
         emitTyped(dimensions.getFirst(), PrimitiveTypeInfo.INT);
-        if (init != null) {
-            emitRuntimeLengthCheck(init.getElements().size());
+        if (init == null) {
+            for (int i = 1; i < dimensions.size(); i++) {
+                emitTyped(dimensions.get(i), PrimitiveTypeInfo.INT);
+                writeLine("IMUL");
+            }
         }
         if (elementSize != VmLayout.BYTE_BYTES) {
             writeLine("PUSHI, " + elementSize);
             writeLine("IMUL");
         }
         writeLine("NEW");
-    }
-
-    private void emitNestedArrayAllocation(List<ExpressionAstNode> dimensions, TypeInfo arrayType) {
-        for (ExpressionAstNode dimension : dimensions) {
-            emitTyped(dimension, PrimitiveTypeInfo.INT);
-        }
-        TypeInfo leafType = TypeRules.leafElementType(arrayType);
-        writeLine("NEWN, " + memoryBytes(leafType) + ", " + dimensions.size());
-    }
-
-    private void emitRuntimeLengthCheck(int expectedLength) {
-        String okLabel = nextLabel("array_length_ok");
-        writeLine("DUP, " + VmLayout.WORD_BYTES);
-        writeLine("PUSHI, " + expectedLength);
-        writeLine("IEQ");
-        writeLine("JUMPT, " + okLabel);
-        writeLine("TRAP");
-        writeLabel(okLabel);
     }
 
     private List<Object> arrayTemplateValues(List<ExpressionAstNode> elements, TypeInfo elementType) {
