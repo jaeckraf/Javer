@@ -15,6 +15,7 @@ public final class NewExpression extends ExpressionAstNodeBase {
     private final TypeAstNode type;
     private final List<ExpressionAstNode> dimensions;
     private final ArrayInitExpression arrayInit;
+    private JaggedArrayTempLayout jaggedArrayTempLayout;
 
     private NewExpression(Builder builder) {
         this.type = builder.type;
@@ -60,6 +61,17 @@ public final class NewExpression extends ExpressionAstNodeBase {
 
     public ArrayInitExpression getArrayInit() {
         return arrayInit;
+    }
+
+    public JaggedArrayTempLayout getJaggedArrayTempLayout() {
+        return jaggedArrayTempLayout;
+    }
+
+    public void setJaggedArrayTempLayout(JaggedArrayTempLayout jaggedArrayTempLayout) {
+        this.jaggedArrayTempLayout = jaggedArrayTempLayout;
+    }
+
+    public record JaggedArrayTempLayout(int[] dimensionOffsets, int[] baseOffsets, int[] indexOffsets) {
     }
 
     @Override

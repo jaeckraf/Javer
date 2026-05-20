@@ -13,6 +13,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
@@ -319,6 +320,32 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         if (currentBlock != null && !currentBlock.defineVariable(entry)) {
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + node.getName());
         }
+    }
+
+    @Override
+    public void visit(NewExpression node) {
+        if (currentFunction != null
+                && node.getArrayInit() == null
+                && node.getDimensions().size() > 1
+                && node.getJaggedArrayTempLayout() == null) {
+            node.setJaggedArrayTempLayout(allocateJaggedArrayTempLayout(node.getDimensions().size()));
+        }
+        super.visit(node);
+    }
+
+    private NewExpression.JaggedArrayTempLayout allocateJaggedArrayTempLayout(int dimensionCount) {
+        int[] dimensionOffsets = allocateTempOffsets(dimensionCount);
+        int[] baseOffsets = allocateTempOffsets(dimensionCount - 1);
+        int[] indexOffsets = allocateTempOffsets(dimensionCount - 1);
+        return new NewExpression.JaggedArrayTempLayout(dimensionOffsets, baseOffsets, indexOffsets);
+    }
+
+    private int[] allocateTempOffsets(int count) {
+        int[] offsets = new int[count];
+        for (int i = 0; i < count; i++) {
+            offsets[i] = currentFunction.allocateLocalBytes(VmLayout.WORD_BYTES);
+        }
+        return offsets;
     }
 
     private TypeInfo resolveType(TypeAstNode type) {

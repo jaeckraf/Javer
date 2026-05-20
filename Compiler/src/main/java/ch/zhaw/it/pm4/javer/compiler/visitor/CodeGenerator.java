@@ -697,10 +697,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
         ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getResultingType();
         TypeInfo elementType = arrayType.elementType();
         ArrayInitExpression init = node.getArrayInit();
-        TypeInfo allocationElementType = init == null
-                ? TypeRules.leafElementType(node.getResultingType())
-                : elementType;
-        int elementSize = memoryBytes(allocationElementType);
+
+        if (init == null && node.getDimensions().size() > 1) {
+            emitJaggedArrayAllocation(node, TypeRules.leafElementType(node.getResultingType()));
+            return;
+        }
+
+        int elementSize = memoryBytes(elementType);
         emitArrayAllocation(node.getDimensions(), init, elementSize);
 
         if (init != null) {
@@ -749,17 +752,90 @@ public class CodeGenerator extends AstNodeVisitorBase {
         }
 
         emitTyped(dimensions.getFirst(), PrimitiveTypeInfo.INT);
-        if (init == null) {
-            for (int i = 1; i < dimensions.size(); i++) {
-                emitTyped(dimensions.get(i), PrimitiveTypeInfo.INT);
-                writeLine("IMUL");
-            }
-        }
         if (elementSize != VmLayout.BYTE_BYTES) {
             writeLine("PUSHI, " + elementSize);
             writeLine("IMUL");
         }
         writeLine("NEW");
+    }
+
+    private void emitJaggedArrayAllocation(NewExpression node, TypeInfo leafType) {
+        NewExpression.JaggedArrayTempLayout temps = node.getJaggedArrayTempLayout();
+        if (temps == null) {
+            throw new IllegalStateException("Missing temporary storage for jagged array allocation.");
+        }
+
+        List<ExpressionAstNode> dimensions = node.getDimensions();
+        for (int i = 0; i < dimensions.size(); i++) {
+            writeLine("LOCAL, " + temps.dimensionOffsets()[i]);
+            emitTyped(dimensions.get(i), PrimitiveTypeInfo.INT);
+            writeLine("STORE4");
+        }
+        emitJaggedArrayLevel(0, dimensions.size(), leafType, temps);
+    }
+
+    private void emitJaggedArrayLevel(
+            int depth,
+            int dimensionCount,
+            TypeInfo leafType,
+            NewExpression.JaggedArrayTempLayout temps) {
+        int elementSize = depth + 1 == dimensionCount ? memoryBytes(leafType) : VmLayout.WORD_BYTES;
+        if (depth + 1 == dimensionCount) {
+            emitLoadTemp(temps.dimensionOffsets()[depth]);
+            emitScaleTopBy(elementSize);
+            writeLine("NEW");
+            return;
+        }
+
+        int baseOffset = temps.baseOffsets()[depth];
+        int indexOffset = temps.indexOffsets()[depth];
+        String loopLabel = nextLabel("jagged_alloc_loop");
+        String endLabel = nextLabel("jagged_alloc_end");
+
+        writeLine("LOCAL, " + baseOffset);
+        emitLoadTemp(temps.dimensionOffsets()[depth]);
+        emitScaleTopBy(elementSize);
+        writeLine("NEW");
+        writeLine("STORE4");
+
+        writeLine("LOCAL, " + indexOffset);
+        writeLine("PUSHI, 0");
+        writeLine("STORE4");
+
+        writeLabel(loopLabel);
+        emitLoadTemp(indexOffset);
+        emitLoadTemp(temps.dimensionOffsets()[depth]);
+        writeLine("ILT");
+        writeLine("JUMPF, " + endLabel);
+
+        emitLoadTemp(baseOffset);
+        emitLoadTemp(indexOffset);
+        emitScaleTopBy(VmLayout.WORD_BYTES);
+        writeLine("IADD");
+        emitJaggedArrayLevel(depth + 1, dimensionCount, leafType, temps);
+        writeLine("STORE4");
+
+        writeLine("LOCAL, " + indexOffset);
+        emitLoadTemp(indexOffset);
+        writeLine("PUSHI, 1");
+        writeLine("IADD");
+        writeLine("STORE4");
+        writeLine("JUMP, " + loopLabel);
+
+        writeLabel(endLabel);
+        emitLoadTemp(baseOffset);
+    }
+
+    private void emitLoadTemp(int offset) {
+        writeLine("LOCAL, " + offset);
+        writeLine("LOAD4");
+    }
+
+    private void emitScaleTopBy(int size) {
+        if (size != VmLayout.BYTE_BYTES) {
+            writeLine("PUSHI, " + size);
+            writeLine("IMUL");
+        }
     }
 
     private List<Object> arrayTemplateValues(List<ExpressionAstNode> elements, TypeInfo elementType) {

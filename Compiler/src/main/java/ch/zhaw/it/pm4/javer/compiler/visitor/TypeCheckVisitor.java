@@ -36,6 +36,7 @@ import java.util.Set;
 public class TypeCheckVisitor extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
+    private final Set<StorageEntry> invalidInitializedVariables = new HashSet<>();
     private GlobalScope globalScope;
     private TypeInfo currentFunctionReturnType = UnknownTypeInfo.INSTANCE;
 
@@ -51,6 +52,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(CompilationUnit node) {
         globalScope = node.getGlobalScope();
+        invalidInitializedVariables.clear();
         super.visit(node);
     }
 
@@ -70,6 +72,10 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     public void visit(NameExpression node) {
         SymbolEntry entry = node.getSymbolEntry();
         if (entry instanceof StorageEntry storageEntry) {
+            if (invalidInitializedVariables.contains(storageEntry)) {
+                node.setResultingType(UnknownTypeInfo.INSTANCE);
+                return;
+            }
             node.setResultingType(storageEntry.getType());
             return;
         }
@@ -137,6 +143,28 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     private void report(AstNode node, String message) {
         if (diagnosticBag != null) {
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, message);
+        }
+    }
+
+    @Override
+    public void visit(VarDeclarationStatement node) {
+        super.visit(node);
+
+        if (node.getInitializer() == null) {
+            return;
+        }
+
+        TypeInfo targetType = node.getSymbolEntry() == null
+                ? resolveType(node.getType())
+                : node.getSymbolEntry().getType();
+        TypeInfo initializerType = node.getInitializer().getResultingType();
+
+        if (isNotAssignable(targetType, initializerType)) {
+            report(node, "Cannot initialize variable '" + node.getName() + "' of type "
+                    + targetType + " with " + initializerType + ".");
+            if (node.getSymbolEntry() != null) {
+                invalidInitializedVariables.add(node.getSymbolEntry());
+            }
         }
     }
 
@@ -536,6 +564,11 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         TypeInfo targetType = node.getTarget().getResultingType();
         TypeInfo indexType = node.getIndex().getResultingType();
 
+        if (targetType instanceof UnknownTypeInfo) {
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
+            return;
+        }
+
         if (!(targetType instanceof ArrayTypeInfo(TypeInfo elementType))) {
             report(node, "Indexing is only allowed on arrays.");
             node.setResultingType(UnknownTypeInfo.INSTANCE);
@@ -556,19 +589,32 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     public void visit(MemberAccessExpression node) {
         super.visit(node);
 
-        boolean isStructField = node.getResolvedField() != null;
-        boolean isEnumValue = node.getResolvedEnumValue() != null;
-
-        if (isStructField) {
-            node.setResultingType(node.getResolvedField().getType());
-            return;
-        }
-
-        if (isEnumValue) {
+        if (node.getResolvedEnumValue() != null) {
             node.setResultingType(new EnumTypeInfo(node.getResolvedEnumValue().getOwnerEnum()));
             return;
         }
 
+        if (node.getResolvedField() != null) {
+            node.setResultingType(node.getResolvedField().getType());
+            return;
+        }
+
+        TypeInfo targetType = node.getTarget().getResultingType();
+        if (targetType instanceof StructTypeInfo(StructEntry structEntry) && structEntry != null) {
+            FieldEntry field = structEntry.getScope().resolveField(node.getMemberName());
+            if (field == null) {
+                report(node, "Struct has no field: " + node.getMemberName());
+                node.setResultingType(UnknownTypeInfo.INSTANCE);
+                return;
+            }
+            node.setResolvedField(field);
+            node.setResultingType(field.getType());
+            return;
+        }
+
+        if (!(targetType instanceof UnknownTypeInfo)) {
+            report(node, "Member access requires a struct value.");
+        }
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
 
