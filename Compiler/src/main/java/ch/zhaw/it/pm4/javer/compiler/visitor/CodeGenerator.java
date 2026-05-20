@@ -690,7 +690,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (node.getArguments().isEmpty()) {
             return;
         }
-        ExpressionAstNode argument = node.getArguments().get(0);
+        ExpressionAstNode argument = node.getArguments().getFirst();
         switch (node.getFunctionName().toLowerCase()) {
             case "printb" -> {
                 emitTyped(argument, PrimitiveTypeInfo.BOOL);

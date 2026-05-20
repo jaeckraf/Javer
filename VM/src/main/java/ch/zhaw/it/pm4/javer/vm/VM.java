@@ -198,25 +198,11 @@ public class VM {
         }
     }
 
-    private void dumpStack(PrintStream out) {
-        out.println("=== STACK DUMP ===");
-        out.println("sp = " + sp);
+    private void dumpStackWindow(PrintStream out) {
+        out.println("=== STACK WINDOW (sp +/- " + VM.STACK_WINDOW + ") ===");
 
-        if (sp == 0) {
-            out.println("<empty>");
-        } else {
-            for (int i = 0; i < sp; i++) {
-                int unsigned = stack[i] & 0xFF;
-                out.printf("[%d] 0x%02X (%d)%n", i, unsigned, stack[i]);
-            }
-        }
-    }
-
-    private void dumpStackWindow(int range, PrintStream out) {
-        out.println("=== STACK WINDOW (sp +/- " + range + ") ===");
-
-        int start = Math.max(0, sp - range);
-        int end = Math.min(stack.length, sp + range);
+        int start = Math.max(0, sp - VM.STACK_WINDOW);
+        int end = Math.min(stack.length, sp + VM.STACK_WINDOW);
 
         for (int i = start; i < end; i++) {
             int unsigned = stack[i] & 0xFF;
@@ -283,7 +269,7 @@ public class VM {
         out.println("programEndAddress = " + programEndAddress);
         out.println("========================================");
 
-        dumpStackWindow(STACK_WINDOW, out);
+        dumpStackWindow(out);
         out.println();
 
         dumpHeap(out);
@@ -380,25 +366,24 @@ public class VM {
 
         for (int i = 0; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-
-            if (line.equals(".code")) {
-                if (codeLineIndex != -1) {
-                    errors.add("Line " + (i + 1) + ": duplicate '.code' section");
-                } else if (dataLineIndex != -1) {
-                    errors.add("Line " + (i + 1) + ": '.code' section must appear before '.data'");
-                } else {
-                    codeLineIndex = i;
+            switch (line) {
+                case "" -> {
                 }
-            } else if (line.equals(".data")) {
-                if (codeLineIndex == -1) {
-                    errors.add("Line " + (i + 1) + ": '.data' section must appear after '.code'");
-                } else if (dataLineIndex != -1) {
-                    errors.add("Line " + (i + 1) + ": duplicate '.data' section");
-                } else {
-                    dataLineIndex = i;
+                case ".code" -> {
+                    if (codeLineIndex != -1) {
+                        errors.add("Line " + (i + 1) + ": duplicate '.code' section");
+                    } else {
+                        codeLineIndex = i;
+                    }
+                }
+                case ".data" -> {
+                    if (codeLineIndex == -1) {
+                        errors.add("Line " + (i + 1) + ": '.data' section must appear after '.code'");
+                    } else if (dataLineIndex != -1) {
+                        errors.add("Line " + (i + 1) + ": duplicate '.data' section");
+                    } else {
+                        dataLineIndex = i;
+                    }
                 }
             }
         }
