@@ -9,9 +9,11 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
@@ -37,39 +39,47 @@ import java.util.Objects;
 public class CodeGenerator extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnostics;
-    private StringBuilder output;
+    private final Path outputFile;
+    private final StringBuilder output = new StringBuilder();
     private DataSection dataSection;
     private FunctionEntry currentFunction;
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
+    private boolean outputDirectoryReady = true;
+    private boolean failed;
 
     /**
      * Creates a code generator that reports invariant failures as diagnostics.
      */
-    public CodeGenerator(DiagnosticBag diagnostics) {
+    public CodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
         this.diagnostics = Objects.requireNonNull(diagnostics, "DiagnosticBag must not be null");
+        this.outputFile = Path.of(outputFilePath);
+        prepareOutputDirectory();
     }
 
     /**
      * Generates bytecode for a complete compilation unit and writes it to disk.
      *
-     * @param node           root compilation unit
-     * @param outputFilePath target bytecode file path
+     * @param node root compilation unit
      */
-    public void generate(CompilationUnit node, String outputFilePath) {
-        Path outputFile = Path.of(outputFilePath);
+    public boolean generate(CompilationUnit node) {
+        output.setLength(0);
+        loopContexts.clear();
+        nextLabelId = 0;
+
+        if (!outputDirectoryReady) {
+            deleteOutputFile();
+            return false;
+        }
+
         try {
-            output = new StringBuilder();
-            loopContexts.clear();
-            nextLabelId = 0;
             node.accept(this);
 
-            if (diagnostics.hasErrors()) {
-                deleteOutputFile(outputFile);
-                return;
+            if (failed || diagnostics.hasErrors()) {
+                deleteOutputFile();
+                return false;
             }
 
-            prepareOutputDirectory(outputFile);
             Files.writeString(
                     outputFile,
                     output.toString(),
@@ -77,23 +87,18 @@ public class CodeGenerator extends AstNodeVisitorBase {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE);
-        } catch (RuntimeException exception) {
-            reportCodegenError("Code generation failed: " + diagnosticMessage(exception));
-            deleteOutputFile(outputFile);
+            return true;
         } catch (IOException exception) {
-            reportCodegenError("Could not write generated code to " + outputFile + ": " + diagnosticMessage(exception));
-            deleteOutputFile(outputFile);
+            report("Could not write bytecode output file: " + outputFile + ".");
+            deleteOutputFile();
+            return false;
         } finally {
-            output = null;
             dataSection = null;
             currentFunction = null;
         }
     }
 
     protected void writeLine(String line) {
-        if (output == null) {
-            throw new IllegalStateException("No active code generation buffer.");
-        }
         output.append(line).append(System.lineSeparator());
     }
 
@@ -105,30 +110,35 @@ public class CodeGenerator extends AstNodeVisitorBase {
         return prefix + "_" + nextLabelId++;
     }
 
-    private void prepareOutputDirectory(Path outputFile) throws IOException {
+    private void prepareOutputDirectory() {
         Path parent = outputFile.toAbsolutePath().getParent();
         if (parent == null) {
             return;
         }
 
-        Files.createDirectories(parent);
-    }
-
-    private void deleteOutputFile(Path outputFile) {
         try {
-            Files.deleteIfExists(outputFile);
+            Files.createDirectories(parent);
         } catch (IOException exception) {
-            reportCodegenError("Could not delete incomplete output file " + outputFile + ": " + diagnosticMessage(exception));
+            outputDirectoryReady = false;
+            report("Could not create bytecode output directory: " + parent + ".");
         }
     }
 
-    private void reportCodegenError(String message) {
-        diagnostics.add(null, Severity.ERROR, message);
+    private void deleteOutputFile() {
+        try {
+            Files.deleteIfExists(outputFile);
+        } catch (IOException exception) {
+            report("Could not delete incomplete bytecode output file: " + outputFile + ".");
+        }
     }
 
-    private String diagnosticMessage(Exception exception) {
-        String message = exception.getMessage();
-        return message == null || message.isBlank() ? exception.getClass().getSimpleName() : message;
+    private void report(AstNode node, String message) {
+        diagnostics.add(node.getSourceRange().start(), Severity.ERROR, message);
+    }
+
+    private void report(String message) {
+        failed = true;
+        System.err.println(message);
     }
 
     @Override
@@ -173,10 +183,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private void emitFallthroughReturn(FunctionEntry function) {
         TypeInfo returnType = function.getReturnType();
         if (isVoidLike(returnType)) {
-            emitReturn(VoidTypeInfo.INSTANCE);
+            emitReturn(VoidTypeInfo.INSTANCE, null);
             return;
         }
-        throw new IllegalStateException("Non-void function lacks an explicit return: " + function.getName());
+        report("Cannot generate fallthrough return for non-void function '" + function.getName() + "'.");
     }
 
     @Override
@@ -215,7 +225,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (!leavesValueOnStack(expression, type)) {
             return;
         }
-        emitPop(type);
+        emitPop(type, expression);
     }
 
     private boolean leavesValueOnStack(ExpressionAstNode expression, TypeInfo type) {
@@ -330,14 +340,15 @@ public class CodeGenerator extends AstNodeVisitorBase {
         ExpressionAstNode expression = node.getExpression();
         TypeInfo returnType = currentFunction.getReturnType();
         if (expression == null) {
-            emitReturn(VoidTypeInfo.INSTANCE);
+            emitReturn(VoidTypeInfo.INSTANCE, node);
             return;
         }
         if (isVoidLike(returnType)) {
-            throw new IllegalStateException("Void function must not return a value: " + currentFunction.getName());
+            report(node, "Void function '" + currentFunction.getName() + "' cannot return a value.");
+            return;
         }
         emitTyped(expression, returnType);
-        emitReturn(returnType);
+        emitReturn(returnType, node);
     }
 
     @Override
@@ -348,7 +359,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         StorageEntry storage = node.getSymbolEntry();
         emitStorageAddress(storage);
         emitTyped(node.getInitializer(), storage.getType());
-        emitStore(storage.getType());
+        emitStore(storage.getType(), node);
     }
 
     @Override
@@ -356,22 +367,34 @@ public class CodeGenerator extends AstNodeVisitorBase {
         TypeInfo type = node.getTarget().getResultingType();
         AssignOperator operator = node.getOperator();
         if (operator == AssignOperator.ASSIGN) {
-            emitAddress(node.getTarget());
+            if (!emitAddress(node.getTarget())) {
+                return;
+            }
             emitTyped(node.getValue(), type);
         } else {
-            emitAddress(node.getTarget());
-            emitAddress(node.getTarget());
-            emitLoad(type);
+            if (!emitAddress(node.getTarget())) {
+                return;
+            }
+            if (!emitAddress(node.getTarget())) {
+                return;
+            }
+            emitLoad(type, node);
             emitTyped(node.getValue(), type);
-            emitBinaryOp(compoundAssignToBinary(operator), type);
+            BinaryExpressionKind binaryOperator = compoundAssignToBinary(node);
+            if (binaryOperator == BinaryExpressionKind.INVALID) {
+                return;
+            }
+            emitBinaryOp(binaryOperator, type, node);
         }
-        emitStore(type);
-        emitAddress(node.getTarget());
-        emitLoad(type);
+        emitStore(type, node);
+        if (!emitAddress(node.getTarget())) {
+            return;
+        }
+        emitLoad(type, node);
     }
 
-    private BinaryExpressionKind compoundAssignToBinary(AssignOperator operator) {
-        return switch (operator) {
+    private BinaryExpressionKind compoundAssignToBinary(AssignExpression node) {
+        return switch (node.getOperator()) {
             case ADD_ASSIGN -> BinaryExpressionKind.ADD;
             case SUB_ASSIGN -> BinaryExpressionKind.SUBTRACT;
             case MUL_ASSIGN -> BinaryExpressionKind.MULTIPLY;
@@ -382,7 +405,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case BITWISE_XOR_ASSIGN -> BinaryExpressionKind.BITWISE_XOR;
             case LEFT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_LEFT;
             case RIGHT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_RIGHT;
-            case ASSIGN, INVALID -> throw new IllegalStateException("Not a compound assignment operator: " + operator);
+            case ASSIGN, INVALID -> {
+                report(node, "Cannot generate compound assignment for operator: " + node.getOperator() + ".");
+                yield BinaryExpressionKind.INVALID;
+            }
         };
     }
 
@@ -410,8 +436,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
         }
         emitTyped(node.getLeft(), operandType);
         emitTyped(node.getRight(), operandType);
-        emitBinaryOp(operator, operandType);
-        emitConversion(binaryResultType(operator, operandType), node.getResultingType());
+        emitBinaryOp(operator, operandType, node);
+        emitConversion(binaryResultType(operator, operandType), node.getResultingType(), node);
     }
 
     private TypeInfo binaryOperandType(BinaryExpressionKind operator, BinaryExpression node) {
@@ -457,7 +483,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> throw new IllegalStateException("Invalid binary operator.");
+            case INVALID -> false;
         };
     }
 
@@ -466,7 +492,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> true;
             case ADD, SUBTRACT, MULTIPLY, DIVIDE,
                  AND, OR, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> throw new IllegalStateException("Invalid binary operator.");
+            case INVALID -> false;
         };
     }
 
@@ -476,7 +502,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  AND, OR -> false;
-            case INVALID -> throw new IllegalStateException("Invalid binary operator.");
+            case INVALID -> false;
         };
     }
 
@@ -530,20 +556,26 @@ public class CodeGenerator extends AstNodeVisitorBase {
             }
             case PRE_INCREMENT -> emitPrefixStep(node.getOperand(), 1);
             case PRE_DECREMENT -> emitPrefixStep(node.getOperand(), -1);
-            case INVALID -> throw new IllegalStateException("Invalid unary operator.");
+            case INVALID -> report(node, "Cannot generate invalid unary operator.");
         }
     }
 
     private void emitPrefixStep(ExpressionAstNode target, int delta) {
         TypeInfo type = target.getResultingType();
-        emitAddress(target);
-        emitAddress(target);
-        emitLoad(type);
+        if (!emitAddress(target)) {
+            return;
+        }
+        if (!emitAddress(target)) {
+            return;
+        }
+        emitLoad(type, target);
         emitNumericLiteralPush(type, delta);
-        emitBinaryOp(BinaryExpressionKind.ADD, type);
-        emitStore(type);
-        emitAddress(target);
-        emitLoad(type);
+        emitBinaryOp(BinaryExpressionKind.ADD, type, target);
+        emitStore(type, target);
+        if (!emitAddress(target)) {
+            return;
+        }
+        emitLoad(type, target);
     }
 
     @Override
@@ -552,17 +584,26 @@ public class CodeGenerator extends AstNodeVisitorBase {
         int delta = switch (node.getKind()) {
             case INCREMENT -> 1;
             case DECREMENT -> -1;
-            case INVALID -> throw new IllegalStateException("Invalid postfix operator.");
+            case INVALID -> {
+                report(node, "Cannot generate invalid postfix operator.");
+                yield 0;
+            }
         };
         TypeInfo type = target.getResultingType();
-        emitAddress(target);
-        emitLoad(type);
-        emitAddress(target);
-        emitAddress(target);
-        emitLoad(type);
+        if (!emitAddress(target)) {
+            return;
+        }
+        emitLoad(type, node);
+        if (!emitAddress(target)) {
+            return;
+        }
+        if (!emitAddress(target)) {
+            return;
+        }
+        emitLoad(type, node);
         emitNumericLiteralPush(type, delta);
-        emitBinaryOp(BinaryExpressionKind.ADD, type);
-        emitStore(type);
+        emitBinaryOp(BinaryExpressionKind.ADD, type, node);
+        emitStore(type, node);
     }
 
     @Override
@@ -583,8 +624,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(IndexExpression node) {
-        emitAddress(node);
-        emitLoad(node.getResultingType());
+        if (!emitAddress(node)) {
+            return;
+        }
+        emitLoad(node.getResultingType(), node);
     }
 
     @Override
@@ -593,11 +636,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLine("PUSHI, " + node.getResolvedEnumValue().getValue());
             return;
         }
-        if (node.getResolvedField() == null) {
-            throw new IllegalStateException("Unresolved member access: " + node.getMemberName());
+        if (!emitAddress(node)) {
+            return;
         }
-        emitAddress(node);
-        emitLoad(node.getResolvedField().getType());
+        emitLoad(node.getResolvedField().getType(), node);
     }
 
     @Override
@@ -610,15 +652,18 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLine("NEW");
             return;
         }
+        // TODO has been checked in typechecker
         if (!(node.getResultingType() instanceof ArrayTypeInfo(TypeInfo elementType))) {
-            throw new IllegalStateException("'new' requires a struct or array type.");
+            report(node, "Cannot generate new expression because the resulting type is not a struct or array.");
+            return;
         }
-        int elementSize = memoryBytes(elementType);
+        int elementSize = memoryBytes(elementType, node);
         ArrayInitExpression init = node.getArrayInit();
 
         if (node.getDimensions().isEmpty()) {
             if (init == null) {
-                throw new IllegalStateException("Array allocation requires dimensions or an initializer.");
+                report(node, "Cannot generate array allocation without dimensions or initializer.");
+                return;
             }
             writeLine("PUSHI, " + (init.getElements().size() * elementSize));
         } else {
@@ -637,9 +682,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(ArrayInitExpression node) {
-        ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getResultingType();
+        if (!(node.getResultingType() instanceof ArrayTypeInfo arrayType)) {
+            report(node, "Cannot generate array initializer because its resulting type is not an array.");
+            return;
+        }
         TypeInfo elementType = arrayType.elementType();
-        int elementSize = memoryBytes(elementType);
+        int elementSize = memoryBytes(elementType, node);
         writeLine("PUSHI, " + (node.getElements().size() * elementSize));
         writeLine("NEW");
         initializeArrayElements(node.getElements(), elementType, elementSize);
@@ -647,11 +695,11 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private void initializeArrayElements(List<ExpressionAstNode> elements, TypeInfo elementType, int elementSize) {
         for (int i = 0; i < elements.size(); i++) {
-            emitDup(PrimitiveTypeInfo.INT);
+            emitDup(PrimitiveTypeInfo.INT, elements.get(i));
             writeLine("PUSHI, " + (i * elementSize));
             writeLine("IADD");
             emitTyped(elements.get(i), elementType);
-            emitStore(elementType);
+            emitStore(elementType, elements.get(i));
         }
     }
 
@@ -659,14 +707,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public void visit(NameExpression node) {
         SymbolEntry entry = node.getSymbolEntry();
         if (entry instanceof StorageEntry storage) {
-            emitFrameLoad(storage);
+            emitFrameLoad(storage, node);
             return;
         }
         if (entry instanceof EnumValueEntry enumValue) {
             writeLine("PUSHI, " + enumValue.getValue());
             return;
         }
-        throw new IllegalStateException("Unresolved name expression: " + node.getName());
     }
 
     @Override
@@ -683,25 +730,29 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private void emitPrintBuiltin(CallExpression node) {
         FunctionEntry function = node.getResolvedFunction();
-        BuiltInFunction builtIn = BuiltInFunction.find(function.getName())
-                .orElseThrow(() -> new IllegalStateException("Unknown built-in function: " + function.getName()));
+        BuiltInFunction builtIn = BuiltInFunction.find(function.getName());
         emitTyped(node.getArguments().getFirst(), builtIn.getParameterType());
         writeLine(builtIn.getVmInstruction());
     }
 
     private void emitTyped(ExpressionAstNode expression, TypeInfo expectedType) {
         expression.accept(this);
-        emitConversion(expression.getResultingType(), expectedType);
+        emitConversion(expression.getResultingType(), expectedType, expression);
     }
 
-    private void emitConversion(TypeInfo from, TypeInfo to) {
+    private void emitConversion(TypeInfo from, TypeInfo to, AstNode context) {
         if (from.equals(to)) {
+            return;
+        }
+        if (from instanceof UnknownTypeInfo || to instanceof UnknownTypeInfo) {
+            report(context, "Cannot generate conversion involving unresolved type: " + from + " to " + to + ".");
             return;
         }
         if (!(from instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) || !(to instanceof PrimitiveTypeInfo(
                 PrimitiveTypeKind kind1
         ))) {
-            throw new IllegalStateException("Unsupported conversion from " + from + " to " + to);
+            report(context, "Cannot generate conversion from " + from + " to " + to + ".");
+            return;
         }
         if (kind == kind1) {
             return;
@@ -711,17 +762,17 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 if (kind1 == PrimitiveTypeKind.DOUBLE) {
                     writeLine("I2D");
                 } else {
-                    throw new IllegalStateException("Unsupported conversion from " + from + " to " + to);
+                    report(context, "Cannot generate conversion from " + from + " to " + to + ".");
                 }
             }
             case DOUBLE -> {
                 if (kind1 == PrimitiveTypeKind.INT) {
                     writeLine("D2I");
                 } else {
-                    throw new IllegalStateException("Unsupported conversion from " + from + " to " + to);
+                    report(context, "Cannot generate conversion from " + from + " to " + to + ".");
                 }
             }
-            default -> throw new IllegalStateException("Unsupported conversion from " + from + " to " + to);
+            default -> report(context, "Cannot generate conversion from " + from + " to " + to + ".");
         }
     }
 
@@ -763,7 +814,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         writeLine("PUSHI, " + value);
     }
 
-    private void emitBinaryOp(BinaryExpressionKind operator, TypeInfo operandType) {
+    private void emitBinaryOp(BinaryExpressionKind operator, TypeInfo operandType, AstNode context) {
         boolean isDouble = PrimitiveTypeInfo.DOUBLE.equals(operandType);
         switch (operator) {
             case ADD -> writeLine(isDouble ? "DADD" : "IADD");
@@ -782,8 +833,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case GREATER_EQUALS -> writeLine(isDouble ? "DGE" : "IGE");
             case EQUALS -> writeLine(isDouble ? "DEQ" : "IEQ");
             case NOT_EQUALS -> writeLine(isDouble ? "DNE" : "INE");
-            case AND, OR -> throw new IllegalStateException("Logical operators require expression-level emission.");
-            case INVALID -> throw new IllegalStateException("Invalid binary operator.");
+            // wrong
+            case AND, OR -> report(context, "Cannot generate logical operator as a primitive binary instruction.");
+            case INVALID -> report(context, "Cannot generate invalid binary operator.");
         }
     }
 
@@ -794,80 +846,112 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  LESS, LESS_EQUALS, GREATER, GREATER_EQUALS, EQUALS, NOT_EQUALS ->
-                    emitBinaryOp(node.getOperator(), operandType);
-            case INVALID -> throw new IllegalStateException("Invalid binary operator.");
+                    emitBinaryOp(node.getOperator(), operandType, node);
+            case INVALID -> report(node, "Cannot generate invalid binary operator.");
         }
     }
 
-    private void emitFrameLoad(StorageEntry storage) {
+    private void emitFrameLoad(StorageEntry storage, AstNode context) {
         emitStorageAddress(storage);
-        emitLoad(storage.getType());
+        emitLoad(storage.getType(), context);
     }
 
-    private void emitAddress(ExpressionAstNode expression) {
+    private boolean emitAddress(ExpressionAstNode expression) {
         if (expression instanceof NameExpression name && name.getSymbolEntry() instanceof StorageEntry storage) {
             emitStorageAddress(storage);
-            return;
+            return true;
         }
         if (expression instanceof IndexExpression index) {
-            emitIndexAddress(index);
-            return;
+            return emitIndexAddress(index);
         }
         if (expression instanceof MemberAccessExpression member && member.getResolvedField() != null) {
-            emitMemberAddress(member);
-            return;
+            return emitMemberAddress(member);
         }
-        throw new IllegalStateException("Expression has no address: " + expression.getClass().getSimpleName());
+        return false;
     }
 
     private void emitStorageAddress(StorageEntry storage) {
         writeLine("LOCAL, " + storage.getOffsetBytes());
     }
 
-    private void emitIndexAddress(IndexExpression node) {
+    private boolean emitIndexAddress(IndexExpression node) {
         ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getTarget().getResultingType();
         TypeInfo elementType = arrayType.elementType();
         node.getTarget().accept(this);
         emitTyped(node.getIndex(), PrimitiveTypeInfo.INT);
-        int elementSize = memoryBytes(elementType);
+        int elementSize = memoryBytes(elementType, node);
         if (elementSize != VmLayout.BYTE_BYTES) {
             writeLine("PUSHI, " + elementSize);
             writeLine("IMUL");
         }
         writeLine("IADD");
+        return true;
     }
 
-    private void emitMemberAddress(MemberAccessExpression node) {
+    private boolean emitMemberAddress(MemberAccessExpression node) {
         FieldEntry field = node.getResolvedField();
         node.getTarget().accept(this);
         if (field.getOffsetBytes() != 0) {
             writeLine("PUSHI, " + field.getOffsetBytes());
             writeLine("IADD");
         }
+        return true;
     }
 
-    private void emitLoad(TypeInfo type) {
-        writeLine(VmLayout.memoryWidth(type).loadInstruction());
+    private void emitLoad(TypeInfo type, AstNode context) {
+        writeLine(memoryWidth(type, context).loadInstruction());
     }
 
-    private void emitStore(TypeInfo type) {
-        writeLine(VmLayout.memoryWidth(type).storeInstruction());
+    private void emitStore(TypeInfo type, AstNode context) {
+        writeLine(memoryWidth(type, context).storeInstruction());
     }
 
-    private void emitDup(TypeInfo type) {
-        writeLine("DUP, " + VmLayout.stackBytes(type));
+    private void emitDup(TypeInfo type, AstNode context) {
+        writeLine("DUP, " + stackBytes(type, context));
     }
 
-    private void emitPop(TypeInfo type) {
-        writeLine("POP, " + VmLayout.stackBytes(type));
+    private void emitPop(TypeInfo type, AstNode context) {
+        writeLine("POP, " + stackBytes(type, context));
     }
 
-    private void emitReturn(TypeInfo type) {
-        writeLine("RET, " + VmLayout.returnBytes(type));
+    private void emitReturn(TypeInfo type, AstNode context) {
+        writeLine("RET, " + returnBytes(type, context));
     }
 
-    private int memoryBytes(TypeInfo type) {
-        return VmLayout.memoryWidth(type).bytes();
+    private int memoryBytes(TypeInfo type, AstNode context) {
+        return memoryWidth(type, context).bytes();
+    }
+
+    private VmLayout.MemoryWidth memoryWidth(TypeInfo type, AstNode context) {
+        return VmLayout.memoryWidth(type);
+    }
+
+    private int stackBytes(TypeInfo type, AstNode context) {
+        if (!hasStackRepresentation(type)) {
+            report(context, "Cannot generate stack operation for type: " + type + ".");
+            return VmLayout.WORD_BYTES;
+        }
+        return VmLayout.stackBytes(type);
+    }
+
+    private int returnBytes(TypeInfo type, AstNode context) {
+        if (isVoidLike(type)) {
+            return 0;
+        }
+        return stackBytes(type, context);
+    }
+
+    private boolean hasStackRepresentation(TypeInfo type) {
+        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
+            return true;
+        }
+        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
+            return switch (kind) {
+                case BOOL, CHAR, INT, STRING -> true;
+                case DOUBLE, INVALID -> false;
+            };
+        }
+        return type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo;
     }
 
     private boolean isVoidLike(TypeInfo type) {

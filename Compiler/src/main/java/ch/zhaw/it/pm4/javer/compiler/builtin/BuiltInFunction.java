@@ -38,10 +38,11 @@ public enum BuiltInFunction {
         return Arrays.asList(values());
     }
 
-    public static Optional<BuiltInFunction> find(String name) {
-        return all().stream()
-                .filter(function -> function.name.equals(name))
-                .findFirst();
+    public static BuiltInFunction find(String name) {
+        for(BuiltInFunction builtInFunction : values()) {
+            if(builtInFunction.getName().equals(name)) return builtInFunction;
+        }
+        return null;
     }
 
     public FunctionEntry createSymbol() {

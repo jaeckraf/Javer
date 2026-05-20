@@ -23,8 +23,10 @@ public class DiagnosticBag {
 
     private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
+    private final List<PhaseAbortListener> phaseAbortListeners = new ArrayList<>();
     private int errorCount;
     private boolean errorLimitReached;
+    private boolean phaseAbortRequested;
 
     /**
      * Initializes a new DiagnosticBag.
@@ -49,6 +51,19 @@ public class DiagnosticBag {
      */
     public void setPhase(CompilationPhase phase) {
         this.phase = phase;
+        if (!errorLimitReached) {
+            phaseAbortRequested = false;
+        }
+    }
+
+    /**
+     * Registers a listener that is notified when the current phase should stop
+     * immediately, for example after the diagnostic error limit was reached.
+     *
+     * @param listener listener to notify on phase abort
+     */
+    public void addPhaseAbortListener(PhaseAbortListener listener) {
+        phaseAbortListeners.add(listener);
     }
 
     /**
@@ -90,11 +105,31 @@ public class DiagnosticBag {
                 null,
                 Severity.SEVERE,
                 "Diagnostic limit of " + errorLimit + " error(s) reached; further diagnostics suppressed."));
+        requestPhaseAbort();
     }
 
     private boolean isError(Diagnostic diagnostic) {
         Severity severity = diagnostic.getSeverity();
         return severity == Severity.ERROR || severity == Severity.SEVERE;
+    }
+
+    private void requestPhaseAbort() {
+        if (phaseAbortRequested) {
+            return;
+        }
+        phaseAbortRequested = true;
+        for (PhaseAbortListener listener : List.copyOf(phaseAbortListeners)) {
+            listener.phaseAbortRequested(phase);
+        }
+    }
+
+    /**
+     * Indicates whether the current phase has requested an abort.
+     *
+     * @return true once the current phase should stop
+     */
+    public boolean isPhaseAbortRequested() {
+        return phaseAbortRequested;
     }
 
     /**
@@ -204,5 +239,14 @@ public class DiagnosticBag {
         diagnostics.clear();
         errorCount = 0;
         errorLimitReached = false;
+        phaseAbortRequested = false;
+    }
+
+    /**
+     * Listener for diagnostic-driven phase abort requests.
+     */
+    @FunctionalInterface
+    public interface PhaseAbortListener {
+        void phaseAbortRequested(CompilationPhase phase);
     }
 }
