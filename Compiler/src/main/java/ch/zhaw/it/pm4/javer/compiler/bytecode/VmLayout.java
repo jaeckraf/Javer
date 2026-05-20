@@ -3,6 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.bytecode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.NullTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
@@ -62,7 +63,10 @@ public final class VmLayout {
                 case DOUBLE, INVALID -> false;
             };
         }
-        return type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo;
+        return type instanceof EnumTypeInfo
+                || type instanceof ArrayTypeInfo
+                || type instanceof StructTypeInfo
+                || type instanceof NullTypeInfo;
     }
 
     public enum MemoryWidth {

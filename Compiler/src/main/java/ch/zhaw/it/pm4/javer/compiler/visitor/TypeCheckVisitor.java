@@ -14,6 +14,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.NullTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
@@ -54,7 +55,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             case BOOLEAN -> PrimitiveTypeInfo.BOOL;
             case STRING -> PrimitiveTypeInfo.STRING;
             case CHAR -> PrimitiveTypeInfo.CHAR;
-            case NULL -> UnknownTypeInfo.INSTANCE;
+            case NULL -> NullTypeInfo.INSTANCE;
         });
     }
 
@@ -71,8 +72,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         }
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
-
-    //Function Declaration
 
     public void visit(FunctionDeclaration node) {
         TypeInfo previous = currentFunctionReturnType;
@@ -109,19 +108,16 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 ? UnknownTypeInfo.INSTANCE
                 : currentFunctionReturnType;
 
-        // void function darf keinen Wert returnen
         if (expectedReturnType instanceof VoidTypeInfo && node.getExpression() != null) {
             report(node, "Void function must not return a value.");
             return;
         }
 
-        // non-void function muss Wert returnen
         if (!(expectedReturnType instanceof VoidTypeInfo) && node.getExpression() == null) {
             report(node, "Missing return value. Expected: " + expectedReturnType);
             return;
         }
 
-        // Typprüfung
         if (isNotAssignable(expectedReturnType, actualReturnType)) {
             report(node, "Return type mismatch. Expected: " + expectedReturnType + ", actual: " + actualReturnType);
         }
@@ -130,6 +126,10 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     private boolean isNotAssignable(TypeInfo expected, TypeInfo actual) {
         if (expected instanceof UnknownTypeInfo || actual instanceof UnknownTypeInfo) {
             return false;
+        }
+
+        if (actual instanceof NullTypeInfo) {
+            return !isReferenceType(expected);
         }
 
         if (expected.equals(actual)) {
@@ -144,9 +144,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, message);
         }
     }
-
-
-    //Function Call
 
     @Override
     public void visit(CallExpression node) {
@@ -192,8 +189,8 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getOperator()) {
             case OR, AND -> {
-                if (isNotBoolean(left) || isNotBoolean(right)) {
-                    report(node, "Logical operator requires boolean operands.");
+                if (!isConditionType(left) || !isConditionType(right)) {
+                    report(node, "Logical operator requires value operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
                 yield PrimitiveTypeInfo.BOOL;
@@ -208,7 +205,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> {
-                if (!isNumeric(left) || !isNumeric(right)) {
+                if (!isOrderedComparable(left, right)) {
                     report(node, "Comparison operator requires numeric operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -240,10 +237,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.setResultingType(result);
     }
 
-    private boolean isNotBoolean(TypeInfo type) {
-        return !PrimitiveTypeInfo.BOOL.equals(type);
-    }
-
     private boolean isNotInteger(TypeInfo type) {
         return !PrimitiveTypeInfo.INT.equals(type);
     }
@@ -252,16 +245,31 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         return PrimitiveTypeInfo.INT.equals(type) || PrimitiveTypeInfo.DOUBLE.equals(type);
     }
 
+    private boolean isReferenceType(TypeInfo type) {
+        return PrimitiveTypeInfo.STRING.equals(type)
+                || type instanceof ArrayTypeInfo
+                || type instanceof StructTypeInfo;
+    }
+
     private boolean isComparable(TypeInfo left, TypeInfo right) {
         if (left instanceof UnknownTypeInfo || right instanceof UnknownTypeInfo) {
             return true;
+        }
+
+        if (left instanceof NullTypeInfo || right instanceof NullTypeInfo) {
+            return (left instanceof NullTypeInfo && right instanceof NullTypeInfo)
+                    || (left instanceof NullTypeInfo && isReferenceType(right))
+                    || (right instanceof NullTypeInfo && isReferenceType(left));
         }
 
         if (left.equals(right)) {
             return true;
         }
 
-        // falls ihr int/double-Mischung erlauben wollt
+        return isNumeric(left) && isNumeric(right);
+    }
+
+    private boolean isOrderedComparable(TypeInfo left, TypeInfo right) {
         return isNumeric(left) && isNumeric(right);
     }
 
@@ -298,7 +306,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                     report(node, "Arithmetic assignment requires numeric operands.");
                     valid = false;
                 } else if (!targetType.equals(valueType)) {
-                    // Optional: int += double erlauben?
                     report(node, "Arithmetic assignment requires operands of the same type.");
                     valid = false;
                 }
@@ -368,17 +375,31 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 ? UnknownTypeInfo.INSTANCE
                 : node.getFalseExpression().getResultingType();
 
-        node.setResultingType(trueType.equals(falseType) ? trueType : UnknownTypeInfo.INSTANCE);
+        node.setResultingType(conditionalResultType(trueType, falseType));
+    }
+
+    private TypeInfo conditionalResultType(TypeInfo trueType, TypeInfo falseType) {
+        if (trueType.equals(falseType)) {
+            return trueType;
+        }
+        if (trueType instanceof UnknownTypeInfo || falseType instanceof UnknownTypeInfo) {
+            return UnknownTypeInfo.INSTANCE;
+        }
+        if (trueType instanceof NullTypeInfo && isReferenceType(falseType)) {
+            return falseType;
+        }
+        if (falseType instanceof NullTypeInfo && isReferenceType(trueType)) {
+            return trueType;
+        }
+        return UnknownTypeInfo.INSTANCE;
     }
 
 
     private boolean isConditionType(TypeInfo type) {
         if (type instanceof UnknownTypeInfo) {
-            return true; // vermeidet Fehler-Kaskade
+            return true;
         }
-        return PrimitiveTypeInfo.BOOL.equals(type)
-                || PrimitiveTypeInfo.INT.equals(type)
-                || PrimitiveTypeInfo.DOUBLE.equals(type);
+        return !(type instanceof VoidTypeInfo);
     }
 
     private void checkConditionType(ExpressionAstNode condition, AstNode owner, String context, boolean allowMissingCondition) {
@@ -391,7 +412,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo conditionType = condition.getResultingType();
         if (!isConditionType(conditionType)) {
-            report(owner, context + " condition must be bool, int, or double, but was: " + conditionType);
+            report(owner, context + " condition must produce a value, but was: " + conditionType);
         }
     }
 
@@ -406,8 +427,8 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getKind()) {
             case LOGICAL_NOT -> {
-                if (isNotBoolean(operandType)) {
-                    report(node, "Logical not requires boolean operand.");
+                if (!isConditionType(operandType)) {
+                    report(node, "Logical not requires a value operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
                 yield PrimitiveTypeInfo.BOOL;
@@ -426,7 +447,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                     report(node, "Unary " + node.getKind() + " requires int or double operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
-                yield operandType; // int bleibt int, double bleibt double
+                yield operandType;
             }
 
             case PRE_INCREMENT, PRE_DECREMENT -> {

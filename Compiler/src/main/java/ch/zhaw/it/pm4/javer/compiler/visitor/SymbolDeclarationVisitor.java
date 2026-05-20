@@ -334,6 +334,15 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                 case STRING, INVALID -> null;
             };
         }
+        if (type instanceof EnumTypeInfo(EnumEntry entry)
+                && entry != null
+                && entry.getScope() != null
+                && !entry.getScope().getValues().isEmpty()) {
+            return entry.getScope().getValues().values().iterator().next().getValue();
+        }
+        if (type instanceof EnumTypeInfo) {
+            return 0;
+        }
         return null;
     }
 }
