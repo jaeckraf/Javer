@@ -2,6 +2,9 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
@@ -18,10 +21,14 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.NullTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Assigns semantic type information to expression and type AST nodes.
@@ -124,19 +131,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     }
 
     private boolean isNotAssignable(TypeInfo expected, TypeInfo actual) {
-        if (expected instanceof UnknownTypeInfo || actual instanceof UnknownTypeInfo) {
-            return false;
-        }
-
-        if (actual instanceof NullTypeInfo) {
-            return !isReferenceType(expected);
-        }
-
-        if (expected.equals(actual)) {
-            return false;
-        }
-
-        return !PrimitiveTypeInfo.DOUBLE.equals(expected) || !PrimitiveTypeInfo.INT.equals(actual);
+        return !TypeRules.isAssignable(expected, actual);
     }
 
     private void report(AstNode node, String message) {
@@ -189,7 +184,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getOperator()) {
             case OR, AND -> {
-                if (!isConditionType(left) || !isConditionType(right)) {
+                if (!TypeRules.isConditionType(left) || !TypeRules.isConditionType(right)) {
                     report(node, "Logical operator requires value operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -197,7 +192,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case EQUALS, NOT_EQUALS -> {
-                if (!isComparable(left, right)) {
+                if (!TypeRules.isEqualityComparable(left, right)) {
                     report(node, "Equality operator requires compatible operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -205,27 +200,29 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> {
-                if (!isOrderedComparable(left, right)) {
-                    report(node, "Comparison operator requires numeric operands.");
+                if (!TypeRules.isOrderedComparable(left, right)) {
+                    report(node, "Comparison operator requires numeric or char operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
                 yield PrimitiveTypeInfo.BOOL;
             }
 
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> {
-                if (!isNumeric(left) || !isNumeric(right)) {
-                    report(node, "Arithmetic operator requires numeric operands.");
+                if (!TypeRules.isBinaryOperatorAllowed(node.getOperator(), left, right)) {
+                    report(node, node.getOperator() == BinaryExpressionKind.MODULO
+                            ? "Modulo operator requires int operands."
+                            : "Arithmetic operator requires numeric operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
-                yield numericResult(left, right);
+                yield TypeRules.binaryResult(node.getOperator(), left, right);
             }
 
             case BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> {
-                if (isNotInteger(left) || isNotInteger(right)) {
+                if (!TypeRules.isBinaryOperatorAllowed(node.getOperator(), left, right)) {
                     report(node, "Bitwise and shift operators require integer operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
-                yield PrimitiveTypeInfo.INT;
+                yield TypeRules.binaryResult(node.getOperator(), left, right);
             }
 
             case INVALID -> {
@@ -236,43 +233,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         node.setResultingType(result);
     }
-
-    private boolean isNotInteger(TypeInfo type) {
-        return !PrimitiveTypeInfo.INT.equals(type);
-    }
-
-    private boolean isNumeric(TypeInfo type) {
-        return PrimitiveTypeInfo.INT.equals(type) || PrimitiveTypeInfo.DOUBLE.equals(type);
-    }
-
-    private boolean isReferenceType(TypeInfo type) {
-        return PrimitiveTypeInfo.STRING.equals(type)
-                || type instanceof ArrayTypeInfo
-                || type instanceof StructTypeInfo;
-    }
-
-    private boolean isComparable(TypeInfo left, TypeInfo right) {
-        if (left instanceof UnknownTypeInfo || right instanceof UnknownTypeInfo) {
-            return true;
-        }
-
-        if (left instanceof NullTypeInfo || right instanceof NullTypeInfo) {
-            return (left instanceof NullTypeInfo && right instanceof NullTypeInfo)
-                    || (left instanceof NullTypeInfo && isReferenceType(right))
-                    || (right instanceof NullTypeInfo && isReferenceType(left));
-        }
-
-        if (left.equals(right)) {
-            return true;
-        }
-
-        return isNumeric(left) && isNumeric(right);
-    }
-
-    private boolean isOrderedComparable(TypeInfo left, TypeInfo right) {
-        return isNumeric(left) && isNumeric(right);
-    }
-
 
     @Override
     public void visit(AssignExpression node) {
@@ -302,17 +262,16 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 }
             }
             case ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN -> {
-                if (!isNumeric(targetType) || !isNumeric(valueType)) {
-                    report(node, "Arithmetic assignment requires numeric operands.");
-                    valid = false;
-                } else if (!targetType.equals(valueType)) {
-                    report(node, "Arithmetic assignment requires operands of the same type.");
+                if (!TypeRules.isCompoundAssignable(node.getOperator(), targetType, valueType)) {
+                    report(node, node.getOperator() == AssignOperator.MOD_ASSIGN
+                            ? "Modulo assignment requires int operands."
+                            : "Arithmetic assignment requires numeric operands.");
                     valid = false;
                 }
             }
             case BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN,
                  LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN -> {
-                if (isNotInteger(targetType) || isNotInteger(valueType)) {
+                if (!TypeRules.isCompoundAssignable(node.getOperator(), targetType, valueType)) {
                     report(node, "Bitwise/shift assignment requires integer operands.");
                     valid = false;
                 }
@@ -361,6 +320,89 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         checkConditionType(node.getCondition(), node, "For", true);
     }
 
+    @Override
+    public void visit(SwitchStatement node) {
+        super.visit(node);
+
+        TypeInfo switchType = node.getCondition().getResultingType();
+        if (!isSwitchType(switchType)) {
+            report(node, "Switch expression type is not supported: " + switchType + ".");
+            return;
+        }
+
+        boolean defaultSeen = false;
+        Set<String> seenLabels = new HashSet<>();
+        for (SwitchCase switchCase : node.getCases()) {
+            if (switchCase.isDefault()) {
+                if (defaultSeen) {
+                    report(switchCase, "Switch may contain only one default case.");
+                }
+                defaultSeen = true;
+                continue;
+            }
+
+            for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
+                TypeInfo labelType = caseLabelType(label);
+                if (!isCaseLabelCompatible(switchType, labelType)) {
+                    report(label, "Case label type " + labelType + " does not exactly match switch type " + switchType + ".");
+                    continue;
+                }
+
+                String key = caseLabelKey(label, labelType);
+                if (key != null && !seenLabels.add(key)) {
+                    report(label, "Duplicate switch case label: " + key + ".");
+                }
+            }
+        }
+    }
+
+    @Override
+    public void visit(LiteralCaseLabel node) {
+        node.getLiteral().accept(this);
+    }
+
+    private boolean isSwitchType(TypeInfo type) {
+        return TypeRules.isConditionType(type);
+    }
+
+    private TypeInfo caseLabelType(CaseLabelAstNode label) {
+        if (label instanceof LiteralCaseLabel literalCaseLabel) {
+            return literalCaseLabel.getLiteral().getResultingType();
+        }
+        if (label instanceof EnumCaseLabel enumCaseLabel && enumCaseLabel.getResolvedEnumValue() != null) {
+            return new EnumTypeInfo(enumCaseLabel.getResolvedEnumValue().getOwnerEnum());
+        }
+        return UnknownTypeInfo.INSTANCE;
+    }
+
+    private boolean isCaseLabelCompatible(TypeInfo switchType, TypeInfo labelType) {
+        if (switchType instanceof UnknownTypeInfo || labelType instanceof UnknownTypeInfo) {
+            return true;
+        }
+        if (switchType instanceof NullTypeInfo) {
+            return labelType instanceof NullTypeInfo;
+        }
+        if (labelType instanceof NullTypeInfo) {
+            return TypeRules.isReferenceType(switchType);
+        }
+        if (TypeRules.isReferenceType(switchType)) {
+            return switchType.equals(labelType);
+        }
+        return switchType.equals(labelType);
+    }
+
+    private String caseLabelKey(CaseLabelAstNode label, TypeInfo labelType) {
+        if (label instanceof LiteralCaseLabel literalCaseLabel) {
+            LiteralExpression<?> literal = literalCaseLabel.getLiteral();
+            return labelType + ":" + literal.getKind() + ":" + literal.getValue();
+        }
+        if (label instanceof EnumCaseLabel enumCaseLabel && enumCaseLabel.getResolvedEnumValue() != null) {
+            EnumValueEntry value = enumCaseLabel.getResolvedEnumValue();
+            return "enum " + value.getOwnerEnum().getName() + ":" + value.getValue();
+        }
+        return null;
+    }
+
 
     @Override
     public void visit(ConditionalExpression node) {
@@ -375,31 +417,16 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 ? UnknownTypeInfo.INSTANCE
                 : node.getFalseExpression().getResultingType();
 
-        node.setResultingType(conditionalResultType(trueType, falseType));
-    }
-
-    private TypeInfo conditionalResultType(TypeInfo trueType, TypeInfo falseType) {
-        if (trueType.equals(falseType)) {
-            return trueType;
+        TypeInfo result = TypeRules.conditionalResult(trueType, falseType);
+        if (result instanceof UnknownTypeInfo && !(trueType instanceof UnknownTypeInfo) && !(falseType instanceof UnknownTypeInfo)) {
+            report(node, "Conditional branches must have compatible types: " + trueType + " and " + falseType + ".");
         }
-        if (trueType instanceof UnknownTypeInfo || falseType instanceof UnknownTypeInfo) {
-            return UnknownTypeInfo.INSTANCE;
-        }
-        if (trueType instanceof NullTypeInfo && isReferenceType(falseType)) {
-            return falseType;
-        }
-        if (falseType instanceof NullTypeInfo && isReferenceType(trueType)) {
-            return trueType;
-        }
-        return UnknownTypeInfo.INSTANCE;
+        node.setResultingType(result);
     }
 
 
     private boolean isConditionType(TypeInfo type) {
-        if (type instanceof UnknownTypeInfo) {
-            return true;
-        }
-        return !(type instanceof VoidTypeInfo);
+        return TypeRules.isConditionType(type);
     }
 
     private void checkConditionType(ExpressionAstNode condition, AstNode owner, String context, boolean allowMissingCondition) {
@@ -427,7 +454,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getKind()) {
             case LOGICAL_NOT -> {
-                if (!isConditionType(operandType)) {
+                if (!TypeRules.isConditionType(operandType)) {
                     report(node, "Logical not requires a value operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -435,7 +462,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case BITWISE_NOT -> {
-                if (isNotInteger(operandType)) {
+                if (!TypeRules.isInteger(operandType) && !(operandType instanceof UnknownTypeInfo)) {
                     report(node, "Bitwise not requires integer operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -443,7 +470,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case MINUS, PLUS -> {
-                if (!isNumeric(operandType)) {
+                if (!TypeRules.isNumeric(operandType) && !(operandType instanceof UnknownTypeInfo)) {
                     report(node, "Unary " + node.getKind() + " requires int or double operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -451,7 +478,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case PRE_INCREMENT, PRE_DECREMENT -> {
-                if (!isNumeric(operandType)) {
+                if (!TypeRules.isNumeric(operandType) && !(operandType instanceof UnknownTypeInfo)) {
                     report(node, "Pre increment/decrement requires int or double operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -482,7 +509,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo result = switch (node.getKind()) {
             case INCREMENT, DECREMENT -> {
-                if (!isNumeric(operandType)) {
+                if (!TypeRules.isNumeric(operandType) && !(operandType instanceof UnknownTypeInfo)) {
                     report(node, "Post increment/decrement requires int or double operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -555,7 +582,17 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         boolean isStruct = type instanceof StructTypeInfo;
 
         if (isArray) {
-            node.setResultingType(new ArrayTypeInfo(type));
+            for (ExpressionAstNode dimension : node.getDimensions()) {
+                TypeInfo dimensionType = dimension.getResultingType();
+                if (!PrimitiveTypeInfo.INT.equals(dimensionType) && !(dimensionType instanceof UnknownTypeInfo)) {
+                    report(dimension, "Array dimension must be of type int.");
+                }
+            }
+            TypeInfo arrayType = TypeRules.arrayType(type, node.getDimensions().size());
+            if (node.getArrayInit() != null) {
+                validateArrayInitializer(node.getArrayInit(), type, node.getDimensions(), 0);
+            }
+            node.setResultingType(arrayType);
             return;
         }
 
@@ -584,27 +621,54 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         for (ExpressionAstNode element : node.getElements()) {
             TypeInfo currentType = element.getResultingType();
-            boolean isSameType = firstElementType.equals(currentType);
-            if (!isSameType) {
+            TypeInfo merged = TypeRules.conditionalResult(firstElementType, currentType);
+            if (merged instanceof UnknownTypeInfo) {
                 report(node, "All array elements must have the same type. Found: " + firstElementType + " and " + currentType);
                 allSameType = false;
                 break;
             }
+            firstElementType = merged;
         }
 
         TypeInfo arrayType = allSameType ? firstElementType : UnknownTypeInfo.INSTANCE;
         node.setResultingType(new ArrayTypeInfo(arrayType));
     }
 
+    private void validateArrayInitializer(
+            ArrayInitExpression initializer,
+            TypeInfo leafElementType,
+            java.util.List<ExpressionAstNode> dimensions,
+            int depth) {
+        if (depth < dimensions.size()) {
+            Integer staticLength = intLiteralValue(dimensions.get(depth));
+            if (staticLength != null && initializer.getElements().size() != staticLength) {
+                report(initializer, "Array initializer length " + initializer.getElements().size()
+                        + " does not match dimension " + staticLength + ".");
+            }
+        }
 
-    private TypeInfo numericResult(TypeInfo left, TypeInfo right) {
-        if (PrimitiveTypeInfo.DOUBLE.equals(left) || PrimitiveTypeInfo.DOUBLE.equals(right)) {
-            return PrimitiveTypeInfo.DOUBLE;
+        TypeInfo expectedElementType = TypeRules.arrayType(leafElementType, Math.max(0, dimensions.size() - depth - 1));
+        for (ExpressionAstNode element : initializer.getElements()) {
+            if (element instanceof ArrayInitExpression nested && depth + 1 < dimensions.size()) {
+                validateArrayInitializer(nested, leafElementType, dimensions, depth + 1);
+                nested.setResultingType(expectedElementType);
+                continue;
+            }
+            TypeInfo actualType = element.getResultingType();
+            if (!TypeRules.isAssignable(expectedElementType, actualType)) {
+                report(element, "Array initializer element type mismatch. Expected: "
+                        + expectedElementType + ", actual: " + actualType + ".");
+            }
         }
-        if (left instanceof UnknownTypeInfo || right instanceof UnknownTypeInfo) {
-            return UnknownTypeInfo.INSTANCE;
+    }
+
+    private Integer intLiteralValue(ExpressionAstNode expression) {
+        if (expression instanceof LiteralExpression<?> literal
+                && literal.getKind() == LiteralKind.INT
+                && literal.getValue() instanceof Integer value) {
+            return value;
         }
-        return PrimitiveTypeInfo.INT;
+        return null;
     }
 
     private TypeInfo resolveType(TypeAstNode type) {

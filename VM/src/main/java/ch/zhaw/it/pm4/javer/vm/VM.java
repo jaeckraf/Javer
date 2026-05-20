@@ -448,7 +448,22 @@ public class VM {
                 vm.writeDouble(address, value);
             });
             case NEW -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.allocateHeapRegion(vm.popInt())));
+            case NEWN -> {
+                ensureOperandCount(parts, 3, instrName, lineNumber);
+                int elementSize = parseIntOperand(parts[1], instrName, lineNumber);
+                int dimensionCount = parseIntOperand(parts[2], instrName, lineNumber);
+                if (elementSize != 1 && elementSize != 2 && elementSize != 4 && elementSize != 8) {
+                    throw new ParseException("Line " + lineNumber + ": NEWN element size must be 1, 2, 4 or 8, got " + elementSize);
+                }
+                if (dimensionCount <= 0) {
+                    throw new ParseException("Line " + lineNumber + ": NEWN dimension count must be positive, got " + dimensionCount);
+                }
+                yield vm -> vm.executeNewNestedArray(elementSize, dimensionCount);
+            }
             case MEMCPY -> noOperand(parts, instrName, lineNumber, VM::executeMemcopy);
+            case TRAP -> noOperand(parts, instrName, lineNumber, vm -> {
+                throw new VMExecutionException("Runtime trap");
+            });
             case POP -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 int size = parseStackValueSize(parts[1], instrName, lineNumber, false);
@@ -541,6 +556,8 @@ public class VM {
             });
             case DEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
             case DNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
+            case STREQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
+            case STRNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case ISHL -> noOperand(parts, instrName, lineNumber, vm -> {
                 int b = vm.popInt();
                 int a = vm.popInt();
@@ -661,7 +678,7 @@ public class VM {
         List<Byte> byteList = new ArrayList<>();
         try {
             for (String hex : hexes) {
-                long value = Long.parseLong(hex.trim(), 16);
+                long value = Long.parseUnsignedLong(hex.trim(), 16);
                 for (int i = 0; i < size; i++) {
                     byteList.add((byte) (value >> (8 * i)));
                 }
@@ -971,6 +988,35 @@ public class VM {
         System.arraycopy(source.region().bytes(), source.offset(), target.region().bytes(), target.offset(), size);
     }
 
+    private void executeNewNestedArray(int elementSize, int dimensionCount) {
+        int[] dimensions = new int[dimensionCount];
+        for (int i = dimensionCount - 1; i >= 0; i--) {
+            dimensions[i] = popInt();
+        }
+        pushInt(allocateNestedArray(dimensions, 0, elementSize));
+    }
+
+    private int allocateNestedArray(int[] dimensions, int depth, int elementSize) {
+        int length = dimensions[depth];
+        if (length < 0) {
+            throw new VMExecutionException("Negative array dimension: " + length);
+        }
+        int slotSize = depth + 1 == dimensions.length ? elementSize : Integer.BYTES;
+        int byteCount;
+        try {
+            byteCount = Math.multiplyExact(length, slotSize);
+        } catch (ArithmeticException exception) {
+            throw new VMExecutionException("Array allocation size overflow");
+        }
+        int base = allocateHeapRegion(byteCount);
+        if (depth + 1 < dimensions.length) {
+            for (int i = 0; i < length; i++) {
+                writeInt(base + i * Integer.BYTES, allocateNestedArray(dimensions, depth + 1, elementSize));
+            }
+        }
+        return base;
+    }
+
     private void pushFrame(int returnPc, int argBytes) {
         pushInt((int) fp);
         pushInt(returnPc);
@@ -1141,6 +1187,27 @@ public class VM {
         throw new VMExecutionException("PRINTS " + formatAddress(address) + ": string is not null-terminated");
     }
 
+    private boolean compareStrings(int rightAddress, int leftAddress) {
+        if (leftAddress == NULL_REF || rightAddress == NULL_REF) {
+            return leftAddress == rightAddress;
+        }
+
+        int leftOffset = 0;
+        int rightOffset = 0;
+        while (true) {
+            char left = readChar(leftAddress + leftOffset);
+            char right = readChar(rightAddress + rightOffset);
+            if (left != right) {
+                return false;
+            }
+            if (left == '\0') {
+                return true;
+            }
+            leftOffset += Character.BYTES;
+            rightOffset += Character.BYTES;
+        }
+    }
+
     private String formatAddress(int address) {
         return "0x%08X".formatted(address);
     }
@@ -1207,12 +1274,13 @@ public class VM {
         LOCAL,
         LOAD1, LOAD2, LOAD4, LOAD8,
         STORE1, STORE2, STORE4, STORE8,
-        NEW, MEMCPY,
+        NEW, NEWN, MEMCPY, TRAP,
         POP, DUP,
         IADD, ISUB, IMUL, IDIV, IMOD,
         DADD, DSUB, DMUL, DDIV,
         ILT, ILE, IGT, IGE, IEQ, INE,
         DLT, DLE, DGT, DGE, DEQ, DNE,
+        STREQ, STRNE,
         ISHL, ISHR,
         IAND, IOR, IXOR,
         INEG, DNEG, IINV,

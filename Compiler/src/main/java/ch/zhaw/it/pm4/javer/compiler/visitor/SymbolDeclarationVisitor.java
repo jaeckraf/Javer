@@ -32,6 +32,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
@@ -70,8 +71,16 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             registerTopLevelDeclaration(declaration);
         }
+        validateMainFunction(node);
         for (DeclarationAstNode declaration : node.getDeclarations()) {
-            declaration.accept(this);
+            if (declaration instanceof EnumDeclaration || declaration instanceof StructDeclaration) {
+                declaration.accept(this);
+            }
+        }
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            if (declaration instanceof FunctionDeclaration) {
+                declaration.accept(this);
+            }
         }
     }
 
@@ -89,7 +98,10 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             function.setSymbolEntry(entry);
             function.setFunctionScope(scope);
             if (!globalScope.defineFunction(entry)) {
-                diagnosticBag.add(function.getSourceRange().start(), Severity.ERROR, "Duplicate function: " + function.getName());
+                String message = BuiltInFunction.find(function.getName()) != null
+                        ? "Built-in function cannot be overwritten: " + function.getName()
+                        : "Duplicate function: " + function.getName();
+                diagnosticBag.add(function.getSourceRange().start(), Severity.ERROR, message);
             }
             return;
         }
@@ -115,6 +127,29 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             if (!globalScope.defineEnum(entry)) {
                 diagnosticBag.add(enumDeclaration.getSourceRange().start(), Severity.ERROR, "Duplicate enum: " + enumDeclaration.getName());
             }
+        }
+    }
+
+    private void validateMainFunction(CompilationUnit node) {
+        int mainCount = 0;
+        FunctionDeclaration mainDeclaration = null;
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            if (declaration instanceof FunctionDeclaration function && "main".equals(function.getName())) {
+                mainCount++;
+                mainDeclaration = function;
+            }
+        }
+
+        if (mainCount != 1) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Program must declare exactly one main function with signature: fn void main().");
+            return;
+        }
+
+        TypeInfo returnType = resolveType(mainDeclaration.getReturnType());
+        if (!(returnType instanceof VoidTypeInfo) || !mainDeclaration.getParameters().isEmpty()) {
+            diagnosticBag.add(mainDeclaration.getSourceRange().start(), Severity.ERROR,
+                    "Main signature must be exactly: fn void main().");
         }
     }
 
@@ -325,24 +360,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     }
 
     private static Object defaultValueOf(TypeInfo type) {
-        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
-            return switch (kind) {
-                case BOOL -> false;
-                case CHAR -> '\0';
-                case INT -> 0;
-                case DOUBLE -> 0.0;
-                case STRING, INVALID -> null;
-            };
-        }
-        if (type instanceof EnumTypeInfo(EnumEntry entry)
-                && entry != null
-                && entry.getScope() != null
-                && !entry.getScope().getValues().isEmpty()) {
-            return entry.getScope().getValues().values().iterator().next().getValue();
-        }
-        if (type instanceof EnumTypeInfo) {
-            return 0;
-        }
-        return null;
+        return TypeRules.defaultValue(type);
     }
 }
