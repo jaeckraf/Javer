@@ -1,0 +1,12 @@
+struct Point {
+    int x;
+}
+
+fn void main() {
+
+    let struct Point p = new struct Point;
+
+    p.x = "hello";
+
+    return;
+}
