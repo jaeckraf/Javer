@@ -2,6 +2,8 @@ package ch.zhaw.it.pm4.javer.compiler.ast.typeinfo;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignOperator;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
+
 /**
  * Central semantic type rules shared by semantic analysis and code generation.
  */
@@ -41,10 +43,6 @@ public final class TypeRules {
         return PrimitiveTypeInfo.CHAR.equals(type);
     }
 
-    public static boolean isString(TypeInfo type) {
-        return PrimitiveTypeInfo.STRING.equals(type);
-    }
-
     public static boolean isConditionType(TypeInfo type) {
         return isUnknown(type) || !isVoid(type);
     }
@@ -66,16 +64,11 @@ public final class TypeRules {
         return !from.equals(to) && !(isNull(from) && isReferenceType(to));
     }
 
-    public static boolean isNumericConversion(TypeInfo from, TypeInfo to) {
-        return (PrimitiveTypeInfo.INT.equals(from) && PrimitiveTypeInfo.DOUBLE.equals(to))
-                || (PrimitiveTypeInfo.DOUBLE.equals(from) && PrimitiveTypeInfo.INT.equals(to));
-    }
-
-    public static boolean isCompoundAssignable(AssignOperator operator, TypeInfo target, TypeInfo value) {
+    public static boolean isNotCompoundAssignable(AssignOperator operator, TypeInfo target, TypeInfo value) {
         if (isUnknown(target) || isUnknown(value)) {
-            return true;
+            return false;
         }
-        return switch (operator) {
+        return !switch (operator) {
             case ASSIGN -> isAssignable(target, value);
             case ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN -> isNumeric(target) && isNumeric(value);
             case MOD_ASSIGN -> isInteger(target) && isInteger(value);
@@ -106,16 +99,17 @@ public final class TypeRules {
         };
     }
 
-    public static boolean isBinaryOperatorAllowed(BinaryExpressionKind operator, TypeInfo left, TypeInfo right) {
+    public static boolean isNotBinaryOperatorAllowed(BinaryExpressionKind operator, TypeInfo left, TypeInfo right) {
         if (isUnknown(left) || isUnknown(right)) {
-            return true;
+            return false;
         }
-        return switch (operator) {
+        return !switch (operator) {
             case OR, AND -> isConditionType(left) && isConditionType(right);
             case EQUALS, NOT_EQUALS -> isEqualityComparable(left, right);
             case LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> isOrderedComparable(left, right);
             case ADD, SUBTRACT, MULTIPLY, DIVIDE -> isNumeric(left) && isNumeric(right);
-            case MODULO, BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> isInteger(left) && isInteger(right);
+            case MODULO, BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT ->
+                    isInteger(left) && isInteger(right);
             case INVALID -> false;
         };
     }
@@ -194,8 +188,8 @@ public final class TypeRules {
     }
 
     public static Object defaultValue(TypeInfo type) {
-        if (type instanceof PrimitiveTypeInfo primitive) {
-            return switch (primitive.kind()) {
+        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
+            return switch (kind) {
                 case BOOL -> false;
                 case CHAR -> '\0';
                 case INT -> 0;
@@ -219,8 +213,8 @@ public final class TypeRules {
 
     public static TypeInfo leafElementType(TypeInfo type) {
         TypeInfo current = type;
-        while (current instanceof ArrayTypeInfo arrayType) {
-            current = arrayType.elementType();
+        while (current instanceof ArrayTypeInfo(TypeInfo elementType)) {
+            current = elementType;
         }
         return current;
     }

@@ -949,9 +949,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLabel(endLabel);
             return;
         }
-        if (type instanceof EnumTypeInfo) {
-            return;
-        }
     }
 
     private void emitLiteralPush(LiteralExpression<?> node) {
@@ -1136,10 +1133,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private boolean isVoidLike(TypeInfo type) {
         return type instanceof VoidTypeInfo;
-    }
-
-    private boolean isReferenceType(TypeInfo type) {
-        return TypeRules.isReferenceType(type);
     }
 
     private record LoopContext(String breakLabel, String continueLabel) {

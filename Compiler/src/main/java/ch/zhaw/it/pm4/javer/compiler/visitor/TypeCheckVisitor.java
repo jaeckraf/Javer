@@ -236,7 +236,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> {
-                if (!TypeRules.isBinaryOperatorAllowed(node.getOperator(), left, right)) {
+                if (TypeRules.isNotBinaryOperatorAllowed(node.getOperator(), left, right)) {
                     report(node, node.getOperator() == BinaryExpressionKind.MODULO
                             ? "Modulo operator requires int operands."
                             : "Arithmetic operator requires numeric operands.");
@@ -246,7 +246,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
 
             case BITWISE_OR, BITWISE_AND, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> {
-                if (!TypeRules.isBinaryOperatorAllowed(node.getOperator(), left, right)) {
+                if (TypeRules.isNotBinaryOperatorAllowed(node.getOperator(), left, right)) {
                     report(node, "Bitwise and shift operators require integer operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
@@ -290,7 +290,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 }
             }
             case ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN, MOD_ASSIGN -> {
-                if (!TypeRules.isCompoundAssignable(node.getOperator(), targetType, valueType)) {
+                if (TypeRules.isNotCompoundAssignable(node.getOperator(), targetType, valueType)) {
                     report(node, node.getOperator() == AssignOperator.MOD_ASSIGN
                             ? "Modulo assignment requires int operands."
                             : "Arithmetic assignment requires numeric operands.");
@@ -299,7 +299,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             }
             case BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN,
                  LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN -> {
-                if (!TypeRules.isCompoundAssignable(node.getOperator(), targetType, valueType)) {
+                if (TypeRules.isNotCompoundAssignable(node.getOperator(), targetType, valueType)) {
                     report(node, "Bitwise/shift assignment requires integer operands.");
                     valid = false;
                 }
