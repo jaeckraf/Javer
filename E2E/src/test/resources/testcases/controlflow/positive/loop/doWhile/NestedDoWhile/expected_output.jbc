@@ -4,13 +4,13 @@ ENTER, 0
 do_body_0:
 do_body_3:
 do_condition_4:
-PUSHB, 0
+PUSHI, 0
 JUMPT, do_body_3
 do_end_5:
 do_condition_1:
-PUSHB, 0
+PUSHI, 0
 JUMPT, do_body_0
 do_end_2:
-RET
+RET, 0
 
 .data

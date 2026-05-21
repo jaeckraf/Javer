@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src\test\resources\testcase\typecheck\while\negative_string_condition\input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] While condition must be bool, int, or double, but was: string
-  --> src\test\resources\testcase\typecheck\while\negative_string_condition\input.javer:3:5
-  |
-3 |     while ("hello") {
-  |

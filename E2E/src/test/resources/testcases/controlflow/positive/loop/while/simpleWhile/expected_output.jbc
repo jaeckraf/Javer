@@ -2,10 +2,10 @@
 _main:
 ENTER, 0
 while_condition_0:
-PUSHB, 0
+PUSHI, 0
 JUMPF, while_end_1
 JUMP, while_condition_0
 while_end_1:
-RET
+RET, 0
 
 .data

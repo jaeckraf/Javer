@@ -947,7 +947,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLine("POP, " + VmLayout.DOUBLE_BYTES);
             writeLine("PUSHI, 0");
             writeLabel(endLabel);
-            return;
         }
     }
 

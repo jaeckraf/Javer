@@ -1,8 +1,0 @@
-fn void main() {
-
-    while ("hello") {
-        call prints("invalid\n");
-    }
-
-    return;
-}
