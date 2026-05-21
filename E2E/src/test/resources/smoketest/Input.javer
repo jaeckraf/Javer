@@ -1,14 +1,15 @@
-struct s {
-    int a;
-}
-
 fn void main() {
+    let int a = 1;
+    let int b = 2;
 
-    let struct s s = new struct s[2] {null, null};
-    call f(s[0]);
+    a += b;
+    a -= b;
+    a *= b;
+    a /= b;
+    a %= b;
+
+    a = a << 1;
+    a = a >> 1;
+
+    let boolean result = a == b or a != b and a <= b;
 }
-
-fn void f(struct s s) {
-    s.a = 3;
-}
-

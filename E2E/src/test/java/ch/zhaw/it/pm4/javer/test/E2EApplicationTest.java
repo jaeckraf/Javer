@@ -571,11 +571,15 @@ public final class E2EApplicationTest {
         if (!Objects.equals(expected, normalizedActual)) {
             failures.add(message
                     + System.lineSeparator()
-                    + "--- expected ---"
+                    + System.lineSeparator()
+                    + "[INFO] --- expected ---"
+                    + System.lineSeparator()
                     + System.lineSeparator()
                     + expected
                     + System.lineSeparator()
-                    + "--- actual ---"
+                    + System.lineSeparator()
+                    + "[INFO] --- actual ---"
+                    + System.lineSeparator()
                     + System.lineSeparator()
                     + normalizedActual);
         }

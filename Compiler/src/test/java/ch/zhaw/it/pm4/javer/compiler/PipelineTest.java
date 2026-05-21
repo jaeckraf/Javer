@@ -427,11 +427,15 @@ public final class PipelineTest {
 
         failures.add(message
                 + System.lineSeparator()
-                + "--- expected ---"
+                + System.lineSeparator()
+                + "[INFO] --- expected ---"
+                + System.lineSeparator()
                 + System.lineSeparator()
                 + expected
                 + System.lineSeparator()
-                + "--- actual ---"
+                + System.lineSeparator()
+                + "[INFO] --- actual ---"
+                + System.lineSeparator()
                 + System.lineSeparator()
                 + actual);
     }
