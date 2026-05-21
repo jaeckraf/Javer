@@ -16,6 +16,7 @@ public final class FunctionEntry extends SymbolEntry {
     private int localBytes;
     private int frameSizeBytes;
     private boolean builtIn;
+    private ParameterEntry variadicParameter;
 
     public FunctionEntry(String name) {
         this(name, "_" + name);
@@ -75,5 +76,17 @@ public final class FunctionEntry extends SymbolEntry {
 
     public void setBuiltIn(boolean builtIn) {
         this.builtIn = builtIn;
+    }
+
+    public boolean isVariadic() {
+        return variadicParameter != null;
+    }
+
+    public ParameterEntry getVariadicParameter() {
+        return variadicParameter;
+    }
+
+    public void setVariadicParameter(ParameterEntry variadicParameter) {
+        this.variadicParameter = variadicParameter;
     }
 }

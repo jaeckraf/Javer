@@ -593,6 +593,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     @Override
+    public void visit(CastExpression node) {
+        node.getOperand().accept(this);
+        emitUncheckedCast(node.getOperand().getResultingType(), node.getResultingType());
+    }
+
+    @Override
     public void visit(UnaryExpression node) {
         switch (node.getKind()) {
             case PLUS -> node.getOperand().accept(this);
@@ -661,12 +667,60 @@ public class CodeGenerator extends AstNodeVisitorBase {
             return;
         }
         List<ParameterEntry> parameters = new ArrayList<>(function.getScope().getParameters().values());
-        for (int i = 0; i < node.getArguments().size(); i++) {
-            ExpressionAstNode argument = node.getArguments().get(i);
-            TypeInfo expected = parameters.get(i).getType();
-            emitTyped(argument, expected);
+        if (function.isVariadic()) {
+            emitVariadicArguments(node, parameters, function.getVariadicParameter());
+        } else {
+            emitFixedArguments(node, parameters);
         }
         writeLine("CALL, " + function.getLabel() + ", " + function.getParameterBytes());
+    }
+
+    private void emitFixedArguments(CallExpression node, List<ParameterEntry> parameters) {
+        for (int i = 0; i < node.getArguments().size(); i++) {
+            emitTyped(node.getArguments().get(i), parameters.get(i).getType());
+        }
+    }
+
+    private void emitVariadicArguments(
+            CallExpression node,
+            List<ParameterEntry> parameters,
+            ParameterEntry variadicParameter) {
+        int fixedCount = parameters.size() - 1;
+        for (int i = 0; i < fixedCount; i++) {
+            emitTyped(node.getArguments().get(i), parameters.get(i).getType());
+        }
+
+        if (isVariadicArrayPassThrough(node, fixedCount, variadicParameter)) {
+            emitTyped(node.getArguments().get(fixedCount), variadicParameter.getType());
+            return;
+        }
+
+        emitVariadicArray(node.getArguments(), fixedCount, variadicParameter.getVariadicElementType());
+    }
+
+    private boolean isVariadicArrayPassThrough(
+            CallExpression node,
+            int fixedCount,
+            ParameterEntry variadicParameter) {
+        return node.getArguments().size() == fixedCount + 1
+                && TypeRules.isAssignable(
+                        variadicParameter.getType(),
+                        node.getArguments().get(fixedCount).getResultingType());
+    }
+
+    private void emitVariadicArray(List<ExpressionAstNode> arguments, int firstVariadicIndex, TypeInfo elementType) {
+        int elementSize = memoryBytes(elementType);
+        int length = arguments.size() - firstVariadicIndex;
+        writeLine("PUSHI, " + length);
+        writeLine("NEWA, " + elementSize);
+
+        for (int i = 0; i < length; i++) {
+            emitDup(PrimitiveTypeInfo.INT);
+            writeLine("PUSHI, " + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
+            writeLine("IADD");
+            emitTyped(arguments.get(firstVariadicIndex + i), elementType);
+            emitStore(elementType);
+        }
     }
 
     @Override
@@ -936,6 +990,28 @@ public class CodeGenerator extends AstNodeVisitorBase {
             }
             default -> throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
         }
+    }
+
+    private void emitUncheckedCast(TypeInfo from, TypeInfo to) {
+        if (from instanceof VoidTypeInfo) {
+            emitDefaultValue(to, TypeRules.defaultValue(to));
+            return;
+        }
+
+        int sourceBytes = stackBytes(from);
+        int targetBytes = stackBytes(to);
+        if (sourceBytes == targetBytes) {
+            return;
+        }
+        if (sourceBytes == VmLayout.WORD_BYTES && targetBytes == VmLayout.DOUBLE_BYTES) {
+            writeLine("I2D");
+            return;
+        }
+        if (sourceBytes == VmLayout.DOUBLE_BYTES && targetBytes == VmLayout.WORD_BYTES) {
+            writeLine("D2I");
+            return;
+        }
+        throw new IllegalStateException("Unexpected unchecked cast from " + from + " to " + to);
     }
 
     private void emitAsBoolean(ExpressionAstNode expression) {

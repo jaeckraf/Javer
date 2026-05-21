@@ -1,123 +1,30 @@
 fn void main() {
 
-    let enum Tag[] tags = {Tag.STRING, Tag.INT, Tag.DOUBLE, Tag.BOOLEAN, Tag.CHAR, Tag.STRING};
-    let struct StringFormat sf = call ctor(tags, 5, "_");
-    call addParameterString(sf, "test");
-    call addParameterInt(sf, 69);
-    //call addParameterDouble(sf, 3.141592654);
-    call addParameterBoolean(sf, false);
-    call addParameterChar(sf, 'U');
-    call addParameterString(sf, "\n");
-    call printf(sf);
+    let struct A a = new struct A;
+    a.d = 3;
+    a.d1 = 6;
+
+    call printf(a.d);
+    call printf(a.d1);
+
+    let struct B bb = cast (struct B) a;
+    bb.d = 0.0;
+
+    call printf(a.d);
+    call printf(a.d1);
+
 }
 
-struct StringFormat {
-    // "%s %i %f %b %c"
-    enum Tag[] tags;
-    int tagSize;
-    int[][] positions;
-    string[] strings;
-    int[] ints;
-    double[] doubles;
-    boolean[] booleans;
-    char[] chars;
-    string delim;
+struct A {
+    int d;
+    int d1;
 }
 
-enum Tag {
-    STRING, INT, DOUBLE, BOOLEAN, CHAR
+struct B {
+    double d;
 }
 
-fn struct StringFormat ctor(enum Tag[] tags, int tagSize, string delim) {
-    let struct StringFormat sf = new struct StringFormat;
-    sf.tags = tags;
-    sf.tagSize = tagSize;
-    sf.delim = delim;
-    let int stringCount = 0;
-    let int intCount = 0;
-    let int doubleCount = 0;
-    let int booleanCount = 0;
-    let int charCount = 0;
-    for(let int i = 0; i < tagSize; i++) {
-        switch(sf.tags[i]) {
-            case Tag.STRING: stringCount++;
-            case Tag.INT: intCount++;
-            case Tag.DOUBLE: doubleCount++;
-            case Tag.BOOLEAN: booleanCount++;
-            case Tag.CHAR: charCount++;
-        }
-    }
-    sf.positions = new int[5][3];
-    sf.positions[0][0] = stringCount;
-    sf.positions[1][0] = intCount;
-    sf.positions[2][0] = doubleCount;
-    sf.positions[3][0] = booleanCount;
-    sf.positions[4][0] = charCount;
-    sf.strings = new string[stringCount];
-    sf.ints = new int[intCount];
-    sf.doubles = new double[doubleCount];
-    sf.booleans = new boolean[booleanCount];
-    sf.chars = new char[charCount];
-
-    call printi(stringCount);
-    call prints(delim);
-    call printi(intCount);
-    call prints(delim);
-    call printi(doubleCount);
-    call prints(delim);
-    call printi(booleanCount);
-    call prints(delim);
-    call printi(charCount);
-    call prints(delim);
-
-
-    return sf;
-}
-
-fn void addParameterString(struct StringFormat sf, string s) {
-    let int index = sf.positions[0][1];
-    if (index >= sf.positions[0][0] || sf.positions[0][0] == 0) return;
-    sf.strings[index++] = s;
-}
-
-fn void addParameterInt(struct StringFormat sf, int i) {
-    let int index = sf.positions[1][1];
-    if (index >= sf.positions[1][0] || sf.positions[1][0] == 0) return;
-    sf.ints[index++] = i;
-}
-
-fn void addParameterDouble(struct StringFormat sf, double d) {
-    let int index = sf.positions[2][1];
-    if (index >= sf.positions[2][0] || sf.positions[2][0] == 0) return;
-    sf.doubles[index++] = d;
-}
-
-fn void addParameterBoolean(struct StringFormat sf, boolean b) {
-    let int index = sf.positions[3][1];
-    if (index >= sf.positions[3][0] || sf.positions[3][0] == 0) return;
-    sf.booleans[index++] = b;
-}
-
-fn void addParameterChar(struct StringFormat sf, char c) {
-    let int index = sf.positions[4][1];
-    if (index >= sf.positions[4][0] || sf.positions[4][0] == 0) return;
-    sf.chars[index++] = c;
-}
-
-fn void printf(struct StringFormat sf) {
-    sf.positions[0][2] = 0;
-    sf.positions[1][2] = 0;
-    sf.positions[2][2] = 0;
-    sf.positions[3][2] = 0;
-    sf.positions[4][2] = 0;
-    for(let int i = 0; i < sf.tagSize; i++) {
-           switch(sf.tags[i]) {
-                case Tag.STRING:    call prints(sf.strings[sf.positions[0][2]++]);
-                case Tag.INT:       call printi(sf.ints[sf.positions[1][2]++]);
-                case Tag.DOUBLE:    call printd(sf.doubles[sf.positions[2][2]++]);
-                case Tag.BOOLEAN:   call printb(sf.booleans[sf.positions[3][2]++]);
-                case Tag.CHAR:      call printc(sf.chars[sf.positions[4][2]++]);
-           }
-           if(i != sf.tagSize - 1) call prints(sf.delim);
-    }
+fn void printf(int d) {
+    call printi(d);
+    call prints("\n");
 }

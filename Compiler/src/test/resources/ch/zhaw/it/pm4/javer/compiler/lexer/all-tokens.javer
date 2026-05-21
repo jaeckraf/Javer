@@ -14,6 +14,8 @@ fn void main(int a, double b, boolean c, string s, char d, struct e, enum f) {
     x <<= 1; x >>= 1; x &= 1; x |= 1; x ^= 1;
     x /= 2; x %= 2;
     arr[0].field;
+    int... values;
+    cast(int) y;
     x ? y : d;
     new int a;
     false;

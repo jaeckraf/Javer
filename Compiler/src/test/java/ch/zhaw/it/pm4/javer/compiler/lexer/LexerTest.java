@@ -173,6 +173,7 @@ class LexerTest {
         assertEquals(TokenType.KEYWORD_DEFAULT, single("default").getTokenType());
         assertEquals(TokenType.KEYWORD_LET, single("let").getTokenType());
         assertEquals(TokenType.KEYWORD_CALL, single("call").getTokenType());
+        assertEquals(TokenType.KEYWORD_CAST, single("cast").getTokenType());
     }
 
     @Test
@@ -418,6 +419,7 @@ class LexerTest {
         assertEquals(TokenType.SYMBOL_RIGHT_BRACKET, single("]").getTokenType());
         assertEquals(TokenType.SYMBOL_SEMICOLON, single(";").getTokenType());
         assertEquals(TokenType.SYMBOL_COMMA, single(",").getTokenType());
+        assertEquals(TokenType.SYMBOL_ELLIPSIS, single("...").getTokenType());
         assertEquals(TokenType.SYMBOL_DOT, single(".").getTokenType());
         assertEquals(TokenType.SYMBOL_COLON, single(":").getTokenType());
         assertEquals(TokenType.SYMBOL_QUESTION_MARK, single("?").getTokenType());

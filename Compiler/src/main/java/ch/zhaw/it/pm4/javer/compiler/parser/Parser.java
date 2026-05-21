@@ -65,6 +65,7 @@ public class Parser {
             TokenType.OPERATOR_MINUS, TokenType.OPERATOR_DECREMENT, TokenType.OPERATOR_LOGICAL_NOT,
             TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.OPERATOR_PLUS, TokenType.OPERATOR_INCREMENT,
             TokenType.OPERATOR_BITWISE_NOT, TokenType.LITERAL_BOOLEAN, TokenType.KEYWORD_CALL,
+            TokenType.KEYWORD_CAST,
             TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER,
             TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING,
             TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
@@ -157,14 +158,13 @@ public class Parser {
         return node;
     }
 
-    private boolean match(TokenType expected) {
+    private void match(TokenType expected) {
         if (matchCurrentToken(expected)) {
             consumeToken();
-            return true;
+            return;
         }
         reportExpectedToken(expected);
         if (isNotAtEnd()) consumeToken();
-        return false;
     }
 
     private Token expectTokenType(TokenType expected) {
@@ -422,9 +422,13 @@ public class Parser {
     private FunctionParameter parseFunctionParameter() {
         Token startToken = currentToken();
         TypeAstNode type = parseType();
+        boolean variadic = matchCurrentToken(TokenType.SYMBOL_ELLIPSIS);
+        if (variadic) {
+            match(TokenType.SYMBOL_ELLIPSIS);
+        }
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
         skipErrors(FOLLOW_PARAM, FOLLOW_PARAM, true);
-        return located(new FunctionParameter(name, type), startToken);
+        return located(new FunctionParameter(name, type, variadic), startToken);
     }
 
     private TypeAstNode parseReturnType() {
@@ -757,6 +761,10 @@ public class Parser {
     private interface ExpressionParser { ExpressionAstNode parse(); }
 
     private ExpressionAstNode parseUnaryExpression() {
+        if (matchCurrentToken(TokenType.KEYWORD_CAST)) {
+            return parseCastExpression();
+        }
+
         Set<TokenType> preOps = EnumSet.of(
                 TokenType.OPERATOR_LOGICAL_NOT, TokenType.OPERATOR_BITWISE_NOT,
                 TokenType.OPERATOR_PLUS, TokenType.OPERATOR_MINUS,
@@ -768,6 +776,15 @@ public class Parser {
             return located(new UnaryExpression(toUnaryExpressionKind(operator), parseUnaryExpression()), operator);
         }
         return parsePostfixExpression();
+    }
+
+    private ExpressionAstNode parseCastExpression() {
+        Token startToken = expectTokenType(TokenType.KEYWORD_CAST);
+        match(TokenType.SYMBOL_LEFT_PARENTHESIS);
+        TypeAstNode targetType = parseTypeHead();
+        match(TokenType.SYMBOL_RIGHT_PARENTHESIS);
+        ExpressionAstNode operand = parseUnaryExpression();
+        return located(new CastExpression(targetType, operand), startToken);
     }
 
     private ExpressionAstNode parsePostfixExpression() {

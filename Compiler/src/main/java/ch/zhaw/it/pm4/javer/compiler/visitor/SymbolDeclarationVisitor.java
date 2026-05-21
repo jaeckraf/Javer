@@ -215,24 +215,45 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     private void defineParameters(FunctionDeclaration node, FunctionScope functionScope, FunctionEntry function) {
         int parameterBytes = node.getParameters().stream()
-                .map(FunctionParameter::getType)
-                .map(this::resolveType)
+                .map(this::parameterType)
                 .mapToInt(VmLayout::stackBytes)
                 .sum();
         function.setParameterBytes(parameterBytes);
 
         int offsetBytes = VmLayout.FRAME_HEADER_BYTES + parameterBytes;
-        for (FunctionParameter parameter : node.getParameters()) {
-            TypeInfo type = resolveType(parameter.getType());
+        for (int i = 0; i < node.getParameters().size(); i++) {
+            FunctionParameter parameter = node.getParameters().get(i);
+            boolean validVariadic = parameter.isVariadic() && i == node.getParameters().size() - 1;
+            if (parameter.isVariadic() && !validVariadic) {
+                diagnosticBag.add(parameter.getSourceRange().start(), Severity.ERROR,
+                        "Variadic parameter must be the last parameter: " + parameter.getName());
+            }
+
+            TypeInfo elementType = resolveType(parameter.getType());
+            TypeInfo type = parameter.isVariadic() ? new ArrayTypeInfo(elementType) : elementType;
             int sizeBytes = VmLayout.stackBytes(type);
             offsetBytes -= sizeBytes;
-            ParameterEntry entry = new ParameterEntry(parameter.getName(), type, sizeBytes, offsetBytes);
+            ParameterEntry entry = new ParameterEntry(
+                    parameter.getName(),
+                    type,
+                    sizeBytes,
+                    offsetBytes,
+                    validVariadic,
+                    validVariadic ? elementType : null);
             parameter.setSymbolEntry(entry);
+            if (validVariadic) {
+                function.setVariadicParameter(entry);
+            }
 
             if (!functionScope.defineParameter(entry)) {
                 diagnosticBag.add(parameter.getSourceRange().start(), Severity.ERROR, "Duplicate symbol: " + parameter.getName());
             }
         }
+    }
+
+    private TypeInfo parameterType(FunctionParameter parameter) {
+        TypeInfo type = resolveType(parameter.getType());
+        return parameter.isVariadic() ? new ArrayTypeInfo(type) : type;
     }
 
     @Override

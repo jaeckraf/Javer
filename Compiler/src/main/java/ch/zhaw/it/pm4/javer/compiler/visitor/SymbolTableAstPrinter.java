@@ -17,7 +17,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -90,7 +89,7 @@ public final class SymbolTableAstPrinter extends AstPrinter {
 
         if (scope != null && !scope.getParameters().isEmpty()) {
             for (ParameterEntry parameter : scope.getParameters().values()) {
-                rows.add(storageRow("param", "function", parameter, ""));
+                rows.add(storageRow("param", "function", parameter, parameterDetails(parameter)));
             }
         } else {
             rows.add(List.of("params", "function", "<none>", "", "", "", ""));
@@ -125,6 +124,13 @@ public final class SymbolTableAstPrinter extends AstPrinter {
 
     private String variableDetails(VariableEntry variable) {
         return "init: " + variable.hasExplicitInitializer() + ", default: " + quoteValue(variable.getDefaultValue());
+    }
+
+    private String parameterDetails(ParameterEntry parameter) {
+        if (!parameter.isVariadic()) {
+            return "";
+        }
+        return "variadic element: " + parameter.getVariadicElementType();
     }
 
     private List<String> storageRow(String section, String scope, StorageEntry storage, String details) {
@@ -188,7 +194,7 @@ public final class SymbolTableAstPrinter extends AstPrinter {
         writeRawLine(border);
 
         if (!rows.isEmpty()) {
-            writeRows(widths, List.of(rows.get(0)));
+            writeRows(widths, List.of(rows.getFirst()));
             writeRawLine(border(widths, '-'));
             writeRows(widths, rows.subList(1, rows.size()));
         }
@@ -243,7 +249,7 @@ public final class SymbolTableAstPrinter extends AstPrinter {
 
     private List<Map.Entry<String, SymbolEntry>> sortedEntries(Map<String, SymbolEntry> entries) {
         return entries.entrySet().stream()
-                .sorted(Comparator.comparing(Map.Entry::getKey))
+                .sorted(Map.Entry.comparingByKey())
                 .toList();
     }
 }

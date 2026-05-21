@@ -10,7 +10,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
@@ -23,13 +22,8 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -76,38 +70,6 @@ public class AstPrinter extends AstNodeVisitorBase {
         } finally {
             this.output = null;
             isLastStack.clear();
-        }
-    }
-
-    /**
-     * Prints an AST to a UTF-8 file, replacing any existing content.
-     *
-     * @param node root compilation unit
-     * @param outputFilePath output file path
-     */
-    public void printToFile(CompilationUnit node, String outputFilePath) {
-        printToFile(node, Path.of(outputFilePath));
-    }
-
-    /**
-     * Prints an AST to a UTF-8 file, replacing any existing content.
-     *
-     * @param node root compilation unit
-     * @param outputFile output file path
-     */
-    public void printToFile(CompilationUnit node, Path outputFile) {
-        prepareOutputDirectory(outputFile);
-
-        try (BufferedWriter writer = Files.newBufferedWriter(
-                outputFile,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.WRITE)) {
-
-            print(node, writer);
-        } catch (IOException exception) {
-            throw new UncheckedIOException("Could not write AST dump to " + outputFile, exception);
         }
     }
 
@@ -161,6 +123,9 @@ public class AstPrinter extends AstNodeVisitorBase {
     public void visit(FunctionParameter node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> labeledNodeChild("type", node.getType(), isLast));
+        if (node.isVariadic()) {
+            children.add(isLast -> scalarChild("variadic", "true", node.getSourceRange(), isLast));
+        }
         children.add(isLast -> scalarChild("name", quote(node.getName()), node.getSourceRange(), isLast));
         visitMany(children);
     }
@@ -292,6 +257,14 @@ public class AstPrinter extends AstNodeVisitorBase {
     }
 
     @Override
+    public void visit(CastExpression node) {
+        List<Consumer<Boolean>> children = new ArrayList<>();
+        children.add(isLast -> labeledNodeChild("targetType", node.getTargetType(), isLast));
+        children.add(isLast -> labeledNodeChild("operand", node.getOperand(), isLast));
+        visitMany(children);
+    }
+
+    @Override
     public void visit(UnaryExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> scalarChild("operator", node.getKind(), node.getSourceRange(), isLast));
@@ -401,18 +374,6 @@ public class AstPrinter extends AstNodeVisitorBase {
         nodesChild("expressions", node.getExpressions(), true);
     }
 
-    /**
-     * Writes the global symbol scope as a child branch.
-     *
-     * @param globalScope scope to print
-     * @param isLast whether this is the last sibling branch
-     */
-    protected void globalScopeChild(GlobalScope globalScope, boolean isLast) {
-        Map<String, SymbolEntry> entries = globalScope.getAllEntries();
-        writeBranchLine("globalScope (" + entries.size() + ")", isLast);
-        withChildren(() -> symbolEntriesChildren(entries), isLast);
-    }
-
     private void functionScopeChild(FunctionScope scope, boolean isLast) {
         Map<String, SymbolEntry> entries = scope.getAllEntries();
         writeBranchLine("functionScope (" + entries.size() + ")", isLast);
@@ -478,46 +439,55 @@ public class AstPrinter extends AstNodeVisitorBase {
         writeBranchLine(entry.getName() + ": " + entry.getClass().getSimpleName(), isLast);
         withChildren(() -> {
             List<Consumer<Boolean>> children = new ArrayList<>();
-            if (entry instanceof StorageEntry storage) {
-                children.add(childIsLast -> scalarChild("type", storage.getType(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("sizeBytes", storage.getSizeBytes(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
-                if (entry instanceof VariableEntry variable) {
-                    children.add(childIsLast -> scalarChild("hasExplicitInitializer", variable.hasExplicitInitializer(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("defaultValue", quoteValue(variable.getDefaultValue()), null, childIsLast));
+            switch (entry) {
+                case StorageEntry storage -> {
+                    children.add(childIsLast -> scalarChild("type", storage.getType(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("sizeBytes", storage.getSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
+                    if (entry instanceof VariableEntry variable) {
+                        children.add(childIsLast -> scalarChild("hasExplicitInitializer", variable.hasExplicitInitializer(), null, childIsLast));
+                        children.add(childIsLast -> scalarChild("defaultValue", quoteValue(variable.getDefaultValue()), null, childIsLast));
+                    }
                 }
-            } else if (entry instanceof FunctionEntry function) {
-                children.add(childIsLast -> scalarChild("returnType", function.getReturnType(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("label", quote(function.getLabel()), null, childIsLast));
-                children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
-                if (function.getScope() != null) {
-                    children.add(childIsLast -> functionScopeChild(function.getScope(), childIsLast));
+                case FunctionEntry function -> {
+                    children.add(childIsLast -> scalarChild("returnType", function.getReturnType(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("label", quote(function.getLabel()), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
+                    if (function.getScope() != null) {
+                        children.add(childIsLast -> functionScopeChild(function.getScope(), childIsLast));
+                    }
                 }
-            } else if (entry instanceof StructEntry struct) {
-                children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
-                if (hasStructScopeContent(struct.getScope())) {
-                    children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
+                case StructEntry struct -> {
+                    children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
+                    if (hasStructScopeContent(struct.getScope())) {
+                        children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
+                    }
                 }
-            } else if (entry instanceof EnumEntry enumEntry) {
-                children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
-                children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));
-                if (hasEnumScopeContent(enumEntry.getScope())) {
-                    children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
+                case EnumEntry enumEntry -> {
+                    children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));
+                    if (hasEnumScopeContent(enumEntry.getScope())) {
+                        children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
+                    }
                 }
-            } else if (entry instanceof EnumValueEntry enumValue) {
-                children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
-                children.add(childIsLast -> scalarChild("value", enumValue.getValue(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("sizeBytes", enumValue.getSizeBytes(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
-            } else if (entry instanceof LabelEntry label) {
-                children.add(childIsLast -> scalarChild("label", quote(label.getLabel()), null, childIsLast));
-            } else if (entry instanceof DataEntry dataEntry) {
-                children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
-                children.add(childIsLast -> scalarChild("value", quoteValue(dataEntry.getValue()), null, childIsLast));
+                case EnumValueEntry enumValue -> {
+                    children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("value", enumValue.getValue(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("sizeBytes", enumValue.getSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
+                }
+                case LabelEntry label ->
+                        children.add(childIsLast -> scalarChild("label", quote(label.getLabel()), null, childIsLast));
+                case DataEntry dataEntry -> {
+                    children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild("value", quoteValue(dataEntry.getValue()), null, childIsLast));
+                }
+                default -> {
+                }
             }
             visitMany(children);
         }, isLast);
@@ -611,7 +581,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     protected void withChildren(Runnable body, boolean isLast) {
         isLastStack.add(isLast);
         body.run();
-        isLastStack.remove(isLastStack.size() - 1);
+        isLastStack.removeLast();
     }
 
     private static <T> void visitMany(List<T> items, VisitOne<T> visitOne) {
@@ -688,19 +658,6 @@ public class AstPrinter extends AstNodeVisitorBase {
             output.append(text);
         } catch (IOException exception) {
             throw new UncheckedIOException("Could not write AST dump.", exception);
-        }
-    }
-
-    private static void prepareOutputDirectory(Path outputFile) {
-        Path parent = outputFile.toAbsolutePath().getParent();
-        if (parent == null) {
-            return;
-        }
-
-        try {
-            Files.createDirectories(parent);
-        } catch (IOException exception) {
-            throw new UncheckedIOException("Could not create AST dump directory " + parent, exception);
         }
     }
 

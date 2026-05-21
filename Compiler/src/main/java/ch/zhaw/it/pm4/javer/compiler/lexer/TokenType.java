@@ -34,6 +34,7 @@ public enum TokenType {
     KEYWORD_DEFAULT("default"),
     KEYWORD_LET("let"),
     KEYWORD_CALL("call"),
+    KEYWORD_CAST("cast"),
     KEYWORD_NEW("new"),
 
     //Types and Return types
@@ -91,6 +92,7 @@ public enum TokenType {
     SYMBOL_RIGHT_BRACKET("]"),
     SYMBOL_SEMICOLON(";"),
     SYMBOL_COMMA(","),
+    SYMBOL_ELLIPSIS("..."),
     SYMBOL_DOT("."),
     SYMBOL_COLON(":"),
     SYMBOL_QUESTION_MARK("?"),

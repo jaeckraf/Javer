@@ -27,7 +27,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -179,29 +181,82 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             return;
         }
 
-        var parameters = function.getScope().getParameters().values();
+        List<ParameterEntry> parameters = new ArrayList<>(function.getScope().getParameters().values());
 
-        if (node.getArguments().size() != parameters.size()) {
-            report(node, "Argument count mismatch for function " + node.getFunctionName());
-            node.setResultingType(UnknownTypeInfo.INSTANCE);
+        if (!function.isVariadic()) {
+            if (!validateFixedArguments(node, parameters)) {
+                node.setResultingType(UnknownTypeInfo.INSTANCE);
+                return;
+            }
+            node.setResultingType(function.getReturnType());
             return;
         }
 
-        int index = 0;
-        for (var parameter : parameters) {
-            TypeInfo expected = parameter.getType();
-            TypeInfo actual = node.getArguments().get(index).getResultingType();
-
-            if (isNotAssignable(expected, actual)) {
-                report(node, "Argument " + (index + 1) + " type mismatch: expected "
-                        + expected + ", got " + actual);
-            }
-            index++;
+        if (!validateVariadicArguments(node, parameters, function.getVariadicParameter())) {
+            node.setResultingType(UnknownTypeInfo.INSTANCE);
+            return;
         }
-
         node.setResultingType(function.getReturnType());
     }
 
+    private boolean validateFixedArguments(CallExpression node, List<ParameterEntry> parameters) {
+        if (node.getArguments().size() != parameters.size()) {
+            report(node, "Argument count mismatch for function " + node.getFunctionName());
+            return false;
+        }
+
+        boolean valid = true;
+        for (int index = 0; index < parameters.size(); index++) {
+            valid &= validateArgument(node, index, parameters.get(index).getType());
+        }
+        return valid;
+    }
+
+    private boolean validateVariadicArguments(
+            CallExpression node,
+            List<ParameterEntry> parameters,
+            ParameterEntry variadicParameter) {
+        int fixedCount = parameters.size() - 1;
+        if (node.getArguments().size() < fixedCount) {
+            report(node, "Argument count mismatch for function " + node.getFunctionName());
+            return false;
+        }
+
+        boolean valid = true;
+        for (int index = 0; index < fixedCount; index++) {
+            valid &= validateArgument(node, index, parameters.get(index).getType());
+        }
+
+        if (isVariadicArrayPassThrough(node, fixedCount, variadicParameter)) {
+            return validateArgument(node, fixedCount, variadicParameter.getType()) && valid;
+        }
+
+        TypeInfo elementType = variadicParameter.getVariadicElementType();
+        for (int index = fixedCount; index < node.getArguments().size(); index++) {
+            valid &= validateArgument(node, index, elementType);
+        }
+        return valid;
+    }
+
+    private boolean isVariadicArrayPassThrough(
+            CallExpression node,
+            int fixedCount,
+            ParameterEntry variadicParameter) {
+        return node.getArguments().size() == fixedCount + 1
+                && TypeRules.isAssignable(
+                        variadicParameter.getType(),
+                        node.getArguments().get(fixedCount).getResultingType());
+    }
+
+    private boolean validateArgument(CallExpression node, int index, TypeInfo expected) {
+        TypeInfo actual = node.getArguments().get(index).getResultingType();
+        if (isNotAssignable(expected, actual)) {
+            report(node, "Argument " + (index + 1) + " type mismatch: expected "
+                    + expected + ", got " + actual);
+            return false;
+        }
+        return true;
+    }
 
     @Override
     public void visit(BinaryExpression node) {
@@ -481,6 +536,12 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         }
     }
 
+
+    @Override
+    public void visit(CastExpression node) {
+        super.visit(node);
+        node.setResultingType(resolveType(node.getTargetType()));
+    }
 
     @Override
     public void visit(UnaryExpression node) {
