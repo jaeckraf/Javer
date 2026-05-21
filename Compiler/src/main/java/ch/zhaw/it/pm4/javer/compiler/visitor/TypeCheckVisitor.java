@@ -319,6 +319,16 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     }
 
     private boolean isNotAssignableTarget(ExpressionAstNode target) {
+        if (target instanceof IndexExpression indexExpression
+                && PrimitiveTypeInfo.STRING.equals(indexExpression.getTarget().getResultingType())) {
+            return true;
+        }
+        if (target instanceof MemberAccessExpression memberAccess
+                && "length".equals(memberAccess.getMemberName())
+                && (PrimitiveTypeInfo.STRING.equals(memberAccess.getTarget().getResultingType())
+                || memberAccess.getTarget().getResultingType() instanceof ArrayTypeInfo)) {
+            return true;
+        }
         return !(target instanceof NameExpression)
                 && !(target instanceof MemberAccessExpression)
                 && !(target instanceof IndexExpression);
@@ -569,14 +579,19 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             return;
         }
 
-        if (!(targetType instanceof ArrayTypeInfo(TypeInfo elementType))) {
-            report(node, "Indexing is only allowed on arrays.");
+        TypeInfo elementType;
+        if (targetType instanceof ArrayTypeInfo(TypeInfo arrayElementType)) {
+            elementType = arrayElementType;
+        } else if (PrimitiveTypeInfo.STRING.equals(targetType)) {
+            elementType = PrimitiveTypeInfo.CHAR;
+        } else {
+            report(node, "Indexing is only allowed on arrays and strings.");
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
 
         if (!PrimitiveTypeInfo.INT.equals(indexType) && !(indexType instanceof UnknownTypeInfo)) {
-            report(node, "Array index must be of type int.");
+            report(node, "Index must be of type int.");
             node.setResultingType(UnknownTypeInfo.INSTANCE);
             return;
         }
@@ -600,6 +615,12 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         }
 
         TypeInfo targetType = node.getTarget().getResultingType();
+        if ("length".equals(node.getMemberName())
+                && (targetType instanceof ArrayTypeInfo || PrimitiveTypeInfo.STRING.equals(targetType))) {
+            node.setResultingType(PrimitiveTypeInfo.INT);
+            return;
+        }
+
         if (targetType instanceof StructTypeInfo(StructEntry structEntry) && structEntry != null) {
             FieldEntry field = structEntry.getScope().resolveField(node.getMemberName());
             if (field == null) {

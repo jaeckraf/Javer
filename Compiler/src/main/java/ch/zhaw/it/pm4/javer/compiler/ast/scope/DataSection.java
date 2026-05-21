@@ -30,13 +30,17 @@ public final class DataSection {
 
         String label = "string_" + strings.size();
         List<String> encoded = encodeString(value);
-        DataEntry entry = addConstant(label, PrimitiveTypeInfo.of(PrimitiveTypeKind.CHAR), encoded);
+        DataEntry entry = addConstant(label, PrimitiveTypeInfo.of(PrimitiveTypeKind.CHAR), encoded, VmLayout.BYTE_BYTES);
         strings.put(value, entry);
         return entry;
     }
 
     public DataEntry addConstant(String label, TypeInfo type, Object value) {
-        DataEntry entry = new DataEntry(label, type, value);
+        return addConstant(label, type, value, Math.max(type.sizeBytes(), 1));
+    }
+
+    public DataEntry addConstant(String label, TypeInfo type, Object value, int elementSizeBytes) {
+        DataEntry entry = new DataEntry(label, type, value, elementSizeBytes);
         entries.put(label, entry);
         return entry;
     }
@@ -71,11 +75,23 @@ public final class DataSection {
 
     private static List<String> encodeString(String value) {
         List<String> values = new ArrayList<>();
+        appendIntBytes(values, value.length());
         for (char c : value.toCharArray()) {
-            values.add(String.format("%04X", (int) c));
+            appendCharBytes(values, c);
         }
-        values.add(String.format("%04X", 0));
         return values;
+    }
+
+    private static void appendIntBytes(List<String> values, int value) {
+        for (int i = 0; i < VmLayout.WORD_BYTES; i++) {
+            values.add("%02X".formatted((value >> (i * Byte.SIZE)) & 0xFF));
+        }
+    }
+
+    private static void appendCharBytes(List<String> values, char value) {
+        for (int i = 0; i < VmLayout.CHAR_BYTES; i++) {
+            values.add("%02X".formatted((value >> (i * Byte.SIZE)) & 0xFF));
+        }
     }
 
     private static String encodeValue(Object value, int width) {

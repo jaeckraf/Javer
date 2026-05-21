@@ -19,6 +19,8 @@ public final class VmLayout {
     public static final int WORD_BYTES = 4;
     public static final int DOUBLE_BYTES = 8;
     public static final int FRAME_HEADER_BYTES = 16;
+    public static final int ARRAY_LENGTH_BYTES = WORD_BYTES;
+    public static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
 
     private VmLayout() {
     }

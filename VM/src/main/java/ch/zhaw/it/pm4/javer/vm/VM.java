@@ -33,6 +33,8 @@ public class VM {
     private static final int FRAME_RETURN_PC_OFFSET = 8;
     private static final int FRAME_PREVIOUS_FP_OFFSET = 12;
     private static final int FRAME_HEADER_SIZE = 16;
+    private static final int ARRAY_LENGTH_BYTES = 4;
+    private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
 
     private final byte[] stack;
     private final long stackBase;
@@ -450,6 +452,11 @@ public class VM {
                 vm.writeDouble(address, value);
             });
             case NEW -> noOperand(parts, instrName, lineNumber, VM::executeNew);
+            case NEWA -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int elementSize = parsePositiveIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.executeNewArray(elementSize);
+            }
             case MEMCPY -> noOperand(parts, instrName, lineNumber, VM::executeMemcopy);
             case BOUNDS -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
@@ -1006,15 +1013,36 @@ public class VM {
         pushInt(allocateHeapRegion(size));
     }
 
+    private void executeNewArray(int elementSize) {
+        int length = popInt();
+        if (length < 0) {
+            throw new VMExecutionException("Negative array length: " + length);
+        }
+
+        long payloadBytes = (long) length * elementSize;
+        long allocationBytes = ARRAY_PAYLOAD_OFFSET_BYTES + payloadBytes;
+        if (allocationBytes > Integer.MAX_VALUE) {
+            throw new VMExecutionException("Array allocation too large: length=" + length + ", elementSize=" + elementSize);
+        }
+
+        int address = allocateHeapRegion((int) allocationBytes);
+        writeInt(address, length);
+        pushInt(address);
+    }
+
     private void executeBoundsCheck(int elementSize) {
         int index = peekInt(0);
         int baseAddress = peekInt(4);
-        MemoryAccess access = resolveRegion(baseAddress, 0);
+        MemoryAccess access = resolveRegion(baseAddress, ARRAY_LENGTH_BYTES);
         if (access.offset() != 0) {
             throw new VMExecutionException("Array reference does not point to allocation start: " + formatAddress(baseAddress));
         }
 
-        int length = access.region().size() / elementSize;
+        int length = readInt(baseAddress);
+        long requiredBytes = (long) ARRAY_PAYLOAD_OFFSET_BYTES + (long) length * elementSize;
+        if (length < 0 || requiredBytes > access.region().size()) {
+            throw new VMExecutionException("Invalid array header at " + formatAddress(baseAddress));
+        }
         if (index < 0 || index >= length) {
             throw new VMExecutionException("Array index out of bounds: index=" + index + ", length=" + length);
         }
@@ -1189,16 +1217,22 @@ public class VM {
     }
 
     private void printNullTerminatedCharString(int address) {
-        MemoryAccess access = resolveRegion(address, 0);
+        MemoryAccess access = resolveRegion(address, ARRAY_LENGTH_BYTES);
+        if (access.offset() != 0) {
+            throw new VMExecutionException("PRINTS " + formatAddress(address) + ": string reference does not point to allocation start");
+        }
+        int length = readInt(address);
+        long payloadBytes = (long) length * Character.BYTES;
+        if (length < 0 || payloadBytes > Integer.MAX_VALUE) {
+            throw new VMExecutionException("PRINTS " + formatAddress(address) + ": invalid string length " + length);
+        }
+        resolveRegion(address + ARRAY_PAYLOAD_OFFSET_BYTES, (int) payloadBytes);
         byte[] bytes = access.region().bytes();
-        for (int offset = access.offset(); offset + 1 < bytes.length; offset += 2) {
+        int offset = access.offset() + ARRAY_PAYLOAD_OFFSET_BYTES;
+        for (int i = 0; i < length; i++, offset += Character.BYTES) {
             char c = (char) (((bytes[offset + 1] & 0xFF) << 8) | (bytes[offset] & 0xFF));
-            if (c == '\0') {
-                return;
-            }
             System.out.print(c);
         }
-        throw new VMExecutionException("PRINTS " + formatAddress(address) + ": string is not null-terminated");
     }
 
     private boolean compareStrings(int rightAddress, int leftAddress) {
@@ -1206,20 +1240,33 @@ public class VM {
             return leftAddress == rightAddress;
         }
 
-        int leftOffset = 0;
-        int rightOffset = 0;
-        while (true) {
+        MemoryAccess leftAccess = resolveRegion(leftAddress, ARRAY_LENGTH_BYTES);
+        MemoryAccess rightAccess = resolveRegion(rightAddress, ARRAY_LENGTH_BYTES);
+        if (leftAccess.offset() != 0 || rightAccess.offset() != 0) {
+            throw new VMExecutionException("String reference does not point to allocation start");
+        }
+
+        int leftLength = readInt(leftAddress);
+        int rightLength = readInt(rightAddress);
+        if (leftLength < 0 || rightLength < 0) {
+            throw new VMExecutionException("Invalid string length");
+        }
+        if (leftLength != rightLength) {
+            return false;
+        }
+
+        int leftOffset = ARRAY_PAYLOAD_OFFSET_BYTES;
+        int rightOffset = ARRAY_PAYLOAD_OFFSET_BYTES;
+        for (int i = 0; i < leftLength; i++) {
             char left = readChar(leftAddress + leftOffset);
             char right = readChar(rightAddress + rightOffset);
             if (left != right) {
                 return false;
             }
-            if (left == '\0') {
-                return true;
-            }
             leftOffset += Character.BYTES;
             rightOffset += Character.BYTES;
         }
+        return true;
     }
 
     private String formatAddress(int address) {
@@ -1288,7 +1335,7 @@ public class VM {
         LOCAL,
         LOAD1, LOAD2, LOAD4, LOAD8,
         STORE1, STORE2, STORE4, STORE8,
-        NEW, MEMCPY, BOUNDS,
+        NEW, NEWA, MEMCPY, BOUNDS,
         POP, DUP,
         IADD, ISUB, IMUL, IDIV, IMOD,
         DADD, DSUB, DMUL, DDIV,
