@@ -1066,7 +1066,11 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitStorageAddress(StorageEntry storage) {
-        writeLine("LOCAL, " + storage.getOffsetBytes());
+        int offset = storage.getOffsetBytes();
+        if (storage instanceof ParameterEntry) {
+            offset += currentFunction.getLocalBytes();
+        }
+        writeLine("LOCAL, " + offset);
     }
 
     private void emitIndexAddress(IndexExpression node) {
