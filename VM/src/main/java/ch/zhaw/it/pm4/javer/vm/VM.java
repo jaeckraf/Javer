@@ -38,6 +38,7 @@ public class VM {
     private final long stackBase;
     private final long stackTop = ADDRESS_SPACE_SIZE;
     private final Map<Integer, Instruction> code = new HashMap<>();
+    private final Map<Integer, Integer> instructionLineNumbers = new HashMap<>();
     private final Map<String, Integer> dataLabels = new HashMap<>();
     private final Map<String, Integer> labels = new HashMap<>();
     private final TreeMap<Integer, MemoryRegion> regions = new TreeMap<>(Integer::compareUnsigned);
@@ -290,6 +291,7 @@ public class VM {
             try {
                 Instruction instruction = parseInstruction(line, i + 1, pendingJumpChecks);
                 code.put(instructionAddress, instruction);
+                instructionLineNumbers.put(instructionAddress, i + 1);
                 instructionAddress++;
             } catch (ParseException e) {
                 errors.addAll(e.getErrors());
@@ -772,12 +774,25 @@ public class VM {
         pc = main;
 
         while (!halted && code.containsKey(pc)) {
+            int instructionAddress = pc;
             Instruction instruction = code.get(pc);
-            instruction.execute(this);
+            try {
+                instruction.execute(this);
+            } catch (VMExecutionException e) {
+                throw withInstructionLine(instructionAddress, e);
+            }
             if (!halted) {
                 pc++;
             }
         }
+    }
+
+    private VMExecutionException withInstructionLine(int instructionAddress, VMExecutionException exception) {
+        Integer lineNumber = instructionLineNumbers.get(instructionAddress);
+        if (lineNumber == null) {
+            return exception;
+        }
+        return new VMExecutionException("Line " + lineNumber + ": " + exception.getMessage(), exception);
     }
 
     private void halt() {
@@ -1292,6 +1307,10 @@ public class VM {
     private static final class VMExecutionException extends RuntimeException {
         VMExecutionException(String message) {
             super(message);
+        }
+
+        VMExecutionException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

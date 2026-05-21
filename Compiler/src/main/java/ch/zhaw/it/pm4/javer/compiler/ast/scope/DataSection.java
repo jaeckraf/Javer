@@ -41,17 +41,19 @@ public final class DataSection {
         return entry;
     }
 
-    public DataEntry addEnumValues(EnumEntry enumEntry) {
-        DataEntry existing = entries.get(enumEntry.getDataLabel());
-        if (existing != null) {
-            return existing;
+    public void addEnumValues(EnumEntry enumEntry) {
+        if (entries.containsKey(enumEntry.getDataLabel())) {
+            return;
+        }
+        if (enumEntry.getScope() == null || enumEntry.getScope().getValues().isEmpty()) {
+            return;
         }
 
         List<String> values = enumEntry.getScope().getValues().values().stream()
                 .map(EnumValueEntry::getValue)
                 .map(value -> unsignedHex(value, VmLayout.WORD_BYTES))
                 .toList();
-        return addConstant(enumEntry.getDataLabel(), PrimitiveTypeInfo.INT, values);
+        addConstant(enumEntry.getDataLabel(), PrimitiveTypeInfo.INT, values);
     }
 
     public DataEntry addArrayTemplate(TypeInfo elementType, List<Object> values) {
