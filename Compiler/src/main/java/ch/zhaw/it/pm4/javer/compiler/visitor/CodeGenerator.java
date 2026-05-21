@@ -432,12 +432,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
         AssignOperator operator = node.getOperator();
         if (operator == AssignOperator.ASSIGN) {
             emitAddress(node.getTarget());
+            emitDup(PrimitiveTypeInfo.INT);
             emitTyped(node.getValue(), type);
         } else {
             TypeInfo valueType = node.getValue().getResultingType();
             TypeInfo calculationType = TypeRules.compoundCalculationType(operator, type, valueType);
             emitAddress(node.getTarget());
-            emitAddress(node.getTarget());
+            emitDup(PrimitiveTypeInfo.INT);
+            emitDup(PrimitiveTypeInfo.INT);
             emitLoad(type);
             emitConversion(type, calculationType);
             emitTyped(node.getValue(), calculationType);
@@ -446,7 +448,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
             emitConversion(calculationType, type);
         }
         emitStore(type);
-        emitAddress(node.getTarget());
         emitLoad(type);
     }
 
@@ -1079,6 +1080,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         node.getTarget().accept(this);
         emitTyped(node.getIndex(), PrimitiveTypeInfo.INT);
         int elementSize = memoryBytes(elementType);
+        writeLine("BOUNDS, " + elementSize);
         if (elementSize != VmLayout.BYTE_BYTES) {
             writeLine("PUSHI, " + elementSize);
             writeLine("IMUL");

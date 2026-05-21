@@ -451,6 +451,11 @@ public class VM {
             });
             case NEW -> noOperand(parts, instrName, lineNumber, VM::executeNew);
             case MEMCPY -> noOperand(parts, instrName, lineNumber, VM::executeMemcopy);
+            case BOUNDS -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int elementSize = parsePositiveIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.executeBoundsCheck(elementSize);
+            }
             case POP -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 int size = parseStackValueSize(parts[1], instrName, lineNumber, false);
@@ -715,6 +720,14 @@ public class VM {
         } catch (NumberFormatException e) {
             throw new ParseException("Line " + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
         }
+    }
+
+    private int parsePositiveIntOperand(String operand, String instrName, int lineNumber) throws ParseException {
+        int value = parseIntOperand(operand, instrName, lineNumber);
+        if (value <= 0) {
+            throw new ParseException("Line " + lineNumber + ": " + instrName + " operand must be positive, got " + value);
+        }
+        return value;
     }
 
     private double parseDoubleOperand(String operand, String instrName, int lineNumber) throws ParseException {
@@ -993,6 +1006,20 @@ public class VM {
         pushInt(allocateHeapRegion(size));
     }
 
+    private void executeBoundsCheck(int elementSize) {
+        int index = peekInt(0);
+        int baseAddress = peekInt(4);
+        MemoryAccess access = resolveRegion(baseAddress, 0);
+        if (access.offset() != 0) {
+            throw new VMExecutionException("Array reference does not point to allocation start: " + formatAddress(baseAddress));
+        }
+
+        int length = access.region().size() / elementSize;
+        if (index < 0 || index >= length) {
+            throw new VMExecutionException("Array index out of bounds: index=" + index + ", length=" + length);
+        }
+    }
+
     private void pushFrame(int returnPc, int argBytes) {
         pushInt((int) fp);
         pushInt(returnPc);
@@ -1117,9 +1144,19 @@ public class VM {
 
     private int popInt() {
         byte[] bytes = popRaw(4);
+        return intFromBytes(bytes, 0);
+    }
+
+    private int peekInt(int offsetBytes) {
+        ensureStackAvailable(offsetBytes + 4);
+        byte[] bytes = stack;
+        return intFromBytes(bytes, stackOffset(sp + offsetBytes));
+    }
+
+    private int intFromBytes(byte[] bytes, int offset) {
         int value = 0;
         for (int i = 0; i < 4; i++) {
-            value |= (bytes[i] & 0xFF) << (8 * i);
+            value |= (bytes[offset + i] & 0xFF) << (8 * i);
         }
         return value;
     }
@@ -1251,7 +1288,7 @@ public class VM {
         LOCAL,
         LOAD1, LOAD2, LOAD4, LOAD8,
         STORE1, STORE2, STORE4, STORE8,
-        NEW, MEMCPY,
+        NEW, MEMCPY, BOUNDS,
         POP, DUP,
         IADD, ISUB, IMUL, IDIV, IMOD,
         DADD, DSUB, DMUL, DDIV,
