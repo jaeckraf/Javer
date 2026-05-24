@@ -160,19 +160,27 @@ public class SemanticChecker extends AstNodeVisitorBase {
 
     private Completion analyzeSwitch(SwitchStatement switchStatement) {
         boolean hasDefault = false;
+        boolean allCasesReturn = true;
         for (SwitchCase switchCase : switchStatement.getCases()) {
             if (switchCase.isDefault()) {
                 hasDefault = true;
             }
-            if (switchCase.getStatement() == null || analyzeCompletion(switchCase.getStatement()) == Completion.NORMAL) {
+            Completion completion = analyzeCompletion(switchCase.getStatement());
+            if (completion == Completion.NORMAL) {
                 return Completion.NORMAL;
             }
+            if (completion != Completion.RETURNS) {
+                allCasesReturn = false;
+            }
         }
-        return hasDefault ? Completion.RETURNS : Completion.NORMAL;
+        if (!hasDefault) {
+            return Completion.NORMAL;
+        }
+        return allCasesReturn ? Completion.RETURNS : Completion.DOES_NOT_COMPLETE;
     }
 
     private Completion analyzeWhile(WhileStatement statement) {
-        if (!isBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
+        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
             return Completion.NORMAL;
         }
         Completion bodyCompletion = analyzeCompletion(statement.getBody());
@@ -200,7 +208,7 @@ public class SemanticChecker extends AstNodeVisitorBase {
     }
 
     private Completion analyzeDoWhile(DoWhileStatement statement) {
-        if (!isBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
+        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
             return Completion.NORMAL;
         }
         Completion bodyCompletion = analyzeCompletion(statement.getBody());
@@ -213,10 +221,10 @@ public class SemanticChecker extends AstNodeVisitorBase {
         return Completion.DOES_NOT_COMPLETE;
     }
 
-    private boolean isBooleanLiteralTrue(ExpressionAstNode expression) {
-        return expression instanceof LiteralExpression<?> literal
-                && literal.getKind() == LiteralKind.BOOLEAN
-                && Boolean.TRUE.equals(literal.getValue());
+    private boolean isNotBooleanLiteralTrue(ExpressionAstNode expression) {
+        return !(expression instanceof LiteralExpression<?> literal)
+                || literal.getKind() != LiteralKind.BOOLEAN
+                || !Boolean.TRUE.equals(literal.getValue());
     }
 
     private boolean containsReturn(StatementAstNode statement) {
@@ -233,7 +241,7 @@ public class SemanticChecker extends AstNodeVisitorBase {
         if (statement instanceof SwitchStatement switchStatement) {
             return switchStatement.getCases().stream()
                     .map(SwitchCase::getStatement)
-                    .anyMatch(caseStatement -> caseStatement != null && containsReturn(caseStatement));
+                    .anyMatch(this::containsReturn);
         }
         if (statement instanceof WhileStatement whileStatement) {
             return containsReturn(whileStatement.getBody());
@@ -261,7 +269,7 @@ public class SemanticChecker extends AstNodeVisitorBase {
         if (statement instanceof SwitchStatement switchStatement) {
             return switchStatement.getCases().stream()
                     .map(SwitchCase::getStatement)
-                    .anyMatch(caseStatement -> caseStatement != null && containsBreak(caseStatement));
+                    .anyMatch(this::containsBreak);
         }
         return false;
     }

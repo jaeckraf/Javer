@@ -119,10 +119,7 @@ public class Compiler {
         if (stopAfterPhase()) {
             return;
         }
-        if (!generateCode(rootNode)) {
-            stopAfterPhase();
-            return;
-        }
+        generateCode(rootNode);
         if (stopAfterPhase()) {
             return;
         }

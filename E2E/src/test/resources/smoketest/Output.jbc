@@ -1,66 +1,29 @@
 .code
 _main:
-ENTER, 8
+ENTER, 4
 LOCAL, 0
-PUSHI, 8
-NEW
+PUSHI, 1
 STORE4
+while_condition_0:
+PUSHI, 1
+JUMPF, while_end_1
 LOCAL, 0
 LOAD4
 DUP, 4
-PUSHI, 3
-STORE4
-LOAD4
+PUSHI, 1
+IEQ
+JUMPT, switch_case_4
+JUMP, switch_no_match_3
+switch_case_4:
 POP, 4
-LOCAL, 0
-LOAD4
-PUSHI, 4
-IADD
-DUP, 4
-PUSHI, 6
-STORE4
-LOAD4
+JUMP, while_end_1
+JUMP, switch_end_2
+switch_no_match_3:
 POP, 4
-LOCAL, 0
-LOAD4
-LOAD4
-CALL, _printf, 4
-LOCAL, 0
-LOAD4
-PUSHI, 4
-IADD
-LOAD4
-CALL, _printf, 4
-LOCAL, 4
-LOCAL, 0
-LOAD4
-STORE4
-LOCAL, 4
-LOAD4
-DUP, 4
-PUSHD, 0.0
-STORE8
-LOAD8
-POP, 8
-LOCAL, 0
-LOAD4
-LOAD4
-CALL, _printf, 4
-LOCAL, 0
-LOAD4
-PUSHI, 4
-IADD
-LOAD4
-CALL, _printf, 4
-RET, 0
-_printf:
-ENTER, 0
-LOCAL, 16
-LOAD4
-PRINTI
-PUSHR, string_0
-PRINTS
+JUMP, switch_end_2
+switch_end_2:
+JUMP, while_condition_0
+while_end_1:
 RET, 0
 
 .data
-string_0 1 01,00,00,00,0A,00
