@@ -13,7 +13,6 @@ target/
 ### Log File and temporary ###
 *.log
 *.txt
-*.py
 
 ### Eclipse ###
 .apt_generated
