@@ -1,0 +1,26 @@
+fn void main() {
+
+    let string text = "hello";
+    let char letter = 'A';
+    let int[] numbers = {1, 2, 3};
+
+    // string condition
+    while (text) {
+        call prints("invalid\n");
+	break;
+    }
+
+    // char condition
+    while (letter) {
+        call prints("invalid\n");
+	break;
+    }
+
+    // array condition
+    while (numbers) {
+        call prints("invalid\n");
+	break;
+    }
+
+    return;
+}

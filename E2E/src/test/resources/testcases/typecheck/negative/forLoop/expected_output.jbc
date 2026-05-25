@@ -1,0 +1,91 @@
+.code
+_main:
+ENTER, 22
+LOCAL, 0
+PUSHR, string_0
+STORE4
+LOCAL, 4
+PUSHI, 65
+STORE2
+LOCAL, 6
+PUSHI, 3
+NEWA, 4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHR, array_template_0
+PUSHI, 12
+MEMCPY
+STORE4
+LOCAL, 10
+PUSHI, 0
+STORE4
+for_condition_0:
+LOCAL, 0
+LOAD4
+JUMPF, for_end_2
+PUSHR, string_1
+PRINTS
+JUMP, for_end_2
+for_update_1:
+LOCAL, 10
+DUP, 4
+LOCAL, 10
+LOAD4
+PUSHI, 1
+IADD
+STORE4
+LOAD4
+POP, 4
+JUMP, for_condition_0
+for_end_2:
+LOCAL, 14
+PUSHI, 0
+STORE4
+for_condition_3:
+LOCAL, 4
+LOAD2
+JUMPF, for_end_5
+PUSHR, string_1
+PRINTS
+JUMP, for_end_5
+for_update_4:
+LOCAL, 14
+DUP, 4
+LOCAL, 14
+LOAD4
+PUSHI, 1
+IADD
+STORE4
+LOAD4
+POP, 4
+JUMP, for_condition_3
+for_end_5:
+LOCAL, 18
+PUSHI, 0
+STORE4
+for_condition_6:
+LOCAL, 6
+LOAD4
+JUMPF, for_end_8
+PUSHR, string_1
+PRINTS
+JUMP, for_end_8
+for_update_7:
+LOCAL, 18
+DUP, 4
+LOCAL, 18
+LOAD4
+PUSHI, 1
+IADD
+STORE4
+LOAD4
+POP, 4
+JUMP, for_condition_6
+for_end_8:
+RET, 0
+
+.data
+string_0 1 05,00,00,00,68,00,65,00,6C,00,6C,00,6F,00
+array_template_0 4 00000001,00000002,00000003
+string_1 1 08,00,00,00,69,00,6E,00,76,00,61,00,6C,00,69,00,64,00,0A,00
