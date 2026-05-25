@@ -44,8 +44,12 @@ public final class TypeRules {
     }
 
     public static boolean isConditionType(TypeInfo type) {
-        return isUnknown(type) || !isVoid(type);
+        return isUnknown(type)
+                || PrimitiveTypeInfo.BOOL.equals(type)
+                || PrimitiveTypeInfo.INT.equals(type)
+                || PrimitiveTypeInfo.DOUBLE.equals(type);
     }
+
 
     public static boolean isAssignable(TypeInfo target, TypeInfo source) {
         if (isUnknown(target) || isUnknown(source)) {
