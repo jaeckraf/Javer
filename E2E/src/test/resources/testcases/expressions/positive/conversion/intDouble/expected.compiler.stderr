@@ -1,0 +1,9 @@
+=== Error Report ===
+File: E2E\src\test\resources\testcases/expressions/positive/conversion/intDouble/input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] Cannot initialize variable 'trunc' of type int with double.
+  --> E2E\src\test\resources\testcases/expressions/positive/conversion/intDouble/input.javer:7:5
+  |
+7 |     let int trunc = pi;
+  |     ^^^

@@ -1,0 +1,15 @@
+=== Error Report ===
+File: E2E\src\test\resources\testcases/expressions/positive/conversion/charInt/input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] Cannot initialize variable 'code' of type int with char.
+  --> E2E\src\test\resources\testcases/expressions/positive/conversion/charInt/input.javer:3:5
+  |
+3 |     let int code = c;
+  |     ^^^
+
+[ERROR] Cannot initialize variable 'ch' of type char with int.
+  --> E2E\src\test\resources\testcases/expressions/positive/conversion/charInt/input.javer:7:5
+  |
+7 |     let char ch = n;
+  |     ^^^

@@ -1,0 +1,21 @@
+=== Error Report ===
+File: E2E\src\test\resources\testcases/expressions/positive/enum/memberAccess/input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] Argument 1 type mismatch: expected int, got enum Color
+  --> E2E\src\test\resources\testcases/expressions/positive/enum/memberAccess/input.javer:11:5
+   |
+11 |     call printi(c);
+   |     ^^^^
+
+[ERROR] Argument 1 type mismatch: expected int, got enum Color
+  --> E2E\src\test\resources\testcases/expressions/positive/enum/memberAccess/input.javer:12:5
+   |
+12 |     call printi(g);
+   |     ^^^^
+
+[ERROR] Argument 1 type mismatch: expected int, got enum Color
+  --> E2E\src\test\resources\testcases/expressions/positive/enum/memberAccess/input.javer:13:5
+   |
+13 |     call printi(b);
+   |     ^^^^

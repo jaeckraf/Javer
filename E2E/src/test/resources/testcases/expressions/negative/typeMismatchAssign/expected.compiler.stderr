@@ -1,0 +1,9 @@
+=== Error Report ===
+File: E2E\src\test\resources\testcases/expressions/negative/typeMismatchAssign/input.javer
+Phase: TYPE_CHECKING
+
+[ERROR] Cannot initialize variable 'a' of type int with string.
+  --> E2E\src\test\resources\testcases/expressions/negative/typeMismatchAssign/input.javer:2:5
+  |
+2 |     let int a = "not an int";
+  |     ^^^
