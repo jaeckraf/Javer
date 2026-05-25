@@ -13,7 +13,7 @@ public final class EnumEntry extends SymbolEntry {
     private int sizeBytes;
 
     public EnumEntry(String name) {
-        this(name, "enum_" + name, 4);
+        this(name, "enum_" + name + "_values", 4);
     }
 
     public EnumEntry(String name, String dataLabel, int elementSizeBytes) {

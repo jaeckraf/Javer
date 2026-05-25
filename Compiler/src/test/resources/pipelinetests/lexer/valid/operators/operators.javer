@@ -11,5 +11,5 @@ fn void main() {
     a = a << 1;
     a = a >> 1;
 
-    let bool result = a == b or a != b and a <= b;
+    let boolean result = a == b or a != b and a <= b;
 }

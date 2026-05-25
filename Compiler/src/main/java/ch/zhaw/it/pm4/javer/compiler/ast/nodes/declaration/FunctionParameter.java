@@ -16,11 +16,17 @@ public final class FunctionParameter extends AstNodeBase implements AstNode {
 
     private final String name;
     private final TypeAstNode type;
+    private final boolean variadic;
     private ParameterEntry symbolEntry;
 
     public FunctionParameter(String name, TypeAstNode type) {
+        this(name, type, false);
+    }
+
+    public FunctionParameter(String name, TypeAstNode type, boolean variadic) {
         this.name = name;
         this.type = type;
+        this.variadic = variadic;
     }
 
     public TypeAstNode getType() {
@@ -29,6 +35,10 @@ public final class FunctionParameter extends AstNodeBase implements AstNode {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isVariadic() {
+        return variadic;
     }
 
     public ParameterEntry getSymbolEntry() {

@@ -11,7 +11,7 @@ public record EnumTypeInfo(EnumEntry entry) implements TypeInfo {
 
     @Override
     public int sizeBytes() {
-        return entry == null ? 4 : entry.getElementSizeBytes();
+        return REFERENCE_SIZE_BYTES;
     }
 
     @Override

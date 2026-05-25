@@ -38,6 +38,7 @@ public class Compiler {
 
     private final CompilerOptions options;
     private final CompilationContext context;
+    private boolean phaseAbortRequested;
 
     /**
      * Creates a compiler configured for one source input and output target.
@@ -50,6 +51,7 @@ public class Compiler {
         this.context = new CompilationContext(options,
                 new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
                 sourceCache);
+        this.context.getDiagnosticBag().addPhaseAbortListener(phase -> phaseAbortRequested = true);
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
     }
 
@@ -78,7 +80,7 @@ public class Compiler {
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
 
         List<Token> tokens = lex(context.getSourceCache().getSourceCode());
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         if (options.isDumpLexer()) {
@@ -86,7 +88,7 @@ public class Compiler {
         }
 
         CompilationUnit rootNode = parse(tokens);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         if (options.isDumpAst()) {
@@ -94,31 +96,31 @@ public class Compiler {
         }
 
         declareSymbols(rootNode);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
 
         resolveNames(rootNode);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         if (options.isDumpSymbolTable()) {
             printSection("SYMBOL TABLE", dumpSymbolTable(rootNode));
         }
         typeCheck(rootNode);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         layout(rootNode);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         semanticAnalysis(rootNode);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         generateCode(rootNode);
-        if (stopOnErrors()) {
+        if (stopAfterPhase()) {
             return;
         }
         System.out.println("Compilation Successful");
@@ -133,7 +135,27 @@ public class Compiler {
         return true;
     }
 
+    private boolean stopAfterPhase() {
+        if (stopOnPhaseAbort()) {
+            return true;
+        }
+        return stopOnErrors();
+    }
+
+    private boolean stopOnPhaseAbort() {
+        if (!phaseAbortRequested && !context.getDiagnosticBag().isPhaseAbortRequested()) {
+            return false;
+        }
+
+        phaseAbortRequested = false;
+        if (context.getDiagnosticBag().hasErrors()) {
+            System.err.print(context.getDiagnosticBag().dumpReport());
+        }
+        return true;
+    }
+
     private void enterPhase(CompilationPhase nextPhase) {
+        phaseAbortRequested = false;
         context.getDiagnosticBag().setPhase(nextPhase);
     }
 
@@ -173,9 +195,9 @@ public class Compiler {
         new SemanticChecker(context.getDiagnosticBag()).visit(node);
     }
 
-    private void generateCode(CompilationUnit node) {
+    private boolean generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        new CodeGenerator().generate(node, options.getOutputFilePath());
+        return new CodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath()).generate(node);
     }
 
     private static void configureLogging(CompilerOptions options) {

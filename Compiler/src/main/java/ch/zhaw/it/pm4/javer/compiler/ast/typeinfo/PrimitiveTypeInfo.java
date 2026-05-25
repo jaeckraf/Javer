@@ -41,6 +41,9 @@ public record PrimitiveTypeInfo(PrimitiveTypeKind kind) implements TypeInfo {
 
     @Override
     public String toString() {
+        if (kind == PrimitiveTypeKind.BOOL) {
+            return "boolean";
+        }
         return kind.name().toLowerCase();
     }
 }

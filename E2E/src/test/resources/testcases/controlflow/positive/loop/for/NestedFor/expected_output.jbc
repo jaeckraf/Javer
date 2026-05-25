@@ -2,10 +2,10 @@
 _main:
 ENTER, 0
 for_condition_0:
-PUSHB, 0
+PUSHI, 0
 JUMPF, for_end_2
 for_condition_3:
-PUSHB, 0
+PUSHI, 0
 JUMPF, for_end_5
 for_update_4:
 JUMP, for_condition_3
@@ -13,6 +13,6 @@ for_end_5:
 for_update_1:
 JUMP, for_condition_0
 for_end_2:
-RET
+RET, 0
 
 .data

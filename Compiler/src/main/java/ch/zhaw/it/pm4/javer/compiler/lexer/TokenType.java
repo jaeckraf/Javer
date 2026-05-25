@@ -34,6 +34,7 @@ public enum TokenType {
     KEYWORD_DEFAULT("default"),
     KEYWORD_LET("let"),
     KEYWORD_CALL("call"),
+    KEYWORD_CAST("cast"),
     KEYWORD_NEW("new"),
 
     //Types and Return types
@@ -65,11 +66,11 @@ public enum TokenType {
     OPERATOR_GREATER_THAN(">"),
     OPERATOR_LESS_EQUAL("<="),
     OPERATOR_GREATER_EQUAL(">="),
-    OPERATOR_LOGICAL_NOT("!"),
+    OPERATOR_LOGICAL_NOT("!", "!", "not"),
     OPERATOR_INCREMENT("++"),
     OPERATOR_DECREMENT("--"),
-    OPERATOR_OR("||"),
-    OPERATOR_AND("&&"),
+    OPERATOR_OR("||", "||", "or"),
+    OPERATOR_AND("&&", "&&", "and"),
     OPERATOR_BITWISE_AND("&"),
     OPERATOR_BITWISE_OR("|"),
     OPERATOR_BITWISE_XOR("^"),
@@ -91,6 +92,7 @@ public enum TokenType {
     SYMBOL_RIGHT_BRACKET("]"),
     SYMBOL_SEMICOLON(";"),
     SYMBOL_COMMA(","),
+    SYMBOL_ELLIPSIS("..."),
     SYMBOL_DOT("."),
     SYMBOL_COLON(":"),
     SYMBOL_QUESTION_MARK("?"),
@@ -138,7 +140,10 @@ public enum TokenType {
         return name().startsWith("KEYWORD_")
                 || name().startsWith("TYPE_")
                 || this == LITERAL_BOOLEAN
-                || this == LITERAL_NULL;
+                || this == LITERAL_NULL
+                || this == OPERATOR_AND
+                || this == OPERATOR_OR
+                || this == OPERATOR_LOGICAL_NOT;
     }
 
     private boolean isFixedToken() {

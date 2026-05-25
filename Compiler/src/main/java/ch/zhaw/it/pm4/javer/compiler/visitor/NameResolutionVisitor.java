@@ -1,12 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import java.util.Set;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
@@ -20,14 +17,10 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
@@ -35,8 +28,6 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
  * Resolves names in expressions and types to previously declared symbols.
  */
 public class NameResolutionVisitor extends AstNodeVisitorBase {
-
-    private static final Set<String> BUILT_IN_FUNCTIONS = Set.of("printb", "printc", "printi", "printd", "prints");
 
     private final DiagnosticBag diagnosticBag;
     private GlobalScope globalScope;
@@ -86,13 +77,6 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(FunctionParameter node) {
         node.getType().accept(this);
-    }
-
-    @Override
-    public void visit(StructDeclaration node) {
-        for (StructField field : node.getFields()) {
-            field.accept(this);
-        }
     }
 
     @Override
@@ -186,10 +170,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
             }
         }
         if (currentFunctionScope != null) {
-            ParameterEntry parameter = currentFunctionScope.resolveParameter(node.getName());
-            if (parameter != null) {
-                return parameter;
-            }
+            return currentFunctionScope.resolveParameter(node.getName());
         }
         return null;
     }
@@ -206,9 +187,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
             return;
         }
 
-        if (!BUILT_IN_FUNCTIONS.contains(node.getFunctionName())) {
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Undefined function: " + node.getFunctionName());
-        }
+        diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Undefined function: " + node.getFunctionName());
     }
 
     @Override
@@ -222,11 +201,6 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
         }
 
         node.getTarget().accept(this);
-
-        FieldEntry field = resolveStructField(node);
-        if (field != null) {
-            node.setResolvedField(field);
-        }
     }
 
     private void resolveEnumMember(MemberAccessExpression node, EnumEntry enumEntry) {
@@ -238,28 +212,6 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
 
         node.setResolvedEnumValue(valueEntry);
         node.setValue(valueEntry.getValue());
-    }
-
-    private FieldEntry resolveStructField(MemberAccessExpression node) {
-        if (!(node.getTarget() instanceof NameExpression targetName)) {
-            return null;
-        }
-
-        SymbolEntry targetEntry = targetName.getSymbolEntry();
-        if (!(targetEntry instanceof StorageEntry storageEntry)) {
-            return null;
-        }
-
-        if (!(storageEntry.getType() instanceof StructTypeInfo structType) || structType.entry() == null) {
-            return null;
-        }
-
-        StructEntry structEntry = structType.entry();
-        FieldEntry field = structEntry.getScope().resolveField(node.getMemberName());
-        if (field == null) {
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "Struct has no field: " + node.getMemberName());
-        }
-        return field;
     }
 
     @Override

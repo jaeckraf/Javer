@@ -9,6 +9,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CastExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
@@ -155,6 +156,12 @@ public interface AstNodeVisitor {
      * @param node node to visit
      */
     void visit(BinaryExpression node);
+    /**
+     * Visits a cast expression node.
+     *
+     * @param node node to visit
+     */
+    void visit(CastExpression node);
     /**
      * Visits a unary expression node.
      *

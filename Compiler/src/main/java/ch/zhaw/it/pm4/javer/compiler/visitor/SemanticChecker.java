@@ -3,6 +3,9 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
@@ -35,6 +38,13 @@ public class SemanticChecker extends AstNodeVisitorBase {
     public void visit(FunctionDeclaration node) {
         if (node.getBody() != null) {
             node.getBody().accept(this);
+        }
+        FunctionEntry function = node.getSymbolEntry();
+        TypeInfo returnType = function.getReturnType();
+        Completion completion = analyzeCompletion(node.getBody());
+        if (!(returnType instanceof VoidTypeInfo) && completion == Completion.NORMAL) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Missing return statement for function: " + node.getName());
         }
     }
 
@@ -96,5 +106,182 @@ public class SemanticChecker extends AstNodeVisitorBase {
         if (loopDepth == 0) {
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR, "'continue' used outside of a loop");
         }
+    }
+
+    private Completion analyzeCompletion(StatementAstNode statement) {
+        if (statement instanceof ReturnStatement) {
+            return Completion.RETURNS;
+        }
+        if (statement instanceof BlockStatement block) {
+            return analyzeBlock(block);
+        }
+        if (statement instanceof IfStatement ifStatement) {
+            return analyzeIf(ifStatement);
+        }
+        if (statement instanceof SwitchStatement switchStatement) {
+            return analyzeSwitch(switchStatement);
+        }
+        if (statement instanceof WhileStatement whileStatement) {
+            return analyzeWhile(whileStatement);
+        }
+        if (statement instanceof ForStatement forStatement) {
+            return analyzeFor(forStatement);
+        }
+        if (statement instanceof DoWhileStatement doWhileStatement) {
+            return analyzeDoWhile(doWhileStatement);
+        }
+        return Completion.NORMAL;
+    }
+
+    private Completion analyzeBlock(BlockStatement block) {
+        for (StatementAstNode statement : block.getStatements()) {
+            Completion completion = analyzeCompletion(statement);
+            if (completion != Completion.NORMAL) {
+                return completion;
+            }
+        }
+        return Completion.NORMAL;
+    }
+
+    private Completion analyzeIf(IfStatement ifStatement) {
+        if (ifStatement.getElseBranch() == null) {
+            return Completion.NORMAL;
+        }
+        Completion thenCompletion = analyzeCompletion(ifStatement.getThenBranch());
+        Completion elseCompletion = analyzeCompletion(ifStatement.getElseBranch());
+        if (thenCompletion == Completion.NORMAL || elseCompletion == Completion.NORMAL) {
+            return Completion.NORMAL;
+        }
+        if (thenCompletion == Completion.RETURNS && elseCompletion == Completion.RETURNS) {
+            return Completion.RETURNS;
+        }
+        return Completion.DOES_NOT_COMPLETE;
+    }
+
+    private Completion analyzeSwitch(SwitchStatement switchStatement) {
+        boolean hasDefault = false;
+        boolean allCasesReturn = true;
+        for (SwitchCase switchCase : switchStatement.getCases()) {
+            if (switchCase.isDefault()) {
+                hasDefault = true;
+            }
+            Completion completion = analyzeCompletion(switchCase.getStatement());
+            if (completion == Completion.NORMAL) {
+                return Completion.NORMAL;
+            }
+            if (completion != Completion.RETURNS) {
+                allCasesReturn = false;
+            }
+        }
+        if (!hasDefault) {
+            return Completion.NORMAL;
+        }
+        return allCasesReturn ? Completion.RETURNS : Completion.DOES_NOT_COMPLETE;
+    }
+
+    private Completion analyzeWhile(WhileStatement statement) {
+        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
+            return Completion.NORMAL;
+        }
+        Completion bodyCompletion = analyzeCompletion(statement.getBody());
+        if (bodyCompletion == Completion.RETURNS) {
+            return Completion.RETURNS;
+        }
+        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
+            warnComplexInfiniteLoop(statement);
+        }
+        return Completion.DOES_NOT_COMPLETE;
+    }
+
+    private Completion analyzeFor(ForStatement statement) {
+        if (statement.getCondition() != null || containsBreak(statement.getBody())) {
+            return Completion.NORMAL;
+        }
+        Completion bodyCompletion = analyzeCompletion(statement.getBody());
+        if (bodyCompletion == Completion.RETURNS) {
+            return Completion.RETURNS;
+        }
+        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
+            warnComplexInfiniteLoop(statement);
+        }
+        return Completion.DOES_NOT_COMPLETE;
+    }
+
+    private Completion analyzeDoWhile(DoWhileStatement statement) {
+        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
+            return Completion.NORMAL;
+        }
+        Completion bodyCompletion = analyzeCompletion(statement.getBody());
+        if (bodyCompletion == Completion.RETURNS) {
+            return Completion.RETURNS;
+        }
+        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
+            warnComplexInfiniteLoop(statement);
+        }
+        return Completion.DOES_NOT_COMPLETE;
+    }
+
+    private boolean isNotBooleanLiteralTrue(ExpressionAstNode expression) {
+        return !(expression instanceof LiteralExpression<?> literal)
+                || literal.getKind() != LiteralKind.BOOLEAN
+                || !Boolean.TRUE.equals(literal.getValue());
+    }
+
+    private boolean containsReturn(StatementAstNode statement) {
+        if (statement instanceof ReturnStatement) {
+            return true;
+        }
+        if (statement instanceof BlockStatement block) {
+            return block.getStatements().stream().anyMatch(this::containsReturn);
+        }
+        if (statement instanceof IfStatement ifStatement) {
+            return containsReturn(ifStatement.getThenBranch())
+                    || (ifStatement.getElseBranch() != null && containsReturn(ifStatement.getElseBranch()));
+        }
+        if (statement instanceof SwitchStatement switchStatement) {
+            return switchStatement.getCases().stream()
+                    .map(SwitchCase::getStatement)
+                    .anyMatch(this::containsReturn);
+        }
+        if (statement instanceof WhileStatement whileStatement) {
+            return containsReturn(whileStatement.getBody());
+        }
+        if (statement instanceof ForStatement forStatement) {
+            return containsReturn(forStatement.getBody());
+        }
+        if (statement instanceof DoWhileStatement doWhileStatement) {
+            return containsReturn(doWhileStatement.getBody());
+        }
+        return false;
+    }
+
+    private boolean containsBreak(StatementAstNode statement) {
+        if (statement instanceof BreakStatement) {
+            return true;
+        }
+        if (statement instanceof BlockStatement block) {
+            return block.getStatements().stream().anyMatch(this::containsBreak);
+        }
+        if (statement instanceof IfStatement ifStatement) {
+            return containsBreak(ifStatement.getThenBranch())
+                    || (ifStatement.getElseBranch() != null && containsBreak(ifStatement.getElseBranch()));
+        }
+        if (statement instanceof SwitchStatement switchStatement) {
+            return switchStatement.getCases().stream()
+                    .map(SwitchCase::getStatement)
+                    .anyMatch(this::containsBreak);
+        }
+        return false;
+    }
+
+    private void warnComplexInfiniteLoop(StatementAstNode statement) {
+        diagnosticBag.add(statement.getSourceRange().start(), Severity.WARNING,
+                "Infinite loop contains conditional return; normal completion is impossible but return is not definite.");
+    }
+
+    private enum Completion {
+        NORMAL,
+        RETURNS,
+        DOES_NOT_COMPLETE
     }
 }

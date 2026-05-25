@@ -23,6 +23,10 @@ public class DiagnosticBag {
 
     private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
+    private final List<PhaseAbortListener> phaseAbortListeners = new ArrayList<>();
+    private int errorCount;
+    private boolean errorLimitReached;
+    private boolean phaseAbortRequested;
 
     /**
      * Initializes a new DiagnosticBag.
@@ -47,6 +51,19 @@ public class DiagnosticBag {
      */
     public void setPhase(CompilationPhase phase) {
         this.phase = phase;
+        if (!errorLimitReached) {
+            phaseAbortRequested = false;
+        }
+    }
+
+    /**
+     * Registers a listener that is notified when the current phase should stop
+     * immediately, for example after the diagnostic error limit was reached.
+     *
+     * @param listener listener to notify on phase abort
+     */
+    public void addPhaseAbortListener(PhaseAbortListener listener) {
+        phaseAbortListeners.add(listener);
     }
 
     /**
@@ -55,8 +72,11 @@ public class DiagnosticBag {
      * @param diagnostic The diagnostic to add.
      */
     public void add(Diagnostic diagnostic) {
+        if (errorLimitReached) {
+            return;
+        }
         diagnostics.add(diagnostic);
-        // TODO: Implement error limit check (throw exception if exceeded)
+        enforceErrorLimit(diagnostic);
     }
 
     /**
@@ -67,7 +87,49 @@ public class DiagnosticBag {
      * @param message user-facing message
      */
     public void add(SourceLocation location, Severity severity, String message) {
-        diagnostics.add(new Diagnostic(location, severity, message));
+        add(new Diagnostic(location, severity, message));
+    }
+
+    private void enforceErrorLimit(Diagnostic diagnostic) {
+        if (!isError(diagnostic)) {
+            return;
+        }
+
+        errorCount++;
+        if (errorLimit <= 0 || errorCount < errorLimit) {
+            return;
+        }
+
+        errorLimitReached = true;
+        diagnostics.add(new Diagnostic(
+                null,
+                Severity.SEVERE,
+                "Diagnostic limit of " + errorLimit + " error(s) reached; further diagnostics suppressed."));
+        requestPhaseAbort();
+    }
+
+    private boolean isError(Diagnostic diagnostic) {
+        Severity severity = diagnostic.getSeverity();
+        return severity == Severity.ERROR || severity == Severity.SEVERE;
+    }
+
+    private void requestPhaseAbort() {
+        if (phaseAbortRequested) {
+            return;
+        }
+        phaseAbortRequested = true;
+        for (PhaseAbortListener listener : List.copyOf(phaseAbortListeners)) {
+            listener.phaseAbortRequested(phase);
+        }
+    }
+
+    /**
+     * Indicates whether the current phase has requested an abort.
+     *
+     * @return true once the current phase should stop
+     */
+    public boolean isPhaseAbortRequested() {
+        return phaseAbortRequested;
     }
 
     /**
@@ -174,6 +236,17 @@ public class DiagnosticBag {
      * Clears all diagnostics from the bag, preparing it for the next compiler phase.
      */
     public void flush() {
-        // TODO: Implement
+        diagnostics.clear();
+        errorCount = 0;
+        errorLimitReached = false;
+        phaseAbortRequested = false;
+    }
+
+    /**
+     * Listener for diagnostic-driven phase abort requests.
+     */
+    @FunctionalInterface
+    public interface PhaseAbortListener {
+        void phaseAbortRequested(CompilationPhase phase);
     }
 }

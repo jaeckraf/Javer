@@ -189,6 +189,12 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
     }
 
     @Override
+    public void visit(CastExpression node) {
+        node.getTargetType().accept(this);
+        node.getOperand().accept(this);
+    }
+
+    @Override
     public void visit(UnaryExpression node) {
         node.getOperand().accept(this);
     }

@@ -12,11 +12,17 @@ public final class DataEntry extends SymbolEntry {
 
     private final TypeInfo type;
     private final Object value;
+    private final int elementSizeBytes;
 
     public DataEntry(String label, TypeInfo type, Object value) {
+        this(label, type, value, Math.max((type == null ? UnknownTypeInfo.INSTANCE : type).sizeBytes(), 1));
+    }
+
+    public DataEntry(String label, TypeInfo type, Object value, int elementSizeBytes) {
         super(label);
         this.type = type == null ? UnknownTypeInfo.INSTANCE : type;
         this.value = value;
+        this.elementSizeBytes = Math.max(elementSizeBytes, 1);
     }
 
     public String getLabel() {
@@ -34,10 +40,10 @@ public final class DataEntry extends SymbolEntry {
     @Override
     public String toString() {
         if (value instanceof List<?> values) {
-            return "%s %d %s".formatted(getLabel(), Math.max(type.sizeBytes(), 1), String.join(",", values.stream()
+            return "%s %d %s".formatted(getLabel(), elementSizeBytes, String.join(",", values.stream()
                     .map(String::valueOf)
                     .toList()));
         }
-        return "%s %d %s".formatted(getLabel(), Math.max(type.sizeBytes(), 1), value);
+        return "%s %d %s".formatted(getLabel(), elementSizeBytes, value);
     }
 }
