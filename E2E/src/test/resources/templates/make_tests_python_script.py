@@ -2,14 +2,20 @@ from pathlib import Path
 import subprocess
 import shutil
 import sys
+import os
 
 # see doc at confluence
 # https://students-team-w6om7azi.atlassian.net/wiki/spaces/J/pages/55574529/Automated+test+generation
 
 BASE_DIR = Path(__file__).parent.resolve()
 
-COMPILER_EXE = BASE_DIR / "javer-compiler" / "javer-compiler.exe"
-VM_EXE = BASE_DIR / "javer-vm" / "javer-vm.exe"
+# Calculate PROJECT_ROOT correctly
+# templates -> resources -> test -> src -> E2E -> Javer (PROJECT_ROOT)
+PROJECT_ROOT = BASE_DIR.parent.parent.parent.parent.parent
+
+COMPILER_JAR = PROJECT_ROOT / "Compiler" / "target" / "Compiler-1.0-SNAPSHOT-all.jar"
+VM_JAR = PROJECT_ROOT / "VM" / "target" / "VM-1.0-SNAPSHOT-all.jar"
+MISC_JAR = PROJECT_ROOT / "Misc" / "target" / "Misc-1.0-SNAPSHOT.jar"
 
 TIMEOUT_SECONDS = 30
 
@@ -84,17 +90,28 @@ def delete_compiler_outputs(test_dir):
 
 
 def main():
+    print(f"PROJECT_ROOT: {PROJECT_ROOT}")
+    print(f"COMPILER_JAR: {COMPILER_JAR}")
+    print(f"VM_JAR: {VM_JAR}")
+    print()
+
+    if not COMPILER_JAR.exists():
+        print(f"Compiler JAR not found: {COMPILER_JAR}", file=sys.stderr)
+        print("Please run: mvn clean package -DskipTests", file=sys.stderr)
+        sys.exit(1)
+
+    if not VM_JAR.exists():
+        print(f"VM JAR not found: {VM_JAR}", file=sys.stderr)
+        print("Please run: mvn clean package -DskipTests", file=sys.stderr)
+        sys.exit(1)
+
     cleanup_old_test_directories()
 
-    if not COMPILER_EXE.exists():
-        print(f"Compiler not found: {COMPILER_EXE}", file=sys.stderr)
-        sys.exit(1)
-
-    if not VM_EXE.exists():
-        print(f"VM not found: {VM_EXE}", file=sys.stderr)
-        sys.exit(1)
-
     javer_files = list(BASE_DIR.glob("*.javer"))
+
+    if not javer_files:
+        print("No .javer files found in templates directory")
+        return
 
     for javer_file in javer_files:
         parts = javer_file.stem.split("_")
@@ -119,12 +136,18 @@ def main():
 
         print(f"Generating test case: {'/'.join(parts)}")
 
+        # Determine classpath separator
+        cp_sep = ";" if sys.platform == "win32" else ":"
+
         compiler_return_code = run_program(
             [
-                str(COMPILER_EXE),
-                "-i",
+                "java",
+                "-cp",
+                f"{COMPILER_JAR}{cp_sep}{MISC_JAR}",
+                "ch.zhaw.it.pm4.javer.compiler.Compiler",
+                "--in-file",
                 str(input_file),
-                "-o",
+                "--out-file",
                 str(output_base)
             ],
             compiler_stdout,
@@ -143,7 +166,9 @@ def main():
         if jbc_file.exists():
             vm_return_code = run_program(
                 [
-                    str(VM_EXE),
+                    "java",
+                    "-jar",
+                    str(VM_JAR),
                     str(jbc_file)
                 ],
                 vm_stdout,

@@ -615,11 +615,39 @@ public final class E2EApplicationTest {
             return "";
         }
 
+        // Remove JAVA_TOOL_OPTIONS and other JVM startup messages
+        text = filterJavaToolMessages(text);
+
         return normalizePathReferences(text
                 .replace("\r\n", "\n")
                 .replace('\r', '\n')
                 .replaceAll("[ \t]+\\n", "\n"))
                 .strip();
+    }
+
+    private static String filterJavaToolMessages(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+
+        StringBuilder result = new StringBuilder();
+        String[] lines = text.split("\n", -1);
+
+        for (String line : lines) {
+            // Skip JVM startup messages
+            if (line.contains("Picked up JAVA_TOOL_OPTIONS")
+                    || line.startsWith("Picked up ")
+                    || line.isEmpty()) {
+                continue;
+            }
+
+            if (result.length() > 0) {
+                result.append("\n");
+            }
+            result.append(line);
+        }
+
+        return result.toString();
     }
 
     private static String normalizePathReferences(String text) {
