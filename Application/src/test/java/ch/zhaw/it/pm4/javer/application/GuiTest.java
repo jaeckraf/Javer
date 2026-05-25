@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testfx.util.WaitForAsyncUtils.waitFor;
@@ -80,6 +81,7 @@ class GuiTest {
         robot.lookup("#consoleInput").queryAs(TextArea.class).clear();
         robot.lookup("#compilerOutput").queryAs(TextArea.class).clear();
         robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).clear();
+        robot.lookup("#statusOutput").queryAs(TextArea.class).clear();
 
         Files.deleteIfExists(getConsoleInputFile());
         Files.deleteIfExists(getVmInputFile());
@@ -191,5 +193,56 @@ class GuiTest {
         tearDown();
         assertFalse(Files.exists(getConsoleInputFile()), "Console input file should be deleted after teardown");
         assertFalse(Files.exists(getVmInputFile()), "VM input file should be deleted after teardown");
+    }
+
+    @Test
+    void shouldDisableAllRunButtons_whenProcessIsRunning(FxRobot robot) throws TimeoutException {
+        robot.clickOn("#consoleInput").write("some invalid code that hangs or is slow...");
+        robot.clickOn("#runCompilerButton");
+        
+        waitFor(1, TimeUnit.SECONDS, () -> robot.lookup("#runCompilerButton").queryButton().isDisabled());
+        assertTrue(robot.lookup("#runCompilerButton").queryButton().isDisabled());
+        assertTrue(robot.lookup("#runCompilerAndVMButton").queryButton().isDisabled());
+        assertFalse(robot.lookup("#runVMButton").queryButton().isDisabled());
+        
+        robot.clickOn("#stopCompilerButton");
+        
+        waitFor(3, TimeUnit.SECONDS, () -> !robot.lookup("#runCompilerButton").queryButton().isDisabled());
+        assertFalse(robot.lookup("#runVMButton").queryButton().isDisabled());
+        assertFalse(robot.lookup("#runCompilerAndVMButton").queryButton().isDisabled());
+    }
+
+    @Test
+    void shouldShowError_whenRunVMIsClickedWithEmptyBytecode(FxRobot robot) throws IOException, TimeoutException {
+        Files.createFile(getVmInputFile());
+        assertTrue(Files.exists(getVmInputFile()) && Files.size(getVmInputFile()) == 0);
+
+        robot.clickOn("#runVMButton");
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            return output.toLowerCase().contains("error");
+        });
+    }
+
+    @Test
+    void shouldHandleDoubleClickOnRunButton(FxRobot robot) throws TimeoutException {
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        
+        robot.doubleClickOn("#runCompilerAndVMButton");
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
+            return output.toLowerCase().contains("compilation successful");
+        });
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            return output.contains("Works!");
+        });
+
+        String log = robot.lookup("#statusOutput").queryAs(TextArea.class).getText();
+        long count = log.lines().filter(line -> line.contains("Starting Compiler with command")).count();
+        assertEquals(1, count, "Compiler should only be started once on double-click.");
     }
 }
