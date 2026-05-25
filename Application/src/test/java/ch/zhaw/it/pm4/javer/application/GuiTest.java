@@ -58,15 +58,6 @@ class GuiTest {
         System.setProperty("testfx.headless", "true");
         System.setProperty("prism.order", "sw");
         System.setProperty("prism.text", "t2k");
-        
-        Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        while (root != null && !Files.exists(root.resolve("pom.xml"))) {
-            root = root.getParent();
-        }
-        if (root != null) {
-            System.setProperty("javer.compiler.jar", root.resolve("Compiler/target/Compiler-1.0-SNAPSHOT-all.jar").toString());
-            System.setProperty("javer.vm.jar", root.resolve("VM/target/VM-1.0-SNAPSHOT-all.jar").toString());
-        }
     }
 
     @Start
@@ -78,6 +69,12 @@ class GuiTest {
         System.setProperty("MODULE", "app");
         System.setProperty("LOG_LEVEL", "INFO");
         JarConfigLoader.loadConfiguration();
+        
+        Path root = getProjectRoot();
+        if (root != null) {
+            System.setProperty("javer.compiler.jar", root.resolve("Compiler/target/Compiler-1.0-SNAPSHOT-all.jar").toString());
+            System.setProperty("javer.vm.jar", root.resolve("VM/target/VM-1.0-SNAPSHOT-all.jar").toString());
+        }
 
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 600, 400);
