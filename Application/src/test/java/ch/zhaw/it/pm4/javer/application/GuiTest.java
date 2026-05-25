@@ -2,40 +2,194 @@ package ch.zhaw.it.pm4.javer.application;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.TextArea;
 import javafx.stage.Stage;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
 import java.io.IOException;
-import java.util.Map;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.testfx.util.WaitForAsyncUtils.waitFor;
 
 @ExtendWith(ApplicationExtension.class)
 class GuiTest {
 
-    private Map<String, Object> namespace;
+    private static final String TEST_CODE = "fn void main () {call prints(\"Works!\");}";
+
+    private Path getProjectRoot() {
+        Path path = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (path != null) {
+            if (Files.isRegularFile(path.resolve("pom.xml"))
+                    && Files.isDirectory(path.resolve("Application"))
+                    && Files.isDirectory(path.resolve("Compiler"))
+                    && Files.isDirectory(path.resolve("VM"))) {
+                return path;
+            }
+            path = path.getParent();
+        }
+        return Path.of(System.getProperty("user.dir"));
+    }
+
+    private Path getConsoleInputFile() {
+        return getProjectRoot().resolve("console-input.javer");
+    }
+
+    private Path getVmInputFile() {
+        return getProjectRoot().resolve("vm-input.jbc");
+    }
+
+    @BeforeAll
+    static void setupHeadlessMode() {
+        System.setProperty("testfx.robot", "glass");
+        System.setProperty("testfx.headless", "true");
+        System.setProperty("prism.order", "sw");
+        System.setProperty("prism.text", "t2k");
+    }
 
     @Start
     void start(Stage stage) throws IOException {
+        URL logbackConfig = Launcher.class.getResource("/ch/zhaw/it/pm4/javer/application/logback.xml");
+        if (logbackConfig != null) {
+            System.setProperty("logback.configurationFile", logbackConfig.toExternalForm());
+        }
+        System.setProperty("MODULE", "app");
+        System.setProperty("LOG_LEVEL", "INFO");
+        JarConfigLoader.loadConfiguration();
+
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 600, 400);
-        namespace = fxmlLoader.getNamespace();
         stage.setScene(scene);
         stage.show();
     }
 
+    @BeforeEach
+    void setUp(FxRobot robot) throws IOException {
+        robot.lookup("#consoleInput").queryAs(TextArea.class).clear();
+        robot.lookup("#compilerOutput").queryAs(TextArea.class).clear();
+        robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).clear();
+
+        Files.deleteIfExists(getConsoleInputFile());
+        Files.deleteIfExists(getVmInputFile());
+    }
+
+    @AfterEach
+    void tearDown() throws IOException {
+        Files.deleteIfExists(getConsoleInputFile());
+        Files.deleteIfExists(getVmInputFile());
+    }
+
     @Test
-    void shouldLoadMainGuiControlsFromFxml() {
-        assertNotNull(namespace.get("consoleInput"));
-        assertNotNull(namespace.get("runCompilerButton"));
-        assertNotNull(namespace.get("compilerOutput"));
-        assertNotNull(namespace.get("virtualMachineOutput"));
-        assertNotNull(namespace.get("vmStackSizeValueOption"));
-        assertNotNull(namespace.get("vmStackSizeKbOption"));
-        assertNotNull(namespace.get("vmStackSizeMbOption"));
-        assertNotNull(namespace.get("vmDumpOnErrorOption"));
+    void shouldCompileAndRun_whenButtonIsClicked(FxRobot robot) throws TimeoutException, IOException {
+        Files.createFile(getVmInputFile());
+        assertTrue(Files.exists(getVmInputFile()), "Pre-existing VM input file should exist");
+        
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        robot.clickOn("#runCompilerAndVMButton");
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
+            return output.toLowerCase().contains("compilation successful");
+        });
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            return output.contains("Works!");
+        });
+
+        assertTrue(Files.exists(getConsoleInputFile()), "Console input file should be created");
+        assertTrue(Files.exists(getVmInputFile()), "VM input file should be created");
+        assertTrue(Files.size(getVmInputFile()) > 0, "VM input file should not be empty");
+    }
+
+    @Test
+    void shouldCompileOnly_whenRunCompilerButtonIsClicked(FxRobot robot) throws TimeoutException {
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        robot.clickOn("#runCompilerButton");
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
+            return output.toLowerCase().contains("compilation successful");
+        });
+
+        assertTrue(Files.exists(getConsoleInputFile()), "Console input file should be created");
+        assertTrue(Files.exists(getVmInputFile()), "VM input file should be created");
+        assertTrue(robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText().isEmpty(), "VM output should be empty");
+    }
+
+    @Test
+    void shouldRunVMOnly_whenRunVMButtonIsClicked(FxRobot robot) throws TimeoutException, IOException {
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        robot.clickOn("#runCompilerButton");
+        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+
+        robot.lookup("#compilerOutput").queryAs(TextArea.class).clear();
+        robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).clear();
+
+        robot.clickOn("#runVMButton");
+
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            return output.contains("Works!");
+        });
+
+        assertTrue(robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().isEmpty(), "Compiler output should be empty");
+    }
+
+    @Test
+    void shouldStopCompiler_whenStopButtonIsClicked(FxRobot robot) throws TimeoutException {
+        assertTrue(robot.lookup("#stopCompilerButton").queryButton().isDisabled());
+        robot.clickOn("#consoleInput").write("some invalid code that hangs or is slow...");
+        robot.clickOn("#runCompilerButton");
+        waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopCompilerButton").queryButton().isDisabled());
+        robot.clickOn("#stopCompilerButton");
+        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#stopCompilerButton").queryButton().isDisabled());
+        assertTrue(!robot.lookup("#runCompilerButton").queryButton().isDisabled());
+    }
+
+    @Test
+    void shouldStopVM_whenStopButtonIsClicked(FxRobot robot) throws TimeoutException {
+        assertTrue(robot.lookup("#stopVMButton").queryButton().isDisabled());
+        robot.clickOn("#consoleInput").write("fn void main () {while (true) {}}");
+        robot.clickOn("#runCompilerButton");
+        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        robot.clickOn("#runVMButton");
+        waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopVMButton").queryButton().isDisabled());
+        robot.clickOn("#stopVMButton");
+        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#stopVMButton").queryButton().isDisabled());
+        assertTrue(!robot.lookup("#runVMButton").queryButton().isDisabled());
+    }
+
+    @Test
+    void shouldShowError_whenRunVMIsClickedWithoutBytecode(FxRobot robot) throws TimeoutException {
+        assertFalse(Files.exists(getVmInputFile()));
+        robot.clickOn("#runVMButton");
+        waitFor(3, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            return output.toLowerCase().contains("error reading file");
+        });
+    }
+
+    @Test
+    void shouldDeleteFilesAfterTeardown() throws IOException {
+        Files.createFile(getConsoleInputFile());
+        Files.createFile(getVmInputFile());
+        assertTrue(Files.exists(getConsoleInputFile()));
+        assertTrue(Files.exists(getVmInputFile()));
+        tearDown();
+        assertFalse(Files.exists(getConsoleInputFile()), "Console input file should be deleted after teardown");
+        assertFalse(Files.exists(getVmInputFile()), "VM input file should be deleted after teardown");
     }
 }
