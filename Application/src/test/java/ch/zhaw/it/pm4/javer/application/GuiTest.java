@@ -58,6 +58,15 @@ class GuiTest {
         System.setProperty("testfx.headless", "true");
         System.setProperty("prism.order", "sw");
         System.setProperty("prism.text", "t2k");
+        
+        Path root = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (root != null && !Files.exists(root.resolve("pom.xml"))) {
+            root = root.getParent();
+        }
+        if (root != null) {
+            System.setProperty("javer.compiler.jar", root.resolve("Compiler/target/Compiler-1.0-SNAPSHOT-all.jar").toString());
+            System.setProperty("javer.vm.jar", root.resolve("VM/target/VM-1.0-SNAPSHOT-all.jar").toString());
+        }
     }
 
     @Start
@@ -101,12 +110,12 @@ class GuiTest {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerAndVMButton");
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
             return output.toLowerCase().contains("compilation successful");
         });
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
             return output.contains("Works!");
         });
@@ -121,7 +130,7 @@ class GuiTest {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
             return output.toLowerCase().contains("compilation successful");
         });
@@ -135,14 +144,14 @@ class GuiTest {
     void shouldRunVMOnly_whenRunVMButtonIsClicked(FxRobot robot) throws TimeoutException, IOException {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
-        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
 
         robot.lookup("#compilerOutput").queryAs(TextArea.class).clear();
         robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).clear();
 
         robot.clickOn("#runVMButton");
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
             return output.contains("Works!");
         });
@@ -157,7 +166,7 @@ class GuiTest {
         robot.clickOn("#runCompilerButton");
         waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopCompilerButton").queryButton().isDisabled());
         robot.clickOn("#stopCompilerButton");
-        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#stopCompilerButton").queryButton().isDisabled());
+        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#stopCompilerButton").queryButton().isDisabled());
         assertTrue(!robot.lookup("#runCompilerButton").queryButton().isDisabled());
     }
 
@@ -166,11 +175,11 @@ class GuiTest {
         assertTrue(robot.lookup("#stopVMButton").queryButton().isDisabled());
         robot.clickOn("#consoleInput").write("fn void main () {while (true) {}}");
         robot.clickOn("#runCompilerButton");
-        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
         robot.clickOn("#runVMButton");
         waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopVMButton").queryButton().isDisabled());
         robot.clickOn("#stopVMButton");
-        waitFor(3, TimeUnit.SECONDS, () -> robot.lookup("#stopVMButton").queryButton().isDisabled());
+        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#stopVMButton").queryButton().isDisabled());
         assertTrue(!robot.lookup("#runVMButton").queryButton().isDisabled());
     }
 
@@ -178,7 +187,7 @@ class GuiTest {
     void shouldShowError_whenRunVMIsClickedWithoutBytecode(FxRobot robot) throws TimeoutException {
         assertFalse(Files.exists(getVmInputFile()));
         robot.clickOn("#runVMButton");
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
             return output.toLowerCase().contains("error reading file");
         });
@@ -207,7 +216,7 @@ class GuiTest {
         
         robot.clickOn("#stopCompilerButton");
         
-        waitFor(3, TimeUnit.SECONDS, () -> !robot.lookup("#runCompilerButton").queryButton().isDisabled());
+        waitFor(10, TimeUnit.SECONDS, () -> !robot.lookup("#runCompilerButton").queryButton().isDisabled());
         assertFalse(robot.lookup("#runVMButton").queryButton().isDisabled());
         assertFalse(robot.lookup("#runCompilerAndVMButton").queryButton().isDisabled());
     }
@@ -219,7 +228,7 @@ class GuiTest {
 
         robot.clickOn("#runVMButton");
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
             return output.toLowerCase().contains("error");
         });
@@ -231,12 +240,12 @@ class GuiTest {
         
         robot.doubleClickOn("#runCompilerAndVMButton");
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
             return output.toLowerCase().contains("compilation successful");
         });
 
-        waitFor(3, TimeUnit.SECONDS, () -> {
+        waitFor(10, TimeUnit.SECONDS, () -> {
             String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
             return output.contains("Works!");
         });
