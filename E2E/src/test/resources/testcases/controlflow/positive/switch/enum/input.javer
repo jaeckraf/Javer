@@ -1,0 +1,16 @@
+enum Status {
+    on,
+    off
+}
+
+fn void main() {
+    let enum Status s = Status.on;
+
+    switch (s) {
+        case Status.on:
+            call prints("The status is ON");
+
+        case Status.off:
+            call prints("The status is OFF");
+    }
+}
