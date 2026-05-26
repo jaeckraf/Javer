@@ -13,6 +13,7 @@ import org.testfx.api.FxRobot;
 import org.testfx.framework.junit5.ApplicationExtension;
 import org.testfx.framework.junit5.Start;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -28,8 +29,10 @@ import static org.testfx.util.WaitForAsyncUtils.waitFor;
 class GuiTest {
 
     private static final String TEST_CODE = "fn void main () {call prints(\"Works!\");}";
+    private static final String SAVE_LOAD_TEST_CONTENT = "This is a test for save and load.";
 
     private Map<String, Object> namespace;
+    private GuiController controller;
 
     private Path getProjectRoot() {
         Path path = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
@@ -79,6 +82,7 @@ class GuiTest {
 
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 600, 400);
+        controller = fxmlLoader.getController();
         namespace = fxmlLoader.getNamespace();
         stage.setScene(scene);
         stage.show();
@@ -261,11 +265,75 @@ class GuiTest {
         assertNotNull(namespace.get("fileMenuButton"));
         assertNotNull(namespace.get("expertModeOption"));
         assertNotNull(namespace.get("runCompilerButton"));
+        assertNotNull(namespace.get("runVMButton"));
+        assertNotNull(namespace.get("runCompilerAndVMButton"));
+        assertNotNull(namespace.get("stopCompilerButton"));
+        assertNotNull(namespace.get("stopVMButton"));
         assertNotNull(namespace.get("compilerOutput"));
         assertNotNull(namespace.get("virtualMachineOutput"));
+        assertNotNull(namespace.get("statusOutput"));
         assertNotNull(namespace.get("vmStackSizeValueOption"));
         assertNotNull(namespace.get("vmStackSizeKbOption"));
         assertNotNull(namespace.get("vmStackSizeMbOption"));
         assertNotNull(namespace.get("vmDumpOnErrorOption"));
+    }
+
+    @Test
+    void shouldSaveAndLoadJaverFile(FxRobot robot) throws IOException {
+        File testFile = getProjectRoot().resolve("test.javer").toFile();
+        
+        robot.interact(() -> {
+            TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
+            consoleInput.setText(SAVE_LOAD_TEST_CONTENT);
+            controller.saveJaverFile(testFile);
+            consoleInput.clear();
+            controller.loadJaverFile(testFile);
+            assertEquals(SAVE_LOAD_TEST_CONTENT, consoleInput.getText());
+        });
+        
+        Files.deleteIfExists(testFile.toPath());
+    }
+
+    @Test
+    void shouldSaveAndLoadJbcFile(FxRobot robot) throws IOException, TimeoutException {
+        File testFile = getProjectRoot().resolve("test.jbc").toFile();
+
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        robot.clickOn("#runCompilerButton");
+        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+
+        controller.saveJbcFile(testFile);
+        assertTrue(Files.exists(testFile.toPath()));
+
+        Files.deleteIfExists(getVmInputFile());
+        controller.loadJbcFile(testFile);
+
+        robot.clickOn("#runVMButton");
+        waitFor(10, TimeUnit.SECONDS, () -> {
+            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            return output.contains("Works!");
+        });
+
+        Files.deleteIfExists(testFile.toPath());
+    }
+
+    @Test
+    void shouldNotChangeText_whenLoadingJaverFileIsCancelled(FxRobot robot) {
+        String initialText = "Initial text.";
+        robot.interact(() -> {
+            TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
+            consoleInput.setText(initialText);
+            controller.loadJaverFile(null);
+            assertEquals(initialText, consoleInput.getText());
+        });
+    }
+
+    @Test
+    void shouldNotSaveFile_whenSavingJaverFileIsCancelled(FxRobot robot) {
+        File testFile = getProjectRoot().resolve("test.javer").toFile();
+        robot.interact(() -> {
+            controller.saveJaverFile(null);
+            assertFalse(testFile.exists());
+        });
     }
 }
