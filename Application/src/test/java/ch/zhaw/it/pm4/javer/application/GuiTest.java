@@ -17,18 +17,19 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.testfx.util.WaitForAsyncUtils.waitFor;
 
 @ExtendWith(ApplicationExtension.class)
 class GuiTest {
 
     private static final String TEST_CODE = "fn void main () {call prints(\"Works!\");}";
+
+    private Map<String, Object> namespace;
 
     private Path getProjectRoot() {
         Path path = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
@@ -78,6 +79,7 @@ class GuiTest {
 
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 600, 400);
+        namespace = fxmlLoader.getNamespace();
         stage.setScene(scene);
         stage.show();
     }
@@ -234,7 +236,7 @@ class GuiTest {
     @Test
     void shouldHandleDoubleClickOnRunButton(FxRobot robot) throws TimeoutException {
         robot.clickOn("#consoleInput").write(TEST_CODE);
-        
+
         robot.doubleClickOn("#runCompilerAndVMButton");
 
         waitFor(10, TimeUnit.SECONDS, () -> {
@@ -250,5 +252,20 @@ class GuiTest {
         String log = robot.lookup("#statusOutput").queryAs(TextArea.class).getText();
         long count = log.lines().filter(line -> line.contains("Starting Compiler with command")).count();
         assertEquals(1, count, "Compiler should only be started once on double-click.");
+    }
+
+    @Test
+    void shouldLoadMainGuiControlsFromFxml() {
+        assertNotNull(namespace.get("consoleInput"));
+        assertNotNull(namespace.get("consoleInputLineNumbers"));
+        assertNotNull(namespace.get("fileMenuButton"));
+        assertNotNull(namespace.get("expertModeOption"));
+        assertNotNull(namespace.get("runCompilerButton"));
+        assertNotNull(namespace.get("compilerOutput"));
+        assertNotNull(namespace.get("virtualMachineOutput"));
+        assertNotNull(namespace.get("vmStackSizeValueOption"));
+        assertNotNull(namespace.get("vmStackSizeKbOption"));
+        assertNotNull(namespace.get("vmStackSizeMbOption"));
+        assertNotNull(namespace.get("vmDumpOnErrorOption"));
     }
 }
