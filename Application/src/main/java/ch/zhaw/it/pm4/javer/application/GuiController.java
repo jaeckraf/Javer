@@ -5,20 +5,28 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.MenuButton;
 import javafx.scene.control.RadioButton;
+import javafx.scene.control.ScrollBar;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Controller for the main GUI. It owns the source input, process output panes,
@@ -29,7 +37,12 @@ public class GuiController {
 
     private static final String CONSOLE_INPUT_FILE_NAME = "console-input.javer";
     private static final String VM_INPUT_FILE_NAME = "vm-input.jbc";
+    private static final String SOURCE_FILE_EXTENSION = ".javer";
     private static final String BYTECODE_FILE_EXTENSION = ".jbc";
+    private static final String SOURCE_FILE_FILTER_DESCRIPTION = "Javer source files (*.javer)";
+    private static final String BYTECODE_FILE_FILTER_DESCRIPTION = "Javer bytecode files (*.jbc)";
+    private static final double NORMAL_VM_OUTPUT_PREF_HEIGHT = 240.0;
+    private static final double EXPERT_VM_OUTPUT_PREF_HEIGHT = 80.0;
     private static final int DEFAULT_STACK_SIZE_VALUE = 1;
     private static final int MIN_STACK_SIZE_VALUE = 1;
     private static final int MAX_STACK_SIZE_KB = 16 * 1024;
@@ -64,6 +77,9 @@ public class GuiController {
     private Button runCompilerAndVMButton;
 
     @FXML
+    private MenuButton fileMenuButton;
+
+    @FXML
     private TextArea compilerOutput;
 
     @FXML
@@ -73,13 +89,16 @@ public class GuiController {
     private TextArea consoleInput;
 
     @FXML
+    private TextArea consoleInputLineNumbers;
+
+    @FXML
     private Button runCompilerButton;
 
     @FXML
     private TextArea statusOutput;
 
     @FXML
-    private CheckBox expertModeOption;
+    private CheckMenuItem expertModeOption;
 
     @FXML
     private VBox compilerOptionsBox;
@@ -110,9 +129,6 @@ public class GuiController {
 
     @FXML
     private CheckBox vmDumpOnErrorOption;
-
-    @FXML
-    private TextField vmAdditionalArguments;
 
     /**
      * Creates the controller instance used by the FXML loader.
@@ -150,6 +166,121 @@ public class GuiController {
         updateVMButtons(false);
         configureStackSizeOptions();
         bindExpertMode();
+        configureExpertModeMenuItem();
+        configureUiActionLogging();
+        configureSourceLineNumbers();
+    }
+
+    /**
+     * Saves the current source editor contents as a {@code .javer} file.
+     */
+    @FXML
+    protected void onSaveJaverFileClick() {
+        JaverLogger.info("Save Javer Source File selected.");
+        File selectedFile = showSaveDialog(
+                "Save Javer Source File",
+                "program" + SOURCE_FILE_EXTENSION,
+                SOURCE_FILE_FILTER_DESCRIPTION,
+                SOURCE_FILE_EXTENSION
+        );
+        if (selectedFile == null) {
+            JaverLogger.info("Save Javer Source File canceled.");
+            return;
+        }
+
+        Path targetPath = ensureExtension(selectedFile.toPath(), SOURCE_FILE_EXTENSION);
+        saveTextFile(targetPath, consoleInput.getText(), "Javer source file");
+    }
+
+    /**
+     * Loads a {@code .javer} file into the source editor.
+     */
+    @FXML
+    protected void onLoadJaverFileClick() {
+        JaverLogger.info("Load Javer Source File selected.");
+        File selectedFile = showOpenDialog(
+                "Load Javer Source File",
+                SOURCE_FILE_FILTER_DESCRIPTION,
+                SOURCE_FILE_EXTENSION
+        );
+        if (selectedFile == null) {
+            JaverLogger.info("Load Javer Source File canceled.");
+            return;
+        }
+
+        Path sourcePath = selectedFile.toPath().toAbsolutePath().normalize();
+        if (!hasExtension(sourcePath, SOURCE_FILE_EXTENSION)) {
+            JaverLogger.error("Only .javer files can be loaded as source files.");
+            return;
+        }
+
+        try {
+            consoleInput.setText(Files.readString(sourcePath, StandardCharsets.UTF_8));
+            JaverLogger.info("Loaded Javer source file from: " + sourcePath);
+        } catch (IOException exception) {
+            JaverLogger.error("Failed to load Javer source file: " + exception.getMessage());
+        }
+    }
+
+    /**
+     * Saves the current VM bytecode input as a {@code .jbc} file.
+     */
+    @FXML
+    protected void onSaveJbcFileClick() {
+        JaverLogger.info("Save JBC File selected.");
+        if (!isBytecodeFileReady()) {
+            JaverLogger.error("No JBC file is available. Compile source code or load a .jbc file first.");
+            return;
+        }
+
+        File selectedFile = showSaveDialog(
+                "Save JBC File",
+                "output" + BYTECODE_FILE_EXTENSION,
+                BYTECODE_FILE_FILTER_DESCRIPTION,
+                BYTECODE_FILE_EXTENSION
+        );
+        if (selectedFile == null) {
+            JaverLogger.info("Save JBC File canceled.");
+            return;
+        }
+
+        Path targetPath = ensureExtension(selectedFile.toPath(), BYTECODE_FILE_EXTENSION);
+        copyFile(
+                vmInputFile,
+                targetPath,
+                "Saved JBC file as: ",
+                "Failed to save JBC file: "
+        );
+    }
+
+    /**
+     * Loads a {@code .jbc} file as VM input.
+     */
+    @FXML
+    protected void onLoadJbcFileClick() {
+        JaverLogger.info("Load JBC File selected.");
+        File selectedFile = showOpenDialog(
+                "Load JBC File",
+                BYTECODE_FILE_FILTER_DESCRIPTION,
+                BYTECODE_FILE_EXTENSION
+        );
+        if (selectedFile == null) {
+            JaverLogger.info("Load JBC File canceled.");
+            return;
+        }
+
+        Path sourcePath = selectedFile.toPath().toAbsolutePath().normalize();
+        if (!hasExtension(sourcePath, BYTECODE_FILE_EXTENSION)) {
+            JaverLogger.error("Only .jbc files can be loaded as bytecode files.");
+            return;
+        }
+
+        copyFile(
+                sourcePath,
+                vmInputFile,
+                "Loaded JBC file for VM from " + sourcePath + " to ",
+                "Failed to load JBC file: "
+        );
     }
 
     /**
@@ -157,6 +288,7 @@ public class GuiController {
      */
     @FXML
     protected void onRunCompilerClick() {
+        JaverLogger.info("Run Compiler button pressed.");
         if (compilerRunner.isRunning()) {
             return;
         }
@@ -185,6 +317,7 @@ public class GuiController {
      */
     @FXML
     protected void onRunVMClick() {
+        JaverLogger.info("Run VM button pressed.");
         if (vmRunner.isRunning()) {
             return;
         }
@@ -208,6 +341,7 @@ public class GuiController {
      */
     @FXML
     public void onStopVMClick() {
+        JaverLogger.info("Stop VM button pressed.");
         vmRunner.stop();
     }
 
@@ -216,6 +350,7 @@ public class GuiController {
      */
     @FXML
     public void onStopCompilerClick() {
+        JaverLogger.info("Stop Compiler button pressed.");
         compilerRunner.stop();
     }
 
@@ -244,6 +379,7 @@ public class GuiController {
      */
     @FXML
     public void onRunCompilerAndVMClick() {
+        JaverLogger.info("Run Compiler and VM button pressed.");
         if (compilerRunner.isRunning() || vmRunner.isRunning()) {
             JaverLogger.warning("Compiler or VM is already running.");
             return;
@@ -408,6 +544,103 @@ public class GuiController {
         vmOptionsBox.managedProperty().bind(expertModeOption.selectedProperty());
     }
 
+    private void configureExpertModeMenuItem() {
+        updateExpertModeMenuItem(expertModeOption.isSelected());
+        expertModeOption.selectedProperty().addListener((observable, wasSelected, selected) ->
+                updateExpertModeMenuItem(selected));
+    }
+
+    private void updateExpertModeMenuItem(boolean enabled) {
+        String state = enabled ? "On" : "Off";
+        expertModeOption.setText("Expert Mode: " + state);
+        virtualMachineOutput.setPrefHeight(enabled ? EXPERT_VM_OUTPUT_PREF_HEIGHT : NORMAL_VM_OUTPUT_PREF_HEIGHT);
+    }
+
+    private void configureUiActionLogging() {
+        fileMenuButton.setOnShowing(event -> JaverLogger.info("Menu opened."));
+
+        logCheckBoxChanges(compilerDumpLexerOption, "Dump Lexer");
+        logCheckBoxChanges(compilerDumpAstOption, "Dump AST");
+        logCheckBoxChanges(compilerDumpSymbolTableOption, "Dump Symbol Table");
+        logCheckBoxChanges(compilerLoggingOption, "Compiler logging");
+        logCheckBoxChanges(vmDumpOnErrorOption, "VM dump on runtime error");
+
+        expertModeOption.selectedProperty().addListener((observable, wasSelected, selected) ->
+                JaverLogger.info("Expert Mode set to " + onOff(selected) + "."));
+        vmStackSizeValueOption.valueProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null && !newValue.equals(oldValue)) {
+                JaverLogger.info("VM stack size set to " + newValue + selectedStackSizeUnit() + ".");
+            }
+        });
+        vmStackSizeKbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
+            if (selected) {
+                JaverLogger.info("VM stack size unit set to KB.");
+            }
+        });
+        vmStackSizeMbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
+            if (selected) {
+                JaverLogger.info("VM stack size unit set to MB.");
+            }
+        });
+    }
+
+    private void logCheckBoxChanges(CheckBox checkBox, String label) {
+        checkBox.selectedProperty().addListener((observable, wasSelected, selected) ->
+                JaverLogger.info(label + " set to " + onOff(selected) + "."));
+    }
+
+    private String onOff(boolean selected) {
+        return selected ? "On" : "Off";
+    }
+
+    private void configureSourceLineNumbers() {
+        updateSourceLineNumbers(consoleInput.getText());
+        Platform.runLater(this::hideSourceLineNumberScrollBars);
+        consoleInput.textProperty().addListener((observable, oldText, newText) -> updateSourceLineNumbers(newText));
+        consoleInput.scrollTopProperty().addListener((observable, oldValue, newValue) ->
+                syncSourceLineNumberScroll());
+    }
+
+    private void hideSourceLineNumberScrollBars() {
+        consoleInputLineNumbers.lookupAll(".scroll-bar").stream()
+                .filter(ScrollBar.class::isInstance)
+                .map(ScrollBar.class::cast)
+                .forEach(scrollBar -> {
+                    scrollBar.setVisible(false);
+                    scrollBar.setManaged(false);
+                    scrollBar.setOpacity(0.0);
+                });
+    }
+
+    private void updateSourceLineNumbers(String sourceText) {
+        consoleInputLineNumbers.setText(buildLineNumbers(countSourceLines(sourceText)));
+        syncSourceLineNumberScroll();
+    }
+
+    private void syncSourceLineNumberScroll() {
+        consoleInputLineNumbers.setScrollTop(consoleInput.getScrollTop());
+        consoleInputLineNumbers.setScrollLeft(0.0);
+    }
+
+    private int countSourceLines(String sourceText) {
+        if (sourceText == null || sourceText.isEmpty()) {
+            return 1;
+        }
+
+        return sourceText.split("\\R", -1).length;
+    }
+
+    private String buildLineNumbers(int lineCount) {
+        StringBuilder lineNumbers = new StringBuilder(lineCount * 4);
+        for (int line = 1; line <= lineCount; line++) {
+            if (line > 1) {
+                lineNumbers.append('\n');
+            }
+            lineNumbers.append(line);
+        }
+        return lineNumbers.toString();
+    }
+
     private void startVmAfterSuccessfulCompilation(
             ManagedProcessRunner.ProcessResult compilerResult,
             List<String> vmCommand
@@ -460,6 +693,97 @@ public class GuiController {
             JaverLogger.error("Failed to write source input file: " + exception.getMessage());
             return null;
         }
+    }
+
+    private void saveTextFile(Path targetPath, String text, String label) {
+        Path absoluteTargetPath = targetPath.toAbsolutePath().normalize();
+        try {
+            Path parent = absoluteTargetPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+
+            Files.writeString(
+                    absoluteTargetPath,
+                    text == null ? "" : text,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+            );
+            JaverLogger.info("Saved " + label + " as: " + absoluteTargetPath);
+        } catch (IOException exception) {
+            JaverLogger.error("Failed to save " + label + ": " + exception.getMessage());
+        }
+    }
+
+    private void copyFile(Path sourcePath, Path targetPath, String successMessage, String failureMessage) {
+        try {
+            Path absoluteSourcePath = sourcePath.toAbsolutePath().normalize();
+            Path absoluteTargetPath = targetPath.toAbsolutePath().normalize();
+            Path parent = absoluteTargetPath.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+
+            if (!Files.exists(absoluteTargetPath) || !Files.isSameFile(absoluteSourcePath, absoluteTargetPath)) {
+                Files.copy(absoluteSourcePath, absoluteTargetPath, StandardCopyOption.REPLACE_EXISTING);
+            }
+            JaverLogger.info(successMessage + absoluteTargetPath);
+        } catch (IOException exception) {
+            JaverLogger.error(failureMessage + exception.getMessage());
+        }
+    }
+
+    private File showOpenDialog(String title, String filterDescription, String extension) {
+        return createFileChooser(title, filterDescription, extension).showOpenDialog(ownerWindow());
+    }
+
+    private File showSaveDialog(String title, String initialFileName, String filterDescription, String extension) {
+        FileChooser fileChooser = createFileChooser(title, filterDescription, extension);
+        fileChooser.setInitialFileName(initialFileName);
+        return fileChooser.showSaveDialog(ownerWindow());
+    }
+
+    private FileChooser createFileChooser(String title, String filterDescription, String extension) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle(title);
+        defaultFileChooserDirectory().ifPresent(fileChooser::setInitialDirectory);
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                filterDescription,
+                "*" + extension
+        ));
+        return fileChooser;
+    }
+
+    private Optional<File> defaultFileChooserDirectory() {
+        Path directory = runtimeDirectory.toAbsolutePath().normalize();
+        if (Files.isDirectory(directory)) {
+            return Optional.of(directory.toFile());
+        }
+
+        Path workingDirectory = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        if (Files.isDirectory(workingDirectory)) {
+            return Optional.of(workingDirectory.toFile());
+        }
+
+        return Optional.empty();
+    }
+
+    private Window ownerWindow() {
+        return consoleInput.getScene() == null ? null : consoleInput.getScene().getWindow();
+    }
+
+    private Path ensureExtension(Path path, String extension) {
+        if (hasExtension(path, extension)) {
+            return path;
+        }
+
+        return path.resolveSibling(path.getFileName() + extension);
+    }
+
+    private boolean hasExtension(Path path, String extension) {
+        String fileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        return fileName.endsWith(extension.toLowerCase(Locale.ROOT));
     }
 
     private boolean deleteFileIfExists(Path path, String label) {

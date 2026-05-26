@@ -30,6 +30,9 @@ class GuiTest {
     @Test
     void shouldLoadMainGuiControlsFromFxml() {
         assertNotNull(namespace.get("consoleInput"));
+        assertNotNull(namespace.get("consoleInputLineNumbers"));
+        assertNotNull(namespace.get("fileMenuButton"));
+        assertNotNull(namespace.get("expertModeOption"));
         assertNotNull(namespace.get("runCompilerButton"));
         assertNotNull(namespace.get("compilerOutput"));
         assertNotNull(namespace.get("virtualMachineOutput"));
