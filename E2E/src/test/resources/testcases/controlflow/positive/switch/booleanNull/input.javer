@@ -1,19 +1,12 @@
 fn void main() {
     call prints("Testing boolean switch:\n");
-    switch (true) {
+    let boolean b = true;
+    switch (b) {
+        case null:
+            call prints("Matched null (FAIL)\n");
         case false:
             call prints("Matched false (FAIL)\n");
         case true:
             call prints("Matched true\n");
-    }
-
-    call prints("Testing null switch:\n");
-    switch (null) {
-        case 1:
-            call prints("Matched 1 (FAIL)\n");
-        case null:
-            call prints("Matched null\n");
-        default:
-            call prints("Matched Default (FAIL)\n");
     }
 }

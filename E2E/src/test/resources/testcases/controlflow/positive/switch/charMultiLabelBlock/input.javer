@@ -1,6 +1,7 @@
 fn void main() {
     call prints("Testing char switch with multi-label and block:\n");
-    switch ('y') {
+    let char c = 'y';
+    switch (c) {
         case 'x': {
             call prints("Matched x (FAIL)\n");
         }

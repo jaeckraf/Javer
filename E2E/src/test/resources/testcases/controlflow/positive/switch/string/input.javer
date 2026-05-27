@@ -1,6 +1,7 @@
 fn void main() {
     call prints("Testing string switch:\n");
-    switch ("b") {
+let string s = "b";
+    switch (s) {
         case "a":
             call prints("Matched A (FAIL)\n");
         case "b":
