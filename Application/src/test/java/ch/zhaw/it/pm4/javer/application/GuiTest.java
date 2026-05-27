@@ -2,7 +2,13 @@ package ch.zhaw.it.pm4.javer.application;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextArea;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -334,6 +340,129 @@ class GuiTest {
         robot.interact(() -> {
             controller.saveJaverFile(null);
             assertFalse(testFile.exists());
+        });
+    }
+
+    @Test
+    void shouldToggleExpertModeOptionsVisibility_whenExpertModeIsToggled(FxRobot robot) throws TimeoutException {
+        VBox compilerOptionsBox = robot.lookup("#compilerOptionsBox").queryAs(VBox.class);
+        VBox vmOptionsBox = robot.lookup("#vmOptionsBox").queryAs(VBox.class);
+
+        assertFalse(compilerOptionsBox.isVisible());
+        assertFalse(vmOptionsBox.isVisible());
+
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> vmOptionsBox.isVisible());
+
+        assertTrue(compilerOptionsBox.isVisible());
+        assertTrue(vmOptionsBox.isVisible());
+
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(false));
+        waitFor(2, TimeUnit.SECONDS, () -> !vmOptionsBox.isVisible());
+
+        assertFalse(compilerOptionsBox.isVisible());
+        assertFalse(vmOptionsBox.isVisible());
+    }
+
+    @Test
+    void shouldUpdateLineNumbers_whenTextIsEntered(FxRobot robot) {
+        TextArea lineNumbers = robot.lookup("#consoleInputLineNumbers").queryAs(TextArea.class);
+
+        assertEquals("1", lineNumbers.getText());
+        robot.clickOn("#consoleInput").write("line 1\nline 2\nline 3");
+        assertEquals("1\n2\n3", lineNumbers.getText());
+    }
+    
+    @Test
+    void shouldLogAction_whenExpertModeIsToggled(FxRobot robot) throws TimeoutException {
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Expert Mode set to On."));
+    }
+
+    @Test
+    void shouldAddCompilerOptionsToCommand_whenInExpertMode(FxRobot robot) throws TimeoutException {
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> robot.lookup("#compilerOptionsBox").queryAs(VBox.class).isVisible());
+
+        robot.clickOn("#compilerDumpLexerOption");
+        robot.clickOn("#compilerDumpAstOption");
+        robot.clickOn("#compilerDumpSymbolTableOption");
+        robot.clickOn("#compilerLoggingOption");
+
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        robot.clickOn("#runCompilerButton");
+
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Starting Compiler with command"));
+
+        String logText = statusOutput.getText();
+        assertTrue(logText.contains("--dump-lexer"));
+        assertTrue(logText.contains("--dump-ast"));
+        assertTrue(logText.contains("--dump-symboltable"));
+        assertTrue(logText.contains("--logging"));
+    }
+
+    @Test
+    void shouldAddVmOptionsToCommand_whenInExpertMode(FxRobot robot) throws TimeoutException {
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> robot.lookup("#vmOptionsBox").queryAs(VBox.class).isVisible());
+
+        robot.clickOn("#consoleInput").write(TEST_CODE);
+        robot.clickOn("#runCompilerButton");
+        
+        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+
+        robot.interact(() -> {
+            ((RadioButton) namespace.get("vmStackSizeKbOption")).setSelected(true);
+            ((CheckBox) namespace.get("vmDumpOnErrorOption")).setSelected(true);
+        });
+
+        robot.clickOn("#runVMButton");
+
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Starting VM with command"));
+
+        String logText = statusOutput.getText();
+        assertTrue(logText.contains("--stack-size"));
+        assertTrue(logText.contains("KB"));
+        assertTrue(logText.contains("--dump-on-error"));
+    }
+
+    @Test
+    void shouldUpdateVmStackSizeOptions_whenInExpertMode(FxRobot robot) throws TimeoutException {
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> robot.lookup("#vmOptionsBox").queryAs(VBox.class).isVisible());
+
+        Spinner<Integer> stackSizeSpinner = (Spinner<Integer>) namespace.get("vmStackSizeValueOption");
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        RadioButton vmStackSizeKbOption = (RadioButton) namespace.get("vmStackSizeKbOption");
+        RadioButton vmStackSizeMbOption = (RadioButton) namespace.get("vmStackSizeMbOption");
+
+        robot.interact(() -> {
+            assertTrue(vmStackSizeMbOption.isSelected());
+            assertEquals(1, stackSizeSpinner.getValue());
+            assertEquals(16, ((SpinnerValueFactory.IntegerSpinnerValueFactory) stackSizeSpinner.getValueFactory()).getMax());
+        });
+
+        robot.interact(() -> stackSizeSpinner.getValueFactory().setValue(8));
+        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size set to 8MB."));
+
+        robot.interact(() -> vmStackSizeKbOption.setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size unit set to KB."));
+        robot.interact(() -> {
+            assertEquals(8, stackSizeSpinner.getValue());
+            assertEquals(16384, ((SpinnerValueFactory.IntegerSpinnerValueFactory) stackSizeSpinner.getValueFactory()).getMax());
+        });
+
+        robot.interact(() -> stackSizeSpinner.getValueFactory().setValue(2048));
+        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size set to 2048KB."));
+
+        robot.interact(() -> vmStackSizeMbOption.setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size unit set to MB."));
+        robot.interact(() -> {
+            assertEquals(16, stackSizeSpinner.getValue());
+            assertEquals(16, ((SpinnerValueFactory.IntegerSpinnerValueFactory) stackSizeSpinner.getValueFactory()).getMax());
         });
     }
 }
