@@ -99,7 +99,7 @@ public final class DataSection {
             return unsignedHex(0, width);
         }
         if (value instanceof Boolean bool) {
-            return unsignedHex(bool ? 1 : 0, width);
+            return unsignedHex(Boolean.TRUE.equals(bool) ? 1 : 0, width);
         }
         if (value instanceof Character character) {
             return unsignedHex(character, width);

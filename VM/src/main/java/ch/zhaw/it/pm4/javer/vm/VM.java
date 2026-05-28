@@ -38,7 +38,7 @@ public class VM {
 
     private final byte[] stack;
     private final long stackBase;
-    private final long stackTop = ADDRESS_SPACE_SIZE;
+    private static final long stackTop = ADDRESS_SPACE_SIZE;
     private final Map<Integer, Instruction> code = new HashMap<>();
     private final Map<Integer, Integer> instructionLineNumbers = new HashMap<>();
     private final Map<String, Integer> dataLabels = new HashMap<>();
@@ -260,22 +260,19 @@ public class VM {
         int instructionAddress = CODE_BASE;
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (line.equals(".code") || line.equals(".data")) {
-                errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
-                continue;
-            }
-            if (isLabel(line)) {
-                String labelName = extractLabelName(line);
-                if (labels.containsKey(labelName)) {
-                    errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
+            if (!line.isEmpty()) {
+                if (line.equals(".code") || line.equals(".data")) {
+                    errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
+                } else if (isLabel(line)) {
+                    String labelName = extractLabelName(line);
+                    if (labels.containsKey(labelName)) {
+                        errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
+                    } else {
+                        labels.put(labelName, instructionAddress);
+                    }
                 } else {
-                    labels.put(labelName, instructionAddress);
+                    instructionAddress = nextCodeAddress(instructionAddress, i + 1, errors);
                 }
-            } else {
-                instructionAddress = nextCodeAddress(instructionAddress, i + 1, errors);
             }
         }
 
@@ -304,21 +301,21 @@ public class VM {
 
         for (int i = dataLineIndex + 1; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (line.equals(".code") || line.equals(".data")) {
-                errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
-                continue;
-            }
-            if (isLabel(line)) {
-                errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
-                continue;
-            }
-            try {
-                parseDataLine(line, i + 1);
-            } catch (ParseException e) {
-                errors.addAll(e.getErrors());
+            if (!line.isEmpty()) {
+                if (line.equals(".code") || line.equals(".data")) {
+                    errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
+                } else {
+                    if (isLabel(line)) {
+                        errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
+                    }
+                    else {
+                        try {
+                            parseDataLine(line, i + 1);
+                        } catch (ParseException e) {
+                            errors.addAll(e.getErrors());
+                        }
+                    }
+                }
             }
         }
 
@@ -364,30 +361,28 @@ public class VM {
 
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (isLabel(line)) {
-                lastLabelName = extractLabelName(line);
-                lastWasLabel = true;
-                if (lastLabelName.startsWith("_")) {
-                    currentFunctionLabel = lastLabelName;
-                    enterSeenInCurrentFunction = false;
+            if (!line.isEmpty()) {
+                if (isLabel(line)) {
+                    lastLabelName = extractLabelName(line);
+                    lastWasLabel = true;
+                    if (lastLabelName.startsWith("_")) {
+                        currentFunctionLabel = lastLabelName;
+                        enterSeenInCurrentFunction = false;
+                    }
+                } else {
+                    String instrName = line.split(",")[0].trim().toUpperCase(Locale.ROOT);
+                    if ("ENTER".equals(instrName)) {
+                        if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
+                            errors.add("Line " + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
+                        }
+                        if (enterSeenInCurrentFunction) {
+                            errors.add("Line " + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
+                        }
+                        enterSeenInCurrentFunction = true;
+                    }
+                    lastWasLabel = false;
                 }
-                continue;
             }
-
-            String instrName = line.split(",")[0].trim().toUpperCase(Locale.ROOT);
-            if ("ENTER".equals(instrName)) {
-                if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
-                    errors.add("Line " + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
-                }
-                if (enterSeenInCurrentFunction) {
-                    errors.add("Line " + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
-                }
-                enterSeenInCurrentFunction = true;
-            }
-            lastWasLabel = false;
         }
     }
 
@@ -768,7 +763,7 @@ public class VM {
     }
 
     private boolean isLabel(String line) {
-        return line.matches("^(_?[a-zA-Z][a-zA-Z0-9_]*):$");
+        return line.matches("^(_?[a-zA-Z]\\w*):$");
     }
 
     private String extractLabelName(String line) {
@@ -1039,7 +1034,7 @@ public class VM {
         }
 
         int length = readInt(baseAddress);
-        long requiredBytes = (long) ARRAY_PAYLOAD_OFFSET_BYTES + (long) length * elementSize;
+        long requiredBytes = ARRAY_PAYLOAD_OFFSET_BYTES + (long) length * elementSize;
         if (length < 0 || requiredBytes > access.region().size()) {
             throw new VMExecutionException("Invalid array header at " + formatAddress(baseAddress));
         }

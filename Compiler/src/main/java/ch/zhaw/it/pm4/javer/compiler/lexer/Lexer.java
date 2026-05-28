@@ -1,13 +1,13 @@
 package ch.zhaw.it.pm4.javer.compiler.lexer;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.misc.JaverLogger;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * The Lexer class is responsible for converting the raw source code into a
@@ -161,19 +161,19 @@ public class Lexer {
      * star-slash) and report any unterminated comment errors if necessary.
      */
     private void skipWhitespaceAndComments() {
+        boolean processed;
         while (indexInSourceCode < sourceCode.length()) {
+            processed = false;
             char currentChar = currentChar();
             if (Character.isWhitespace(currentChar)) {
                 advance();
-                continue;
-            }
-            if (currentChar == '/' && peek(1) == '/') {
+                processed = true;
+            } else if (currentChar == '/' && peek(1) == '/') {
                 while (indexInSourceCode < sourceCode.length() && !isLineTerminator(currentChar())) {
                     advance();
                 }
-                continue;
-            }
-            if (currentChar == '/' && peek(1) == '*') {
+                processed = true;
+            } else if (currentChar == '/' && peek(1) == '*') {
                 // Remember start of the block comment so error reporting points here.
                 tokenStartIndex = indexInSourceCode;
                 tokenStartLine = line;
@@ -193,9 +193,11 @@ public class Lexer {
                 if (!closed) {
                     error("Unterminated block comment");
                 }
-                continue;
+                processed = true;
             }
-            break;
+            if (!processed) {
+                break;
+            }
         }
     }
 
@@ -299,10 +301,10 @@ public class Lexer {
                     value.append(resolveEscape(esc));
                 }
                 advance();
-                continue;
+            } else {
+                value.append(currentChar);
+                advance();
             }
-            value.append(currentChar);
-            advance();
         }
         error("Unterminated string literal");
         return makeToken(TokenType.SPECIAL_UNKNOWN);

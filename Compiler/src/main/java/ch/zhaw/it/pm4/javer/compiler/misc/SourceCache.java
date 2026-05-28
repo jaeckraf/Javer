@@ -1,8 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.misc.JaverLogger;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,11 +7,12 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 /**
  * Holds the full source code of the single input file and maintains
  * an internal cache of the lines for fast O(1) lookups during error reporting.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class SourceCache {
 
     private final String filePath;
