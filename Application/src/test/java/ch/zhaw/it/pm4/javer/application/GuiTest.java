@@ -152,7 +152,7 @@ class GuiTest {
     }
 
     @Test
-    void shouldRunVMOnly_whenRunVMButtonIsClicked(FxRobot robot) throws TimeoutException, IOException {
+    void shouldRunVMOnly_whenRunVMButtonIsClicked(FxRobot robot) throws TimeoutException {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
         waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
@@ -178,7 +178,7 @@ class GuiTest {
         waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopCompilerButton").queryButton().isDisabled());
         robot.clickOn("#stopCompilerButton");
         waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#stopCompilerButton").queryButton().isDisabled());
-        assertTrue(!robot.lookup("#runCompilerButton").queryButton().isDisabled());
+        assertFalse(robot.lookup("#runCompilerButton").queryButton().isDisabled());
     }
 
     @Test
@@ -191,7 +191,7 @@ class GuiTest {
         waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopVMButton").queryButton().isDisabled());
         robot.clickOn("#stopVMButton");
         waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#stopVMButton").queryButton().isDisabled());
-        assertTrue(!robot.lookup("#runVMButton").queryButton().isDisabled());
+        assertFalse(robot.lookup("#runVMButton").queryButton().isDisabled());
     }
 
     @Test
@@ -358,7 +358,7 @@ class GuiTest {
         assertEquals(240.0, virtualMachineOutput.getPrefHeight());
 
         robot.interact(() -> expertModeOption.setSelected(true));
-        waitFor(2, TimeUnit.SECONDS, () -> vmOptionsBox.isVisible());
+        waitFor(2, TimeUnit.SECONDS, vmOptionsBox::isVisible);
 
         assertTrue(compilerOptionsBox.isVisible());
         assertTrue(vmOptionsBox.isVisible());
@@ -388,6 +388,10 @@ class GuiTest {
         TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
         waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Expert Mode set to On."));
+        assertTrue(
+                statusOutput.getText().contains("Expert Mode set to On."),
+                "Status output should confirm expert mode toggle"
+        );
     }
 
     @Test
@@ -487,6 +491,10 @@ class GuiTest {
 
             TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
             waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+            assertTrue(
+                    statusOutput.getText().contains("Configured jar does not exist"),
+                    "Expected error message about missing compiler jar"
+            );
         } finally {
             System.setProperty("javer.compiler.jar", originalCompilerJar);
         }
@@ -532,9 +540,17 @@ class GuiTest {
 
         TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to On."));
+        assertTrue(
+                statusOutput.getText().contains("Dump Lexer set to On."),
+                "Expected log message for enabling Dump Lexer"
+        );
 
         robot.clickOn("#compilerDumpLexerOption");
         waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to Off."));
+        assertTrue(
+                statusOutput.getText().contains("Dump Lexer set to Off."),
+                "Expected log message for disabling Dump Lexer"
+        );
     }
 
     @Test
@@ -578,6 +594,10 @@ class GuiTest {
 
             TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
             waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+            assertTrue(
+                    statusOutput.getText().contains("Configured jar does not exist"),
+                    "Expected VM error message when VM jar is missing"
+            );
         } finally {
             System.setProperty("javer.vm.jar", originalVmJar);
         }
