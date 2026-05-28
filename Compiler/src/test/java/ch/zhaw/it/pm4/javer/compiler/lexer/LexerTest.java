@@ -141,39 +141,49 @@ class LexerTest {
     // ---------------------------------------------------------------------
 
     @Test
-    @DisplayName("Simple identifier is lexed as ID_IDENTIFIER")
-    void simpleIdentifier() {
-        Token t = single("foo");
-        assertEquals(TokenType.ID_IDENTIFIER, t.getTokenType());
-        assertEquals("foo", t.getValue());
-    }
+    @DisplayName("Identifiers are lexed correctly")
+    void identifierTests() {
+        String[] inputs = {
+                "foo",
+                "_my_var_42",
+                "ifx"
+        };
 
-    @Test
-    @DisplayName("Identifier may contain digits and underscores after the first char")
-    void identifierWithDigitsAndUnderscores() {
-        Token t = single("_my_var_42");
-        assertEquals(TokenType.ID_IDENTIFIER, t.getTokenType());
-        assertEquals("_my_var_42", t.getValue());
+        for (String input : inputs) {
+            Token t = single(input);
+
+            assertEquals(TokenType.ID_IDENTIFIER, t.getTokenType());
+            assertEquals(input, t.getValue());
+        }
     }
 
     @Test
     @DisplayName("All control-flow keywords map to the correct TokenType")
     void controlFlowKeywords() {
-        assertEquals(TokenType.KEYWORD_IF, single("if").getTokenType());
-        assertEquals(TokenType.KEYWORD_ELSE, single("else").getTokenType());
-        assertEquals(TokenType.KEYWORD_WHILE, single("while").getTokenType());
-        assertEquals(TokenType.KEYWORD_DO, single("do").getTokenType());
-        assertEquals(TokenType.KEYWORD_FOR, single("for").getTokenType());
-        assertEquals(TokenType.KEYWORD_RETURN, single("return").getTokenType());
-        assertEquals(TokenType.KEYWORD_FUNCTION, single("fn").getTokenType());
-        assertEquals(TokenType.KEYWORD_BREAK, single("break").getTokenType());
-        assertEquals(TokenType.KEYWORD_CONTINUE, single("continue").getTokenType());
-        assertEquals(TokenType.KEYWORD_SWITCH, single("switch").getTokenType());
-        assertEquals(TokenType.KEYWORD_CASE, single("case").getTokenType());
-        assertEquals(TokenType.KEYWORD_DEFAULT, single("default").getTokenType());
-        assertEquals(TokenType.KEYWORD_LET, single("let").getTokenType());
-        assertEquals(TokenType.KEYWORD_CALL, single("call").getTokenType());
-        assertEquals(TokenType.KEYWORD_CAST, single("cast").getTokenType());
+        Object[][] cases = {
+                {"if", TokenType.KEYWORD_IF},
+                {"else", TokenType.KEYWORD_ELSE},
+                {"while", TokenType.KEYWORD_WHILE},
+                {"do", TokenType.KEYWORD_DO},
+                {"for", TokenType.KEYWORD_FOR},
+                {"return", TokenType.KEYWORD_RETURN},
+                {"fn", TokenType.KEYWORD_FUNCTION},
+                {"break", TokenType.KEYWORD_BREAK},
+                {"continue", TokenType.KEYWORD_CONTINUE},
+                {"switch", TokenType.KEYWORD_SWITCH},
+                {"case", TokenType.KEYWORD_CASE},
+                {"default", TokenType.KEYWORD_DEFAULT},
+                {"let", TokenType.KEYWORD_LET},
+                {"call", TokenType.KEYWORD_CALL},
+                {"cast", TokenType.KEYWORD_CAST}
+        };
+
+        for (Object[] c : cases) {
+            String input = (String) c[0];
+            TokenType expected = (TokenType) c[1];
+
+            assertEquals(expected, single(input).getTokenType());
+        }
     }
 
     @Test
@@ -195,15 +205,6 @@ class LexerTest {
         assertEquals(TokenType.LITERAL_BOOLEAN, single("true").getTokenType());
         assertEquals(TokenType.LITERAL_BOOLEAN, single("false").getTokenType());
         assertEquals(TokenType.LITERAL_NULL, single("null").getTokenType());
-    }
-
-    @Test
-    @DisplayName("A keyword prefix followed by identifier chars is one identifier")
-    void keywordPrefixIsIdentifier() {
-        // "ifx" must be a single ID_IDENTIFIER, not KEYWORD_IF + ID_IDENTIFIER.
-        Token t = single("ifx");
-        assertEquals(TokenType.ID_IDENTIFIER, t.getTokenType());
-        assertEquals("ifx", t.getValue());
     }
 
     // ---------------------------------------------------------------------
@@ -567,11 +568,25 @@ class LexerTest {
     // ---------------------------------------------------------------------
 
     @Test
-    @DisplayName("Unterminated string (EOF) reports an error diagnostic")
-    void unterminatedStringReportsError() {
-        Token t = single("\"oops");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-        assertErrorDiagnosticContains("Unterminated string");
+    @DisplayName("Lexing errors produce SPECIAL_UNKNOWN and diagnostics")
+    void lexingErrors() {
+
+        record Case(String input, String expectedMessage) {}
+
+        Case[] cases = {
+                new Case("\"oops", "Unterminated string"),
+                new Case("''", "Empty char literal"),
+                new Case("'a", "Unterminated char"),
+                new Case("'ab'", "Unterminated char"),
+                new Case("@", "Unexpected character")
+        };
+
+        for (Case c : cases) {
+            Token t = single(c.input());
+
+            assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
+            assertErrorDiagnosticContains(c.expectedMessage());
+        }
     }
 
     @Test
@@ -601,42 +616,10 @@ class LexerTest {
     }
 
     @Test
-    @DisplayName("Empty char literal reports an error")
-    void emptyCharReportsError() {
-        Token t = single("''");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-        assertErrorDiagnosticContains("Empty char literal");
-    }
-
-    @Test
-    @DisplayName("Unterminated char literal reports an error")
-    void unterminatedCharReportsError() {
-        Token t = single("'a");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-        assertErrorDiagnosticContains("Unterminated char");
-    }
-
-    @Test
-    @DisplayName("Multi-character char literal reports an error")
-    void multiCharLiteralReportsError() {
-        Token t = single("'ab'");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-        assertErrorDiagnosticContains("Unterminated char");
-    }
-
-    @Test
     @DisplayName("Invalid escape in char literal reports 'Invalid escape'")
     void invalidEscapeInCharReportsError() {
         lex("'\\q'");
         assertErrorDiagnosticContains("Invalid escape");
-    }
-
-    @Test
-    @DisplayName("Unknown delimiter character produces SPECIAL_UNKNOWN and an error")
-    void unknownCharacterReportsError() {
-        Token t = single("@");
-        assertEquals(TokenType.SPECIAL_UNKNOWN, t.getTokenType());
-        assertErrorDiagnosticContains("Unexpected character");
     }
 
     @Test

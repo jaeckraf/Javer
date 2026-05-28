@@ -1,15 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Expression node representing allocation with {@code new}.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class NewExpression extends ExpressionAstNodeBase {
 
     private final TypeAstNode type;
@@ -72,6 +71,33 @@ public final class NewExpression extends ExpressionAstNodeBase {
     }
 
     public record JaggedArrayTempLayout(int[] dimensionOffsets, int[] baseOffsets, int[] indexOffsets) {
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof JaggedArrayTempLayout(int[] offsets, int[] baseOffsets1, int[] indexOffsets1))) return false;
+
+            return Arrays.equals(dimensionOffsets, offsets)
+                    && Arrays.equals(baseOffsets, baseOffsets1)
+                    && Arrays.equals(indexOffsets, indexOffsets1);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Arrays.hashCode(dimensionOffsets);
+            result = 31 * result + Arrays.hashCode(baseOffsets);
+            result = 31 * result + Arrays.hashCode(indexOffsets);
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "JaggedArrayTempLayout{" +
+                    "dimensionOffsets=" + Arrays.toString(dimensionOffsets) +
+                    ", baseOffsets=" + Arrays.toString(baseOffsets) +
+                    ", indexOffsets=" + Arrays.toString(indexOffsets) +
+                    '}';
+        }
     }
 
     @Override

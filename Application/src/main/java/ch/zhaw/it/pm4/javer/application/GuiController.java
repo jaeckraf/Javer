@@ -478,7 +478,7 @@ public class GuiController {
             Path compilerJar = resolveJarFromProperty("javer.compiler.jar");
             if (compilerJar == null) {
                 JaverLogger.error("Compiler executable and IDE jar are both unavailable.");
-                return null;
+                return List.of();
             }
             addJavaJarCommand(command, compilerJar);
         }
@@ -530,7 +530,7 @@ public class GuiController {
             Path vmJar = resolveJarFromProperty("javer.vm.jar");
             if (vmJar == null) {
                 JaverLogger.error("VM executable and IDE jar are both unavailable.");
-                return null;
+                return List.of();
             }
             addJavaJarCommand(command, vmJar);
         }

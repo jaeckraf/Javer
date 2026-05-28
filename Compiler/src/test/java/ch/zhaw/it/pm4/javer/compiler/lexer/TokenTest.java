@@ -15,18 +15,14 @@ class TokenTest {
     @Test
     @DisplayName("Should throw NullPointerException with correct message when type is null")
     void testTokenTypeCannotBeNull() {
-        NullPointerException exception = assertThrows(NullPointerException.class, () -> {
-            new Token(null, "value", new SourceLocation(1, 2, 1));
-        });
+        NullPointerException exception = assertThrows(NullPointerException.class, () -> new Token(null, "value", new SourceLocation(1, 2, 1)));
         assertEquals("Token type cannot be null", exception.getMessage());
     }
     
     @Test
     @DisplayName("Should throw NullPointerException with correct message when position is null")
     void testTokenPositionCannotBeNull() {
-        NullPointerException exception = assertThrows(NullPointerException.class, () -> {
-            new Token(TokenType.SYMBOL_LEFT_PARENTHESIS, "value", null);
-        });
+        NullPointerException exception = assertThrows(NullPointerException.class, () -> new Token(TokenType.SYMBOL_LEFT_PARENTHESIS, "value", null));
         assertEquals("Token position cannot be null", exception.getMessage());
     }
     

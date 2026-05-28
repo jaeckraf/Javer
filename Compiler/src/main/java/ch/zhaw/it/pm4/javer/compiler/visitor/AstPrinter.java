@@ -21,6 +21,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -487,6 +488,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                     children.add(childIsLast -> scalarChild("value", quoteValue(dataEntry.getValue()), null, childIsLast));
                 }
                 default -> {
+                    JaverLogger.error("Invalid entry type " + entry.getClass());
                 }
             }
             visitMany(children);

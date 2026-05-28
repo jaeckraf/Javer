@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
@@ -32,7 +33,7 @@ public class SourceCache {
             this.cachedLines = buildCache(this.sourceCode);
         } catch (IOException e) {
             JaverLogger.error(e.getMessage());
-            throw new RuntimeException(e);
+            throw new SourceFileReadException(filePath, e);
         }
     }
 

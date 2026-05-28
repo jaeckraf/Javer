@@ -105,17 +105,25 @@ public class CompilerOptions {
             inputFilePath = args[0];
             outputFilePath = args[1];
         } else {
-            for (int i = 0; i < args.length; i++) {
+            int i = 0;
+            while (i < args.length) {
                 String arg = args[i];
                 switch (arg) {
-                    case "--in-file", "-i" -> inputFilePath = readRequiredValue(args, ++i, arg);
-                    case "--out-file", "-o" -> outputFilePath = readRequiredValue(args, ++i, arg);
+                    case "--in-file", "-i" -> {
+                        i++;
+                        inputFilePath = readRequiredValue(args, i, arg);
+                    }
+                    case "--out-file", "-o" -> {
+                        i++;
+                        outputFilePath = readRequiredValue(args, i, arg);
+                    }
                     case "--dump-lexer" -> dumpLexer = true;
                     case "--dump-ast" -> dumpAst = true;
                     case "--dump-symboltable" -> dumpSymbolTable = true;
                     case "--logging" -> loggingEnabled = true;
                     default -> throw new IllegalArgumentException("Unknown compiler option: " + arg);
                 }
+                i++;
             }
         }
 
