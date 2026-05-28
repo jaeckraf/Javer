@@ -2,6 +2,8 @@ package ch.zhaw.it.pm4.javer.compiler;
 
 import java.nio.file.Path;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 /**
  * Validated command-line configuration for one compiler run.
  */
@@ -121,13 +123,17 @@ public class CompilerOptions {
                     case "--dump-ast" -> dumpAst = true;
                     case "--dump-symboltable" -> dumpSymbolTable = true;
                     case "--logging" -> loggingEnabled = true;
-                    default -> throw new IllegalArgumentException("Unknown compiler option: " + arg);
+                    default -> {
+                        JaverLogger.error("Unknown compiler option: " + arg);
+                        throw new IllegalArgumentException("Unknown compiler option: " + arg);
+                    }
                 }
                 i++;
             }
         }
 
         if (inputFilePath == null || outputFilePath == null) {
+            JaverLogger.error("missing input or output files");
             throw new IllegalArgumentException(
                     "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> " +
                             "[--dump-lexer] [--dump-ast] [--dump-symboltable] [--logging]");
