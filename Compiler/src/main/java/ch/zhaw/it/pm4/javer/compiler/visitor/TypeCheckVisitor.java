@@ -424,6 +424,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         boolean defaultSeen = false;
         Set<String> seenLabels = new HashSet<>();
+
         for (SwitchCase switchCase : node.getCases()) {
             if (switchCase.isDefault()) {
                 if (defaultSeen) {
@@ -433,18 +434,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 continue;
             }
 
-            for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
-                TypeInfo labelType = caseLabelType(label);
-                if (!isCaseLabelCompatible(switchType, labelType)) {
-                    report(label, "Case label type " + labelType + " does not exactly match switch type " + switchType + ".");
-                    continue;
-                }
-
-                String key = caseLabelKey(label, labelType);
-                if (key != null && !seenLabels.add(key)) {
-                    report(label, "Duplicate switch case label: " + key + ".");
-                }
-            }
+            validateCaseLabels(switchCase, switchType, seenLabels);
         }
     }
 
@@ -455,6 +445,21 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
     private boolean isSwitchType(TypeInfo type) {
         return TypeRules.isConditionType(type);
+    }
+
+    private void validateCaseLabels(SwitchCase switchCase, TypeInfo switchType, Set<String> seenLabels) {
+        for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
+            TypeInfo labelType = caseLabelType(label);
+            if (!isCaseLabelCompatible(switchType, labelType)) {
+                report(label, "Case label type " + labelType + " does not exactly match switch type " + switchType + ".");
+                continue;
+            }
+
+            String key = caseLabelKey(label, labelType);
+            if (key != null && !seenLabels.add(key)) {
+                report(label, "Duplicate switch case label: " + key + ".");
+            }
+        }
     }
 
     private TypeInfo caseLabelType(CaseLabelAstNode label) {

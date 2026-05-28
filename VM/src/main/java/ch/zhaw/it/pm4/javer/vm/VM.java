@@ -229,6 +229,117 @@ public class VM {
         List<String> errors = new ArrayList<>();
         List<PendingJumpCheck> pendingJumpChecks = new ArrayList<>();
 
+        SectionBounds result = findSections(errors);
+
+        if (result.codeLineIndex() == -1) {
+            errors.add("Missing required '.code' section");
+        }
+        if (result.dataLineIndex() == -1) {
+            errors.add("Missing required '.data' section");
+        }
+        if (!errors.isEmpty()) {
+            printErrors(errors);
+            throw new ParseException(errors);
+        }
+
+        int instructionAddress = analyzeCodeSection(result, errors);
+
+        programEndAddress = instructionAddress;
+        allocateCodeRegion(CODE_BASE, Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
+                ? 0
+                : programEndAddress - CODE_BASE + 1);
+
+        parseInstructions(result, pendingJumpChecks, errors);
+
+        validateEnterInstructions(result.codeLineIndex(), result.dataLineIndex(), errors);
+
+        parseDataSection(result, errors);
+
+        validatePendingJumps(pendingJumpChecks, errors);
+
+        finalizeProgram(errors);
+    }
+
+    private void finalizeProgram(List<String> errors) throws ParseException {
+        code.put(programEndAddress, VM::halt);
+
+        if (!errors.isEmpty()) {
+            printErrors(errors);
+            throw new ParseException(errors);
+        }
+    }
+
+    private void validatePendingJumps(List<PendingJumpCheck> pendingJumpChecks, List<String> errors) {
+        for (PendingJumpCheck check : pendingJumpChecks) {
+            if (!labels.containsKey(check.labelName())) {
+                errors.add(LINE + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
+            }
+        }
+    }
+
+    private void parseDataSection(SectionBounds result, List<String> errors) {
+        for (int i = result.dataLineIndex() + 1; i < lines.size(); i++) {
+            String line = stripComment(lines.get(i)).trim();
+            if (!line.isEmpty()) {
+                if (line.equals(CODE) || line.equals(DATA)) {
+                    errors.add(LINE + (i + 1) + ": section marker not allowed inside data section");
+                } else {
+                    if (isLabel(line)) {
+                        errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
+                    }
+                    else {
+                        try {
+                            parseDataLine(line, i + 1);
+                        } catch (ParseException e) {
+                            errors.addAll(e.getErrors());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void parseInstructions(SectionBounds result, List<PendingJumpCheck> pendingJumpChecks, List<String> errors) {
+        int instructionAddress = CODE_BASE;
+        for (int i = result.codeLineIndex() + 1; i < result.dataLineIndex(); i++) {
+            String line = stripComment(lines.get(i)).trim();
+            if (line.isEmpty() || isLabel(line)) {
+                continue;
+            }
+            try {
+                Instruction instruction = parseInstruction(line, i + 1, pendingJumpChecks);
+                code.put(instructionAddress, instruction);
+                instructionLineNumbers.put(instructionAddress, i + 1);
+                instructionAddress++;
+            } catch (ParseException e) {
+                errors.addAll(e.getErrors());
+            }
+        }
+    }
+
+    private int analyzeCodeSection(SectionBounds result, List<String> errors) {
+        int instructionAddress = CODE_BASE;
+        for (int i = result.codeLineIndex() + 1; i < result.dataLineIndex(); i++) {
+            String line = stripComment(lines.get(i)).trim();
+            if (!line.isEmpty()) {
+                if (line.equals(CODE) || line.equals(DATA)) {
+                    errors.add(LINE + (i + 1) + ": nested section marker not allowed inside code section");
+                } else if (isLabel(line)) {
+                    String labelName = extractLabelName(line);
+                    if (labels.containsKey(labelName)) {
+                        errors.add(LINE + (i + 1) + ": duplicate label '" + labelName + "'");
+                    } else {
+                        labels.put(labelName, instructionAddress);
+                    }
+                } else {
+                    instructionAddress = nextCodeAddress(instructionAddress, i + 1, errors);
+                }
+            }
+        }
+        return instructionAddress;
+    }
+
+    private SectionBounds findSections(List<String> errors) {
         int codeLineIndex = -1;
         int dataLineIndex = -1;
 
@@ -256,92 +367,10 @@ public class VM {
                 }
             }
         }
+        return new SectionBounds(codeLineIndex, dataLineIndex);
+    }
 
-        if (codeLineIndex == -1) {
-            errors.add("Missing required '.code' section");
-        }
-        if (dataLineIndex == -1) {
-            errors.add("Missing required '.data' section");
-        }
-        if (!errors.isEmpty()) {
-            printErrors(errors);
-            throw new ParseException(errors);
-        }
-
-        int instructionAddress = CODE_BASE;
-        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
-            String line = stripComment(lines.get(i)).trim();
-            if (!line.isEmpty()) {
-                if (line.equals(CODE) || line.equals(DATA)) {
-                    errors.add(LINE + (i + 1) + ": nested section marker not allowed inside code section");
-                } else if (isLabel(line)) {
-                    String labelName = extractLabelName(line);
-                    if (labels.containsKey(labelName)) {
-                        errors.add(LINE + (i + 1) + ": duplicate label '" + labelName + "'");
-                    } else {
-                        labels.put(labelName, instructionAddress);
-                    }
-                } else {
-                    instructionAddress = nextCodeAddress(instructionAddress, i + 1, errors);
-                }
-            }
-        }
-
-        programEndAddress = instructionAddress;
-        allocateCodeRegion(CODE_BASE, Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
-                ? 0
-                : programEndAddress - CODE_BASE + 1);
-
-        instructionAddress = CODE_BASE;
-        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
-            String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty() || isLabel(line)) {
-                continue;
-            }
-            try {
-                Instruction instruction = parseInstruction(line, i + 1, pendingJumpChecks);
-                code.put(instructionAddress, instruction);
-                instructionLineNumbers.put(instructionAddress, i + 1);
-                instructionAddress++;
-            } catch (ParseException e) {
-                errors.addAll(e.getErrors());
-            }
-        }
-
-        validateEnterInstructions(codeLineIndex, dataLineIndex, errors);
-
-        for (int i = dataLineIndex + 1; i < lines.size(); i++) {
-            String line = stripComment(lines.get(i)).trim();
-            if (!line.isEmpty()) {
-                if (line.equals(CODE) || line.equals(DATA)) {
-                    errors.add(LINE + (i + 1) + ": section marker not allowed inside data section");
-                } else {
-                    if (isLabel(line)) {
-                        errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
-                    }
-                    else {
-                        try {
-                            parseDataLine(line, i + 1);
-                        } catch (ParseException e) {
-                            errors.addAll(e.getErrors());
-                        }
-                    }
-                }
-            }
-        }
-
-        for (PendingJumpCheck check : pendingJumpChecks) {
-            if (!labels.containsKey(check.labelName())) {
-                errors.add(LINE + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
-            }
-        }
-
-        code.put(programEndAddress, VM::halt);
-
-        if (!errors.isEmpty()) {
-            printErrors(errors);
-            throw new ParseException(errors);
-        }
+    private record SectionBounds(int codeLineIndex, int dataLineIndex) {
     }
 
     private int nextCodeAddress(int address, int lineNumber, List<String> errors) {
@@ -372,35 +401,77 @@ public class VM {
 
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (!line.isEmpty()) {
-                if (isLabel(line)) {
-                    lastLabelName = extractLabelName(line);
-                    lastWasLabel = true;
-                    if (lastLabelName.startsWith("_")) {
-                        currentFunctionLabel = lastLabelName;
-                        enterSeenInCurrentFunction = false;
-                    }
-                } else {
-                    String instrName = line.split(",")[0].trim().toUpperCase(Locale.ROOT);
-                    if ("ENTER".equals(instrName)) {
-                        if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
-                            errors.add(LINE + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
-                        }
-                        if (enterSeenInCurrentFunction) {
-                            errors.add(LINE + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
-                        }
-                        enterSeenInCurrentFunction = true;
-                    }
-                    lastWasLabel = false;
-                }
+
+            if (line.isEmpty()) {
+                continue;
             }
+
+            if (isLabel(line)) {
+                lastLabelName = extractLabelName(line);
+                lastWasLabel = true;
+
+                if (lastLabelName.startsWith("_")) {
+                    currentFunctionLabel = lastLabelName;
+                    enterSeenInCurrentFunction = false;
+                }
+
+                continue;
+            }
+
+            enterSeenInCurrentFunction = validateEnterInstruction(
+                    line,
+                    i,
+                    lastWasLabel,
+                    lastLabelName,
+                    currentFunctionLabel,
+                    enterSeenInCurrentFunction,
+                    errors
+            );
+
+            lastWasLabel = false;
         }
+    }
+
+    private boolean validateEnterInstruction(
+            String line,
+            int lineIndex,
+            boolean lastWasLabel,
+            String lastLabelName,
+            String currentFunctionLabel,
+            boolean enterSeenInCurrentFunction,
+            List<String> errors
+    ) {
+        String instrName = line.split(",")[0]
+                .trim()
+                .toUpperCase(Locale.ROOT);
+
+        if (!"ENTER".equals(instrName)) {
+            return enterSeenInCurrentFunction;
+        }
+
+        if (!lastWasLabel
+                || lastLabelName == null
+                || !lastLabelName.startsWith("_")) {
+
+            errors.add(LINE + (lineIndex + 1)
+                    + ": ENTER must come directly after a function label (starting with _)");
+        }
+
+        if (enterSeenInCurrentFunction) {
+            errors.add(LINE + (lineIndex + 1)
+                    + ": multiple ENTER instructions in function '"
+                    + currentFunctionLabel
+                    + "' are not allowed");
+        }
+
+        return true;
     }
 
     private Instruction parseInstruction(String line, int lineNumber, List<PendingJumpCheck> pendingJumpChecks)
             throws ParseException {
         String[] parts = splitOperands(line);
         if (parts.length == 0 || parts[0].isBlank()) {
+            JaverLogger.error(LINE + lineNumber + ": empty instruction");
             throw new ParseException(LINE + lineNumber + ": empty instruction");
         }
 
@@ -409,30 +480,23 @@ public class VM {
         try {
             kind = InstructionKind.valueOf(instrName);
         } catch (IllegalArgumentException e) {
+            JaverLogger.error(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
             throw new ParseException(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
         }
 
+        return buildInstruction(kind, parts, instrName, lineNumber, pendingJumpChecks);
+    }
+
+    private Instruction buildInstruction(
+            InstructionKind kind,
+            String[] parts,
+            String instrName,
+            int lineNumber,
+            List<PendingJumpCheck> pendingJumpChecks
+    ) throws ParseException {
+
         return switch (kind) {
-            case PUSHI -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                int value = parseIntOperand(parts[1], instrName, lineNumber);
-                yield vm -> vm.pushInt(value);
-            }
-            case PUSHD -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                double value = parseDoubleOperand(parts[1], instrName, lineNumber);
-                yield vm -> vm.pushDouble(value);
-            }
-            case PUSHR -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                String name = parseIdentifier(parts[1], instrName, "data name", lineNumber);
-                yield vm -> vm.pushInt(vm.makeDataReference(name));
-            }
-            case LOCAL -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                int offset = parseIntOperand(parts[1], instrName, lineNumber);
-                yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
-            }
+            case PUSHI, PUSHD, PUSHR, LOCAL -> PushCase(kind, parts, instrName, lineNumber);
             case LOAD1 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readByte(vm.popInt())));
             case LOAD2 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readChar(vm.popInt())));
             case LOAD4 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readInt(vm.popInt())));
@@ -622,6 +686,38 @@ public class VM {
             case PRINTI -> noOperand(parts, instrName, lineNumber, vm -> System.out.print(vm.popInt()));
             case PRINTD -> noOperand(parts, instrName, lineNumber, vm -> System.out.print(vm.popDouble()));
             case PRINTS -> noOperand(parts, instrName, lineNumber, vm -> vm.printNullTerminatedCharString(vm.popInt()));
+        };
+    }
+
+    private Instruction PushCase(InstructionKind kind,
+                                 String[] parts,
+                                 String instrName,
+                                 int lineNumber) throws ParseException {
+        return switch (kind) {
+            case PUSHI -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int value = parseIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushInt(value);
+            }
+            case PUSHD -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                double value = parseDoubleOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushDouble(value);
+            }
+            case PUSHR -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                String name = parseIdentifier(parts[1], instrName, "data name", lineNumber);
+                yield vm -> vm.pushInt(vm.makeDataReference(name));
+            }
+            case LOCAL -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int offset = parseIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
+            }
+            default -> {
+                JaverLogger.error("Invalid kind: " + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
+            }
         };
     }
 

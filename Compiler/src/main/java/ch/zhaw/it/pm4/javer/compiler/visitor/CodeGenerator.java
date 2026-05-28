@@ -89,8 +89,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public static final String DUP = "DUP, ";
     public static final String PUSHD = "PUSHD, ";
 
-
-
     private final DiagnosticBag diagnostics;
     private final Path outputFile;
     private final StringBuilder output = new StringBuilder();
@@ -1136,8 +1134,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case GREATER_EQUALS -> writeLine(isDouble ? "DGE" : "IGE");
             case EQUALS -> writeLine(isDouble ? "DEQ" : "IEQ");
             case NOT_EQUALS -> writeLine(isDouble ? "DNE" : "INE");
-            case AND, OR -> throw new IllegalStateException("Logical operators require expression-level emission.");
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case AND, OR -> {
+                JaverLogger.error("Logical operators require expression-level emission");
+                throw new IllegalStateException("Logical operators require expression-level emission.");
+            }
+            case INVALID -> {
+                JaverLogger.error("Unexpected binary operator: " + operator);
+                throw new IllegalStateException("Unexpected binary operator: " + operator);
+            }
         }
     }
 
