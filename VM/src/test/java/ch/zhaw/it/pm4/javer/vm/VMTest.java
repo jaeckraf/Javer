@@ -29,7 +29,8 @@ class VMTest {
                 .data
                 """, StandardCharsets.UTF_8);
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> new VM(bytecodeFile.toString()).run());
+        VM vm = new VM(bytecodeFile.toString());
+        RuntimeException exception = assertThrows(RuntimeException.class, vm::run);
 
         assertEquals("Line 6: Division by zero", exception.getMessage());
     }

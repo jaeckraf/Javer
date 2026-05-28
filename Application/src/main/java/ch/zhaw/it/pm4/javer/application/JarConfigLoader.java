@@ -2,9 +2,11 @@ package ch.zhaw.it.pm4.javer.application;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
@@ -48,7 +50,7 @@ public final class JarConfigLoader {
                 .getResourceAsStream(PROPERTIES_FILE)) {
             if (is == null) {
                 JaverLogger.warning("application.properties not found in classpath");
-                return null;
+                return new Properties();
             }
             
             Properties props = new Properties();
@@ -120,7 +122,7 @@ public final class JarConfigLoader {
      * For JAR-based applications, this is the directory containing the JAR.
      * For IDE runs, this falls back to the working directory.
      */
-    private static Path getApplicationBaseDirectory() throws Exception {
+    private static Path getApplicationBaseDirectory() throws SecurityException, URISyntaxException {
         String codeSourceLocation = JarConfigLoader.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI().getPath();
         

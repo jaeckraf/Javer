@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.vm;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -112,13 +114,15 @@ public class VM {
         boolean dumpOnRuntimeError = false;
         String filePath = null;
 
-        for (int i = 0; i < args.length; i++) {
+        int i = 0;
+        while (i < args.length) {
             String arg = args[i];
             if ("--stack-size".equals(arg)) {
                 if (i + 1 >= args.length) {
                     throw new OptionParseException("Missing value for --stack-size");
                 }
-                stackSizeBytes = parseStackSize(args[++i]);
+                i++;
+                stackSizeBytes = parseStackSize(args[i]);
             } else if (arg.startsWith("--stack-size=")) {
                 stackSizeBytes = parseStackSize(arg.substring("--stack-size=".length()));
             } else if ("--dump-on-error".equals(arg)) {
@@ -130,6 +134,8 @@ public class VM {
             } else {
                 throw new OptionParseException("Unexpected argument: " + arg);
             }
+
+            i++;
         }
 
         if (filePath == null) {
@@ -207,6 +213,7 @@ public class VM {
 
     private static void validateStackSize(int stackSizeBytes) {
         if (stackSizeBytes < 1 || stackSizeBytes > MAX_STACK_SIZE) {
+            JaverLogger.error("stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes");
             throw new IllegalArgumentException(
                     "stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes"
             );
@@ -223,8 +230,6 @@ public class VM {
         for (int i = 0; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
             switch (line) {
-                case "" -> {
-                }
                 case ".code" -> {
                     if (codeLineIndex != -1) {
                         errors.add("Line " + (i + 1) + ": duplicate '.code' section");
@@ -242,6 +247,7 @@ public class VM {
                     }
                 }
                 default -> {
+                    // line that can be ignored.
                 }
             }
         }
@@ -1354,6 +1360,35 @@ public class VM {
     }
 
     private record MemoryRegion(int base, int size, boolean writable, String name, byte[] bytes) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof MemoryRegion(int base1, int size1, boolean writable1, String name1, byte[] bytes1))) return false;
+
+            return base == base1
+                    && size == size1
+                    && writable == writable1
+                    && java.util.Objects.equals(name, name1)
+                    && java.util.Arrays.equals(bytes, bytes1);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = java.util.Objects.hash(base, size, writable, name);
+            result = 31 * result + java.util.Arrays.hashCode(bytes);
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "MemoryRegion{" +
+                    "base=" + base +
+                    ", size=" + size +
+                    ", writable=" + writable +
+                    ", name='" + name + '\'' +
+                    ", bytes=" + java.util.Arrays.toString(bytes) +
+                    '}';
+        }
     }
 
     private record MemoryAccess(MemoryRegion region, int offset) {

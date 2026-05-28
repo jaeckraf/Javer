@@ -1,10 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class SourceLocationTest {
 

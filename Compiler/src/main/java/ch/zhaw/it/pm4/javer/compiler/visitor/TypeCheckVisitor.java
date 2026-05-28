@@ -88,6 +88,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
 
+    @Override
     public void visit(FunctionDeclaration node) {
         TypeInfo previous = currentFunctionReturnType;
 
@@ -103,11 +104,9 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.getType().accept(this);
 
         TypeInfo resolved = resolveType(node.getType());
-        if (resolved instanceof UnknownTypeInfo) {
-            if (diagnosticBag != null) {
-                diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
-                        "Undefined type for parameter: " + node.getName());
-            }
+        if (resolved instanceof UnknownTypeInfo && diagnosticBag != null) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Undefined type for parameter: " + node.getName());
         }
     }
 

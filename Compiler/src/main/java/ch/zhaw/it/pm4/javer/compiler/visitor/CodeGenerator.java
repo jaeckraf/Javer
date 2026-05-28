@@ -70,6 +70,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Emits VM bytecode from a semantically checked AST.
@@ -173,7 +174,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private void report(String message) {
         failed = true;
-        System.err.println(message);
+        JaverLogger.error(message);
     }
 
     @Override
@@ -925,10 +926,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private Optional<Object> staticArrayTemplateValue(ExpressionAstNode expression, TypeInfo elementType) {
-        if (expression instanceof LiteralExpression<?> literal) {
-            if (literal.getResultingType().equals(elementType) && isPrimitiveTemplateValue(literal)) {
-                return Optional.ofNullable(literal.getValue());
-            }
+        if (expression instanceof LiteralExpression<?> literal && literal.getResultingType().equals(elementType) && isPrimitiveTemplateValue(literal)) {
+            return Optional.ofNullable(literal.getValue());
         }
         return Optional.empty();
     }

@@ -115,6 +115,7 @@ public final class DataSection {
 
     private static String unsignedHex(long value, int width) {
         long mask = width >= Long.BYTES ? -1L : (1L << (width * Byte.SIZE)) - 1L;
-        return String.format("%0" + (width * 2) + "X", value & mask);
+        String format = "%0" + (width * 2) + "X";
+        return String.format(format, value & mask);
     }
 }
