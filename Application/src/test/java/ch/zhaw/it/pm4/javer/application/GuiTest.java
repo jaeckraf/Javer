@@ -27,6 +27,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.testfx.util.WaitForAsyncUtils.waitFor;
@@ -347,21 +349,29 @@ class GuiTest {
     void shouldToggleExpertModeOptionsVisibility_whenExpertModeIsToggled(FxRobot robot) throws TimeoutException {
         VBox compilerOptionsBox = robot.lookup("#compilerOptionsBox").queryAs(VBox.class);
         VBox vmOptionsBox = robot.lookup("#vmOptionsBox").queryAs(VBox.class);
+        CheckMenuItem expertModeOption = (CheckMenuItem) namespace.get("expertModeOption");
+        TextArea virtualMachineOutput = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class);
 
         assertFalse(compilerOptionsBox.isVisible());
         assertFalse(vmOptionsBox.isVisible());
+        assertEquals("Expert Mode: Off", expertModeOption.getText());
+        assertEquals(240.0, virtualMachineOutput.getPrefHeight());
 
-        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        robot.interact(() -> expertModeOption.setSelected(true));
         waitFor(2, TimeUnit.SECONDS, () -> vmOptionsBox.isVisible());
 
         assertTrue(compilerOptionsBox.isVisible());
         assertTrue(vmOptionsBox.isVisible());
+        assertEquals("Expert Mode: On", expertModeOption.getText());
+        assertEquals(80.0, virtualMachineOutput.getPrefHeight());
 
-        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(false));
+        robot.interact(() -> expertModeOption.setSelected(false));
         waitFor(2, TimeUnit.SECONDS, () -> !vmOptionsBox.isVisible());
 
         assertFalse(compilerOptionsBox.isVisible());
         assertFalse(vmOptionsBox.isVisible());
+        assertEquals("Expert Mode: Off", expertModeOption.getText());
+        assertEquals(240.0, virtualMachineOutput.getPrefHeight());
     }
 
     @Test
@@ -464,5 +474,112 @@ class GuiTest {
             assertEquals(16, stackSizeSpinner.getValue());
             assertEquals(16, ((SpinnerValueFactory.IntegerSpinnerValueFactory) stackSizeSpinner.getValueFactory()).getMax());
         });
+    }
+
+    @Test
+    void shouldShowError_whenCompilerJarIsMissing(FxRobot robot) throws TimeoutException {
+        String originalCompilerJar = System.getProperty("javer.compiler.jar");
+        System.setProperty("javer.compiler.jar", "non-existent.jar");
+
+        try {
+            robot.clickOn("#consoleInput").write(TEST_CODE);
+            robot.clickOn("#runCompilerButton");
+
+            TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+            waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+        } finally {
+            System.setProperty("javer.compiler.jar", originalCompilerJar);
+        }
+    }
+
+    @Test
+    void shouldShowError_whenLoadingInvalidFileExtension(FxRobot robot) throws IOException, TimeoutException {
+        File testFile = getProjectRoot().resolve("test.txt").toFile();
+        Files.writeString(testFile.toPath(), "some text");
+
+        String initialText = "Initial text.";
+        robot.interact(() -> {
+            TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
+            consoleInput.setText(initialText);
+            controller.loadJaverFile(testFile);
+            assertEquals(initialText, consoleInput.getText());
+        });
+
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Only .javer files can be loaded as source files."));
+
+        Files.deleteIfExists(testFile.toPath());
+    }
+
+    @Test
+    void shouldHandleVariousLineEndingsForLineNumbers(FxRobot robot) {
+        TextArea lineNumbers = robot.lookup("#consoleInputLineNumbers").queryAs(TextArea.class);
+        TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
+
+        robot.interact(() -> consoleInput.setText("line 1\r\nline 2\nline 3\n"));
+        assertEquals("1\n2\n3\n4", lineNumbers.getText());
+
+        robot.interact(() -> consoleInput.setText(""));
+        assertEquals("1", lineNumbers.getText());
+    }
+
+    @Test
+    void shouldLogUiAction_whenCheckBoxIsToggled(FxRobot robot) throws TimeoutException {
+        robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
+        waitFor(2, TimeUnit.SECONDS, () -> robot.lookup("#compilerOptionsBox").queryAs(VBox.class).isVisible());
+
+        robot.clickOn("#compilerDumpLexerOption");
+
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to On."));
+
+        robot.clickOn("#compilerDumpLexerOption");
+        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to Off."));
+    }
+
+    @Test
+    void shouldShowCompilationError_whenCompilingInvalidCode(FxRobot robot) throws TimeoutException {
+        robot.clickOn("#consoleInput").write("this is not valid javer code");
+        robot.clickOn("#runCompilerButton");
+
+        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+        waitFor(10, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Compiler finished with exit code"));
+
+        TextArea compilerOutput = robot.lookup("#compilerOutput").queryAs(TextArea.class);
+        String output = compilerOutput.getText().toLowerCase();
+        assertTrue(output.contains("=== error report ==="),
+                "Compiler output should show error report on failure. Actual output:\n" + output);
+        assertFalse(output.contains("compilation successful"),
+                "Compiler output should not show success on failure. Actual output:\n" + output);
+    }
+
+    @Test
+    void shouldSynchronizeLineNumberScroll_whenInputScrolls(FxRobot robot) {
+        TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
+        TextArea lineNumbers = robot.lookup("#consoleInputLineNumbers").queryAs(TextArea.class);
+
+        String longText = IntStream.range(1, 100).mapToObj(i -> "Line " + i).collect(Collectors.joining("\n"));
+        robot.interact(() -> consoleInput.setText(longText));
+
+        robot.interact(() -> consoleInput.setScrollTop(50.0));
+        assertEquals(50.0, lineNumbers.getScrollTop(), 0.1);
+
+        robot.interact(() -> consoleInput.setScrollTop(0.0));
+        assertEquals(0.0, lineNumbers.getScrollTop(), 0.1);
+    }
+
+    @Test
+    void shouldShowError_whenVmJarIsMissing(FxRobot robot) throws TimeoutException {
+        String originalVmJar = System.getProperty("javer.vm.jar");
+        System.setProperty("javer.vm.jar", "non-existent.jar");
+
+        try {
+            robot.clickOn("#runVMButton");
+
+            TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
+            waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+        } finally {
+            System.setProperty("javer.vm.jar", originalVmJar);
+        }
     }
 }
