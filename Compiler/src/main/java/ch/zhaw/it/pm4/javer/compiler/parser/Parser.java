@@ -1,14 +1,64 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
+
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignOperator;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BreakStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CastExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ContinueStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ExpressionAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInit;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitExpressionList;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitVarDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixOperationKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ReturnStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.StatementAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpressionKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NameTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
@@ -17,14 +67,11 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
-import java.util.*;
-
 /**
  * Recursive-descent parser for Javer source code. It consumes lexer tokens,
  * builds the AST, and records recoverable syntax diagnostics in the supplied
  * diagnostic bag.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class Parser {
 
     private final List<Token> tokens;
@@ -348,11 +395,11 @@ public class Parser {
         List<EnumItem> items = new ArrayList<>();
         Set<TokenType> first = EnumSet.of(TokenType.ID_IDENTIFIER);
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
-            if (!skipErrors(first, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
+            if (!skipErrors(first, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) return items;
             items.add(parseEnumItem());
-            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
+            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) return items;
             match(TokenType.SYMBOL_COMMA);
-            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE)) break;
+            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE)) return items;
         }
         return items;
     }
@@ -410,11 +457,11 @@ public class Parser {
     private List<FunctionParameter> parseFunctionParameters() {
         List<FunctionParameter> parameters = new ArrayList<>();
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS) && isNotAtEnd()) {
-            if (!skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_PARENTHESIS), true)) break;
+            if (!skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_PARENTHESIS), true)) return parameters;
             parameters.add(parseFunctionParameter());
-            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
+            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) return parameters;
             match(TokenType.SYMBOL_COMMA);
-            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) break;
+            if (matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS)) return parameters;
         }
         return parameters;
     }
@@ -594,9 +641,9 @@ public class Parser {
     private List<CaseLabelAstNode> parseCaseLabels() {
         List<CaseLabelAstNode> labels = new ArrayList<>();
         while (!matchCurrentToken(TokenType.SYMBOL_COLON) && isNotAtEnd()) {
-            if (!skipErrors(FIRST_CASE_LABEL, EnumSet.of(TokenType.SYMBOL_COLON), true)) break;
+            if (!skipErrors(FIRST_CASE_LABEL, EnumSet.of(TokenType.SYMBOL_COLON), true)) return labels;
             labels.add(parseCaseLabel());
-            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
+            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) return labels;
             match(TokenType.SYMBOL_COMMA);
         }
         return labels;
@@ -679,9 +726,16 @@ public class Parser {
         Token startToken = expectTokenType(TokenType.SYMBOL_LEFT_BRACE);
         List<ExpressionAstNode> elements = new ArrayList<>();
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_BRACE) && isNotAtEnd()) {
-            if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) break;
+            if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_RIGHT_BRACE), true)) {
+                match(TokenType.SYMBOL_RIGHT_BRACE);
+                return located(new ArrayInitExpression(elements), startToken);
+            }
+
             elements.add(parseVarInitializer());
-            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) break;
+            if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) {
+                match(TokenType.SYMBOL_RIGHT_BRACE);
+                return located(new ArrayInitExpression(elements), startToken);
+            }
             match(TokenType.SYMBOL_COMMA);
         }
         match(TokenType.SYMBOL_RIGHT_BRACE);

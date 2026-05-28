@@ -1,5 +1,17 @@
 package ch.zhaw.it.pm4.javer.application;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
 import ch.zhaw.it.pm4.misc.JaverLogger;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -15,18 +27,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 
 /**
  * Controller for the main GUI. It owns the source input, process output panes,
@@ -555,12 +555,12 @@ public class GuiController {
     private void configureStackSizeOptions() {
         setStackSizeValueFactory(maxStackSizeForSelectedUnit());
         vmStackSizeKbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
-            if (selected) {
+            if (Boolean.TRUE.equals(selected)) {
                 setStackSizeValueFactory(MAX_STACK_SIZE_KB);
             }
         });
         vmStackSizeMbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
-            if (selected) {
+            if (Boolean.TRUE.equals(selected)) {
                 setStackSizeValueFactory(MAX_STACK_SIZE_MB);
             }
         });
@@ -629,12 +629,12 @@ public class GuiController {
             }
         });
         vmStackSizeKbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
-            if (selected) {
+            if (Boolean.TRUE.equals(selected)) {
                 JaverLogger.info("VM stack size unit set to KB.");
             }
         });
         vmStackSizeMbOption.selectedProperty().addListener((observable, wasSelected, selected) -> {
-            if (selected) {
+            if (Boolean.TRUE.equals(selected)) {
                 JaverLogger.info("VM stack size unit set to MB.");
             }
         });

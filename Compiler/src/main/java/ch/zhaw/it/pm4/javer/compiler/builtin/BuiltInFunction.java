@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.builtin;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
