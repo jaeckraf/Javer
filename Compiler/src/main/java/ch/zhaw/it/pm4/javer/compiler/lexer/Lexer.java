@@ -20,6 +20,7 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
  */
 
 public class Lexer {
+    public static final String UNTERMINATED_CHAR_LITERAL = "Unterminated char literal";
     private final String sourceCode;
     private final DiagnosticBag diagnostics;
 
@@ -320,7 +321,7 @@ public class Lexer {
         String value;
         advance();
         if (indexInSourceCode >= sourceCode.length() || isLineTerminator(currentChar())) {
-            error("Unterminated char literal");
+            error(UNTERMINATED_CHAR_LITERAL);
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
         if (currentChar() == '\'') {
@@ -331,7 +332,7 @@ public class Lexer {
         if (currentChar() == '\\') {
             advance();
             if (indexInSourceCode >= sourceCode.length()) {
-                error("Unterminated char literal");
+                error(UNTERMINATED_CHAR_LITERAL);
                 return makeToken(TokenType.SPECIAL_UNKNOWN);
             }
             char esc = currentChar();
@@ -347,7 +348,7 @@ public class Lexer {
             advance();
         }
         if (indexInSourceCode >= sourceCode.length() || currentChar() != '\'') {
-            error("Unterminated char literal");
+            error(UNTERMINATED_CHAR_LITERAL);
             // Attempt to resynchronise at the next single quote or newline.
             while (indexInSourceCode < sourceCode.length()
                     && currentChar() != '\''

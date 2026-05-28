@@ -20,6 +20,7 @@ public class GuiLogAppender extends AppenderBase<ILoggingEvent> {
      * Creates a Logback appender instance.
      */
     public GuiLogAppender() {
+        // Required by JavaFX for reflective instantiation; must remain empty.
     }
 
     /**

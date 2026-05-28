@@ -20,6 +20,9 @@ import java.util.TreeMap;
  */
 public class VM {
 
+    public static final String CODE = ".code";
+    public static final String SEPARATOR = "========================================";
+    
     private static final int DEFAULT_STACK_SIZE = 1024 * 1024;
     private static final int MAX_STACK_SIZE = 16 * 1024 * 1024;
     private static final int STACK_WINDOW = 32;
@@ -37,6 +40,8 @@ public class VM {
     private static final int FRAME_HEADER_SIZE = 16;
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
+    public static final String LINE = "Line ";
+    public static final String DATA = ".data";
 
     private final byte[] stack;
     private final long stackBase;
@@ -230,18 +235,18 @@ public class VM {
         for (int i = 0; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
             switch (line) {
-                case ".code" -> {
+                case CODE -> {
                     if (codeLineIndex != -1) {
-                        errors.add("Line " + (i + 1) + ": duplicate '.code' section");
+                        errors.add(LINE + (i + 1) + ": duplicate '.code' section");
                     } else {
                         codeLineIndex = i;
                     }
                 }
-                case ".data" -> {
+                case DATA -> {
                     if (codeLineIndex == -1) {
-                        errors.add("Line " + (i + 1) + ": '.data' section must appear after '.code'");
+                        errors.add(LINE + (i + 1) + ": '.data' section must appear after '.code'");
                     } else if (dataLineIndex != -1) {
-                        errors.add("Line " + (i + 1) + ": duplicate '.data' section");
+                        errors.add(LINE + (i + 1) + ": duplicate '.data' section");
                     } else {
                         dataLineIndex = i;
                     }
@@ -267,12 +272,12 @@ public class VM {
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
             if (!line.isEmpty()) {
-                if (line.equals(".code") || line.equals(".data")) {
-                    errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
+                if (line.equals(CODE) || line.equals(DATA)) {
+                    errors.add(LINE + (i + 1) + ": nested section marker not allowed inside code section");
                 } else if (isLabel(line)) {
                     String labelName = extractLabelName(line);
                     if (labels.containsKey(labelName)) {
-                        errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
+                        errors.add(LINE + (i + 1) + ": duplicate label '" + labelName + "'");
                     } else {
                         labels.put(labelName, instructionAddress);
                     }
@@ -308,11 +313,11 @@ public class VM {
         for (int i = dataLineIndex + 1; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
             if (!line.isEmpty()) {
-                if (line.equals(".code") || line.equals(".data")) {
-                    errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
+                if (line.equals(CODE) || line.equals(DATA)) {
+                    errors.add(LINE + (i + 1) + ": section marker not allowed inside data section");
                 } else {
                     if (isLabel(line)) {
-                        errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
+                        errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
                     }
                     else {
                         try {
@@ -327,7 +332,7 @@ public class VM {
 
         for (PendingJumpCheck check : pendingJumpChecks) {
             if (!labels.containsKey(check.labelName())) {
-                errors.add("Line " + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
+                errors.add(LINE + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
             }
         }
 
@@ -342,7 +347,7 @@ public class VM {
     private int nextCodeAddress(int address, int lineNumber, List<String> errors) {
         long next = Integer.toUnsignedLong(address) + 1;
         if (next >= Integer.toUnsignedLong(HEAP_BASE)) {
-            errors.add("Line " + lineNumber + ": code section exceeds reserved address range");
+            errors.add(LINE + lineNumber + ": code section exceeds reserved address range");
             return address;
         }
         return (int) next;
@@ -379,10 +384,10 @@ public class VM {
                     String instrName = line.split(",")[0].trim().toUpperCase(Locale.ROOT);
                     if ("ENTER".equals(instrName)) {
                         if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
-                            errors.add("Line " + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
+                            errors.add(LINE + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
                         }
                         if (enterSeenInCurrentFunction) {
-                            errors.add("Line " + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
+                            errors.add(LINE + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
                         }
                         enterSeenInCurrentFunction = true;
                     }
@@ -396,7 +401,7 @@ public class VM {
             throws ParseException {
         String[] parts = splitOperands(line);
         if (parts.length == 0 || parts[0].isBlank()) {
-            throw new ParseException("Line " + lineNumber + ": empty instruction");
+            throw new ParseException(LINE + lineNumber + ": empty instruction");
         }
 
         String instrName = parts[0].trim().toUpperCase(Locale.ROOT);
@@ -404,7 +409,7 @@ public class VM {
         try {
             kind = InstructionKind.valueOf(instrName);
         } catch (IllegalArgumentException e) {
-            throw new ParseException("Line " + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
+            throw new ParseException(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
         }
 
         return switch (kind) {
@@ -583,11 +588,11 @@ public class VM {
                 ensureOperandCount(parts, 3, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
                 if (!label.startsWith("_")) {
-                    throw new ParseException("Line " + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
+                    throw new ParseException(LINE + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
                 }
                 int argBytes = parseIntOperand(parts[2], instrName, lineNumber);
                 if (argBytes < 0) {
-                    throw new ParseException("Line " + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
+                    throw new ParseException(LINE + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
                 }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield vm -> {
@@ -602,7 +607,7 @@ public class VM {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 int size = parseIntOperand(parts[1], instrName, lineNumber);
                 if (size < 0) {
-                    throw new ParseException("Line " + lineNumber + ": ENTER size must be non-negative, got " + size);
+                    throw new ParseException(LINE + lineNumber + ": ENTER size must be non-negative, got " + size);
                 }
                 yield vm -> vm.allocateStackBytes(size);
             }
@@ -630,7 +635,7 @@ public class VM {
         ensureOperandCount(parts, 2, instrName, lineNumber);
         String label = parseLabelOperand(parts[1], instrName, lineNumber);
         if (label.startsWith("_")) {
-            throw new ParseException("Line " + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
+            throw new ParseException(LINE + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
         }
         pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
         if (!conditional) {
@@ -656,22 +661,22 @@ public class VM {
     private void parseDataLine(String line, int lineNumber) throws ParseException {
         String[] parts = line.split("\\s+");
         if (parts.length < 3) {
-            throw new ParseException("Line " + lineNumber + ": invalid data declaration");
+            throw new ParseException(LINE + lineNumber + ": invalid data declaration");
         }
 
         String name = parts[0];
         if (dataLabels.containsKey(name)) {
-            throw new ParseException("Line " + lineNumber + ": duplicate data symbol '" + name + "'");
+            throw new ParseException(LINE + lineNumber + ": duplicate data symbol '" + name + "'");
         }
 
         int size;
         try {
             size = Integer.parseInt(parts[1]);
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid data element size '" + parts[1] + "'");
+            throw new ParseException(LINE + lineNumber + ": invalid data element size '" + parts[1] + "'");
         }
         if (size != 1 && size != 2 && size != 4 && size != 8) {
-            throw new ParseException("Line " + lineNumber + ": unsupported data element size " + size);
+            throw new ParseException(LINE + lineNumber + ": unsupported data element size " + size);
         }
 
         String[] hexes = parts[2].split(",");
@@ -684,7 +689,7 @@ public class VM {
                 }
             }
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid hex literal in data section");
+            throw new ParseException(LINE + lineNumber + ": invalid hex literal in data section");
         }
 
         byte[] dataBytes = new byte[byteList.size()];
@@ -698,7 +703,7 @@ public class VM {
             throws ParseException {
         if (parts.length != expectedCount) {
             throw new ParseException(
-                    "Line " + lineNumber + ": instruction '" + instrName + "' expects "
+                    LINE + lineNumber + ": instruction '" + instrName + "' expects "
                             + (expectedCount - 1) + " operand(s), got " + (parts.length - 1)
             );
         }
@@ -717,7 +722,7 @@ public class VM {
             return size;
         }
         if (size != 4 && size != 8) {
-            throw new ParseException("Line " + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size);
+            throw new ParseException(LINE + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size);
         }
         return size;
     }
@@ -726,14 +731,14 @@ public class VM {
         try {
             return Integer.parseInt(operand.trim());
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private int parsePositiveIntOperand(String operand, String instrName, int lineNumber) throws ParseException {
         int value = parseIntOperand(operand, instrName, lineNumber);
         if (value <= 0) {
-            throw new ParseException("Line " + lineNumber + ": " + instrName + " operand must be positive, got " + value);
+            throw new ParseException(LINE + lineNumber + ": " + instrName + " operand must be positive, got " + value);
         }
         return value;
     }
@@ -742,14 +747,14 @@ public class VM {
         try {
             return Double.parseDouble(operand.trim());
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private String parseLabelOperand(String operand, String instrName, int lineNumber) throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            throw new ParseException("Line " + lineNumber + ": missing label operand for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": missing label operand for instruction '" + instrName + "'");
         }
         return value;
     }
@@ -758,7 +763,7 @@ public class VM {
             throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            throw new ParseException("Line " + lineNumber + ": missing " + description + " for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": missing " + description + " for instruction '" + instrName + "'");
         }
         return value;
     }
@@ -813,7 +818,7 @@ public class VM {
         if (lineNumber == null) {
             return exception;
         }
-        return new VMExecutionException("Line " + lineNumber + ": " + exception.getMessage(), exception);
+        return new VMExecutionException(LINE + lineNumber + ": " + exception.getMessage(), exception);
     }
 
     private void halt() {
@@ -1282,18 +1287,18 @@ public class VM {
     }
 
     private void dumpState(PrintStream out) {
-        out.println("========================================");
+        out.println(SEPARATOR);
         out.println("VM STATE DUMP");
         out.println("pc = " + formatAddress(pc));
         out.println("sp = " + formatAddress(sp));
         out.println("fp = " + formatAddress(fp));
         out.println("halted = " + halted);
         out.println("programEndAddress = " + formatAddress(programEndAddress));
-        out.println("========================================");
+        out.println(SEPARATOR);
         dumpStackWindow(out);
         out.println();
         dumpRegions(out);
-        out.println("========================================");
+        out.println(SEPARATOR);
     }
 
     private void dumpStackWindow(PrintStream out) {

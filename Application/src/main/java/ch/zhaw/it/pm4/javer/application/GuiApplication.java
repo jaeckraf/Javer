@@ -20,6 +20,7 @@ public class GuiApplication extends Application {
      * Creates the JavaFX application instance.
      */
     public GuiApplication() {
+        // This constructor is intentionally empty because JavaFX requires a public no-arg constructor.
     }
 
     /**

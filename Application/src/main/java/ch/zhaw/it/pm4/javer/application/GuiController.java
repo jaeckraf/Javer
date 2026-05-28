@@ -53,9 +53,14 @@ public class GuiController {
             "-Dstderr.encoding=UTF-8"
     );
 
+    public static final String COMPILER = "Compiler";
+    public static final String TOOLS = "tools";
     // Packaged release layout inside Application app image
-    private static final Path RELEASE_COMPILER_EXE = Path.of("app", "tools", "Compiler", "javer-compiler.exe");
-    private static final Path RELEASE_VM_EXE = Path.of("app", "tools", "VM", "javer-vm.exe");
+    private static final Path RELEASE_COMPILER_EXE = Path.of("app", TOOLS, COMPILER, "javer-compiler.exe");
+    private static final Path RELEASE_VM_EXE = Path.of("app", TOOLS, "VM", "javer-vm.exe");
+    public static final String VM_INPUT_FILE = "VM input file";
+    public static final String VM_IS_ALREADY_RUNNING = "VM is already running.";
+    public static final String USER_DIR = "user.dir";
 
     private final Path runtimeDirectory = resolveRuntimeDirectory();
     private final Path consoleInputFile = runtimeDirectory.resolve(CONSOLE_INPUT_FILE_NAME);
@@ -134,6 +139,7 @@ public class GuiController {
      * Creates the controller instance used by the FXML loader.
      */
     public GuiController() {
+        // Required by JavaFX for reflective instantiation; must remain empty.
     }
 
     /**
@@ -149,7 +155,7 @@ public class GuiController {
         JaverLogger.info("Runtime file directory: " + runtimeDirectory);
 
         compilerRunner = new ManagedProcessRunner(
-                "Compiler",
+                COMPILER,
                 this::appendCompilerOutput,
                 this::appendCompilerOutput,
                 this::updateCompilerButtons
@@ -352,7 +358,7 @@ public class GuiController {
         compilerOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        if (inputPath == null || !deleteFileIfExists(vmInputFile, "VM input file")) {
+        if (inputPath == null || !deleteFileIfExists(vmInputFile, VM_INPUT_FILE)) {
             return;
         }
 
@@ -361,7 +367,7 @@ public class GuiController {
             return;
         }
 
-        logCommand("Compiler", command);
+        logCommand(COMPILER, command);
 
         if (compilerRunner.start(command).isEmpty()) {
             JaverLogger.warning("Compiler is already running.");
@@ -388,7 +394,7 @@ public class GuiController {
         logCommand("VM", command);
 
         if (vmRunner.start(command).isEmpty()) {
-            JaverLogger.warning("VM is already running.");
+            JaverLogger.warning(VM_IS_ALREADY_RUNNING);
         }
     }
 
@@ -425,7 +431,7 @@ public class GuiController {
         }
 
         deleteRuntimeFileIfExists(consoleInputFile, "source input file");
-        deleteRuntimeFileIfExists(vmInputFile, "VM input file");
+        deleteRuntimeFileIfExists(vmInputFile, VM_INPUT_FILE);
         GuiLogAppender.clearConsumer();
     }
 
@@ -445,7 +451,7 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        if (inputPath == null || !deleteFileIfExists(vmInputFile, "VM input file")) {
+        if (inputPath == null || !deleteFileIfExists(vmInputFile, VM_INPUT_FILE)) {
             return;
         }
 
@@ -456,7 +462,7 @@ public class GuiController {
             return;
         }
 
-        logCommand("Compiler", compilerCommand);
+        logCommand(COMPILER, compilerCommand);
 
         var compilerRun = compilerRunner.start(compilerCommand);
         if (compilerRun.isEmpty()) {
@@ -471,7 +477,7 @@ public class GuiController {
         String compilerOutputPath = bytecodeOutputBasePath(vmInputFile).toAbsolutePath().toString();
 
         List<String> command = new ArrayList<>();
-        Path compilerExe = resolveReleaseExecutable(RELEASE_COMPILER_EXE, "Compiler");
+        Path compilerExe = resolveReleaseExecutable(RELEASE_COMPILER_EXE, COMPILER);
         if (compilerExe != null) {
             command.add(compilerExe.toString());
         } else {
@@ -713,13 +719,13 @@ public class GuiController {
         }
 
         if (vmRunner.isRunning()) {
-            JaverLogger.warning("VM is already running.");
+            JaverLogger.warning(VM_IS_ALREADY_RUNNING);
             return;
         }
 
         logCommand("VM", vmCommand);
         if (vmRunner.start(vmCommand).isEmpty()) {
-            JaverLogger.warning("VM is already running.");
+            JaverLogger.warning(VM_IS_ALREADY_RUNNING);
         }
     }
 
@@ -817,7 +823,7 @@ public class GuiController {
             return Optional.of(directory.toFile());
         }
 
-        Path workingDirectory = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        Path workingDirectory = Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
         if (Files.isDirectory(workingDirectory)) {
             return Optional.of(workingDirectory.toFile());
         }
@@ -881,7 +887,7 @@ public class GuiController {
     }
 
     private static Path resolveRuntimeDirectory() {
-        Path workingDirectory = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        Path workingDirectory = Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
         Path codeLocation = getCodeLocation();
         Path packagedRoot = findPackagedAppRoot(codeLocation);
         if (packagedRoot != null) {
@@ -908,7 +914,7 @@ public class GuiController {
                     .getLocation()
                     .toURI()).toAbsolutePath().normalize();
         } catch (Exception exception) {
-            return Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+            return Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
         }
     }
 
@@ -918,7 +924,7 @@ public class GuiController {
             Path fileName = path.getFileName();
             if (fileName != null
                     && "app".equalsIgnoreCase(fileName.toString())
-                    && Files.isDirectory(path.resolve("tools"))) {
+                    && Files.isDirectory(path.resolve(TOOLS))) {
                 return path.getParent();
             }
             path = path.getParent();
@@ -931,7 +937,7 @@ public class GuiController {
         while (path != null) {
             if (Files.isRegularFile(path.resolve("pom.xml"))
                     && Files.isDirectory(path.resolve("Application"))
-                    && Files.isDirectory(path.resolve("Compiler"))
+                    && Files.isDirectory(path.resolve(COMPILER))
                     && Files.isDirectory(path.resolve("VM"))) {
                 return path;
             }

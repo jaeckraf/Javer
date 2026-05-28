@@ -35,14 +35,12 @@ import java.util.function.Consumer;
  */
 public class AstPrinter extends AstNodeVisitorBase {
 
+    public static final String VALUE = "value";
+    public static final String CONDITION = "condition";
+    public static final String TARGET = "target";
+    public static final String OPERATOR = "operator";
     private final List<Boolean> isLastStack = new ArrayList<>();
     private Appendable output;
-
-    /**
-     * Creates an AST printer with no active output target.
-     */
-    public AstPrinter() {
-    }
 
     /**
      * Prints an AST into a string.
@@ -103,7 +101,7 @@ public class AstPrinter extends AstNodeVisitorBase {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> scalarChild("name", quote(node.getName()), node.getSourceRange(), isLast));
         if (node.getValue() != null) {
-            children.add(isLast -> scalarChild("value", node.getValue(), node.getSourceRange(), isLast));
+            children.add(isLast -> scalarChild(VALUE, node.getValue(), node.getSourceRange(), isLast));
         }
         visitMany(children);
     }
@@ -155,7 +153,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(IfStatement node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("condition", node.getCondition(), isLast));
+        children.add(isLast -> labeledNodeChild(CONDITION, node.getCondition(), isLast));
         children.add(isLast -> labeledNodeChild("then", node.getThenBranch(), isLast));
         if (node.getElseBranch() != null) {
             children.add(isLast -> labeledNodeChild("else", node.getElseBranch(), isLast));
@@ -166,7 +164,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(WhileStatement node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("condition", node.getCondition(), isLast));
+        children.add(isLast -> labeledNodeChild(CONDITION, node.getCondition(), isLast));
         children.add(isLast -> labeledNodeChild("body", node.getBody(), isLast));
         visitMany(children);
     }
@@ -175,7 +173,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     public void visit(DoWhileStatement node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> labeledNodeChild("body", node.getBody(), isLast));
-        children.add(isLast -> labeledNodeChild("condition", node.getCondition(), isLast));
+        children.add(isLast -> labeledNodeChild(CONDITION, node.getCondition(), isLast));
         visitMany(children);
     }
 
@@ -186,7 +184,7 @@ public class AstPrinter extends AstNodeVisitorBase {
             children.add(isLast -> labeledNodeChild("init", node.getForInit(), isLast));
         }
         if (node.getCondition() != null) {
-            children.add(isLast -> labeledNodeChild("condition", node.getCondition(), isLast));
+            children.add(isLast -> labeledNodeChild(CONDITION, node.getCondition(), isLast));
         }
         children.add(isLast -> nodesChild("update", node.getUpdate(), isLast));
         children.add(isLast -> labeledNodeChild("body", node.getBody(), isLast));
@@ -196,7 +194,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(SwitchStatement node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("condition", node.getCondition(), isLast));
+        children.add(isLast -> labeledNodeChild(CONDITION, node.getCondition(), isLast));
         children.add(isLast -> nodesChild("cases", node.getCases(), isLast));
         visitMany(children);
     }
@@ -233,16 +231,16 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(AssignExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("target", node.getTarget(), isLast));
-        children.add(isLast -> scalarChild("operator", node.getOperator(), node.getSourceRange(), isLast));
-        children.add(isLast -> labeledNodeChild("value", node.getValue(), isLast));
+        children.add(isLast -> labeledNodeChild(TARGET, node.getTarget(), isLast));
+        children.add(isLast -> scalarChild(OPERATOR, node.getOperator(), node.getSourceRange(), isLast));
+        children.add(isLast -> labeledNodeChild(VALUE, node.getValue(), isLast));
         visitMany(children);
     }
 
     @Override
     public void visit(ConditionalExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("condition", node.getCondition(), isLast));
+        children.add(isLast -> labeledNodeChild(CONDITION, node.getCondition(), isLast));
         children.add(isLast -> labeledNodeChild("whenTrue", node.getTrueExpression(), isLast));
         children.add(isLast -> labeledNodeChild("whenFalse", node.getFalseExpression(), isLast));
         visitMany(children);
@@ -252,7 +250,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     public void visit(BinaryExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> labeledNodeChild("left", node.getLeft(), isLast));
-        children.add(isLast -> scalarChild("operator", node.getOperator(), node.getSourceRange(), isLast));
+        children.add(isLast -> scalarChild(OPERATOR, node.getOperator(), node.getSourceRange(), isLast));
         children.add(isLast -> labeledNodeChild("right", node.getRight(), isLast));
         visitMany(children);
     }
@@ -268,7 +266,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(UnaryExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> scalarChild("operator", node.getKind(), node.getSourceRange(), isLast));
+        children.add(isLast -> scalarChild(OPERATOR, node.getKind(), node.getSourceRange(), isLast));
         children.add(isLast -> labeledNodeChild("operand", node.getOperand(), isLast));
         visitMany(children);
     }
@@ -276,8 +274,8 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(PostfixExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("target", node.getOperand(), isLast));
-        children.add(isLast -> scalarChild("operator", node.getKind(), node.getSourceRange(), isLast));
+        children.add(isLast -> labeledNodeChild(TARGET, node.getOperand(), isLast));
+        children.add(isLast -> scalarChild(OPERATOR, node.getKind(), node.getSourceRange(), isLast));
         visitMany(children);
     }
 
@@ -292,7 +290,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(IndexExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("target", node.getTarget(), isLast));
+        children.add(isLast -> labeledNodeChild(TARGET, node.getTarget(), isLast));
         children.add(isLast -> labeledNodeChild("index", node.getIndex(), isLast));
         visitMany(children);
     }
@@ -300,7 +298,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     @Override
     public void visit(MemberAccessExpression node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
-        children.add(isLast -> labeledNodeChild("target", node.getTarget(), isLast));
+        children.add(isLast -> labeledNodeChild(TARGET, node.getTarget(), isLast));
         children.add(isLast -> scalarChild("member", quote(node.getMemberName()), node.getSourceRange(), isLast));
         visitMany(children);
     }
@@ -330,7 +328,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     public void visit(LiteralExpression<?> node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> scalarChild("kind", node.getKind(), node.getSourceRange(), isLast));
-        children.add(isLast -> scalarChild("value", quoteValue(node.getValue()), node.getSourceRange(), isLast));
+        children.add(isLast -> scalarChild(VALUE, quoteValue(node.getValue()), node.getSourceRange(), isLast));
         visitMany(children);
     }
 
@@ -476,7 +474,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                 }
                 case EnumValueEntry enumValue -> {
                     children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("value", enumValue.getValue(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild(VALUE, enumValue.getValue(), null, childIsLast));
                     children.add(childIsLast -> scalarChild("sizeBytes", enumValue.getSizeBytes(), null, childIsLast));
                     children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
                     children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
@@ -485,7 +483,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                         children.add(childIsLast -> scalarChild("label", quote(label.getLabel()), null, childIsLast));
                 case DataEntry dataEntry -> {
                     children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("value", quoteValue(dataEntry.getValue()), null, childIsLast));
+                    children.add(childIsLast -> scalarChild(VALUE, quoteValue(dataEntry.getValue()), null, childIsLast));
                 }
                 default -> {
                     JaverLogger.error("Invalid entry type " + entry.getClass());
