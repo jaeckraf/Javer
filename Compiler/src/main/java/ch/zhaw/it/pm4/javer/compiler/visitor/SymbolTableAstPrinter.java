@@ -26,11 +26,11 @@ import java.util.Map;
  */
 public final class SymbolTableAstPrinter extends AstPrinter {
 
-    /**
-     * Creates a symbol-table printer.
-     */
-    public SymbolTableAstPrinter() {
-    }
+    public static final String SIZE_BYTES = "sizeBytes";
+    public static final String OFFSET_BYTES = "offsetBytes";
+    public static final String NONE = "<none>";
+
+
 
     @Override
     protected void writeRoot(CompilationUnit node) {
@@ -46,7 +46,7 @@ public final class SymbolTableAstPrinter extends AstPrinter {
         List<Map.Entry<String, SymbolEntry>> entries = sortedEntries(globalScope.getAllEntries());
 
         List<List<String>> globalRows = new ArrayList<>();
-        globalRows.add(List.of("kind", "name", "type", "label", "sizeBytes"));
+        globalRows.add(List.of("kind", "name", "type", "label", SIZE_BYTES));
         for (Map.Entry<String, SymbolEntry> entry : entries) {
             globalRows.add(globalRow(entry.getValue()));
         }
@@ -85,20 +85,20 @@ public final class SymbolTableAstPrinter extends AstPrinter {
     private void writeFunctionTable(FunctionEntry function) {
         FunctionScope scope = function.getScope();
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("section", "scope", "name", "type", "sizeBytes", "offsetBytes", "details"));
+        rows.add(List.of("section", "scope", "name", "type", SIZE_BYTES, OFFSET_BYTES, "details"));
 
         if (scope != null && !scope.getParameters().isEmpty()) {
             for (ParameterEntry parameter : scope.getParameters().values()) {
                 rows.add(storageRow("param", "function", parameter, parameterDetails(parameter)));
             }
         } else {
-            rows.add(List.of("params", "function", "<none>", "", "", "", ""));
+            rows.add(List.of("params", "function", NONE, "", "", "", ""));
         }
 
         if (scope != null && scope.getRootBlock() != null) {
             collectBlockRows(scope.getRootBlock(), "<root>", new int[]{0}, rows);
         } else {
-            rows.add(List.of("blocks", "<none>", "", "", "", "", ""));
+            rows.add(List.of("blocks", NONE, "", "", "", "", ""));
         }
 
         writeTable("table: function " + function.getName()
@@ -147,9 +147,9 @@ public final class SymbolTableAstPrinter extends AstPrinter {
     private void writeStructTable(StructEntry struct) {
         StructScope scope = struct.getScope();
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("kind", "name", "type", "sizeBytes", "offsetBytes"));
+        rows.add(List.of("kind", "name", "type", SIZE_BYTES, OFFSET_BYTES));
         if (scope == null || scope.getFields().isEmpty()) {
-            rows.add(List.of("field", "<none>", "", "", ""));
+            rows.add(List.of("field", NONE, "", "", ""));
         } else {
             for (FieldEntry field : scope.getFields().values()) {
                 rows.add(List.of(
@@ -166,13 +166,13 @@ public final class SymbolTableAstPrinter extends AstPrinter {
     private void writeEnumTable(EnumEntry enumEntry) {
         EnumScope scope = enumEntry.getScope();
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("kind", "name", "value", "sizeBytes", "offsetBytes", "dataLabel"));
+        rows.add(List.of("kind", "name", VALUE, SIZE_BYTES, OFFSET_BYTES, "dataLabel"));
         if (scope == null || scope.getValues().isEmpty()) {
-            rows.add(List.of("value", "<none>", "", "", "", quote(enumEntry.getDataLabel())));
+            rows.add(List.of(VALUE, NONE, "", "", "", quote(enumEntry.getDataLabel())));
         } else {
             for (EnumValueEntry value : scope.getValues().values()) {
                 rows.add(List.of(
-                        "value",
+                        VALUE,
                         value.getName(),
                         String.valueOf(value.getValue()),
                         String.valueOf(value.getSizeBytes()),

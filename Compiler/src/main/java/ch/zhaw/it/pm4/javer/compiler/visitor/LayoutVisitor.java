@@ -8,12 +8,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
  */
 public class LayoutVisitor extends AstNodeVisitorBase {
 
-    /**
-     * Creates a layout pass.
-     */
-    public LayoutVisitor() {
-    }
-
     @Override
     public void visit(StructDeclaration node) {
         if (node.getStructScope() != null && node.getSymbolEntry() != null) {

@@ -17,6 +17,7 @@ public final class LiteralCaseLabel extends AstNodeBase implements CaseLabelAstN
         this.literal = literal;
     }
 
+    @SuppressWarnings("java:S1452") // Type parameter cannot be concretized due to heterogeneous literal types in AST design.
     public LiteralExpression<?> getLiteral() {
         return literal;
     }
