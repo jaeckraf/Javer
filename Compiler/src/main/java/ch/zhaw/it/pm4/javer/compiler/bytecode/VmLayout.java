@@ -25,6 +25,13 @@ public final class VmLayout {
     private VmLayout() {
     }
 
+    /**
+     * Returns the number of stack bytes required to represent the given type.
+     *
+     * @param type the type to evaluate
+     * @return the number of bytes required on the stack
+     * @throws IllegalArgumentException if the type has no stack representation
+     */
     public static int stackBytes(TypeInfo type) {
         if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
             return DOUBLE_BYTES;
@@ -35,6 +42,12 @@ public final class VmLayout {
         throw new IllegalArgumentException("Type has no stack representation: " + type);
     }
 
+    /**
+     * Returns the number of bytes used for returning the given type from a function.
+     *
+     * @param type the return type to evaluate
+     * @return number of bytes used for returning the value (0 for void)
+     */
     public static int returnBytes(TypeInfo type) {
         if (type instanceof VoidTypeInfo) {
             return 0;
@@ -42,6 +55,13 @@ public final class VmLayout {
         return stackBytes(type);
     }
 
+    /**
+     * Maps a high-level type to its corresponding VM memory width.
+     *
+     * @param type the type to evaluate
+     * @return the memory width used for load/store operations
+     * @throws IllegalArgumentException if the type has no memory representation
+     */
     public static MemoryWidth memoryWidth(TypeInfo type) {
         if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
             return switch (kind) {

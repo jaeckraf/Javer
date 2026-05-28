@@ -1,7 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.lexer;
 
 /**
- * Token kinds produced by the lexer.
+ * Defines all token types produced by the lexer.
+ *
+ * <p>Each token type represents either a literal, identifier, keyword, operator,
+ * delimiter, or special lexer token used during parsing and diagnostics.
  */
 public enum TokenType {
     // Literals
@@ -109,10 +112,21 @@ public enum TokenType {
         this.lexemes = lexemes;
     }
 
+    /**
+     * Returns the human-readable diagnostic name of this token type.
+     *
+     * @return diagnostic name used in error messages and reporting
+     */
     public String diagnosticName() {
         return diagnosticName;
     }
 
+    /**
+     * Resolves a word-based lexeme to a token type.
+     *
+     * @param lexeme the input lexeme
+     * @return matching TokenType or {@link #ID_IDENTIFIER} if none matches
+     */
     public static TokenType fromWordLexeme(String lexeme) {
         for (TokenType tokenType : values()) {
             if (tokenType.isWordToken() && tokenType.matchesLexeme(lexeme)) {
@@ -122,6 +136,13 @@ public enum TokenType {
         return ID_IDENTIFIER;
     }
 
+    /**
+     * Finds the best matching fixed token at the given source position.
+     *
+     * @param source the source code being scanned
+     * @param startIndex position in the source string
+     * @return the longest matching fixed token, or null if none found
+     */
     public static FixedTokenMatch fixedTokenAt(String source, int startIndex) {
         FixedTokenMatch bestMatch = null;
         for (TokenType tokenType : values()) {

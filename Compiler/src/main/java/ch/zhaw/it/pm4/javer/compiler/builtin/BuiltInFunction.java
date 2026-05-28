@@ -34,10 +34,19 @@ public enum BuiltInFunction {
         this.vmInstruction = vmInstruction;
     }
 
+    /**
+     * @return all built-in functions.
+     */
     public static List<BuiltInFunction> all() {
         return Arrays.asList(values());
     }
 
+    /**
+     * Finds a built-in function by name.
+     *
+     * @param name the function name
+     * @return the matching BuiltInFunction or {@code null} if not found
+     */
     public static BuiltInFunction find(String name) {
         for(BuiltInFunction builtInFunction : values()) {
             if(builtInFunction.getName().equals(name)) return builtInFunction;
@@ -45,6 +54,12 @@ public enum BuiltInFunction {
         return null;
     }
 
+    /**
+     * Creates a function symbol representing this built-in function in the compiler symbol table.
+     * The symbol includes parameter metadata and VM stack layout information.
+     *
+     * @return a fully initialized FunctionEntry for this built-in function
+     */
     public FunctionEntry createSymbol() {
         FunctionEntry entry = new FunctionEntry(name, name);
         entry.setReturnType(VoidTypeInfo.INSTANCE);
