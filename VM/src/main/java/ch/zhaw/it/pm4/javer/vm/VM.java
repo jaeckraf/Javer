@@ -44,6 +44,8 @@ public class VM {
     private static final int FRAME_HEADER_SIZE = 16;
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
+    public static final String INVALID_KIND = "Invalid kind: ";
+    public static final String ERROR = "Error";
 
     private final byte[] stack;
     private final long stackBase;
@@ -556,7 +558,8 @@ public class VM {
                 yield vm -> vm.pushRaw(vm.peekRaw(size));
             }
             case IADD, ISUB, IMUL, IDIV, IMOD, DADD, DSUB, DMUL, DDIV -> arithmeticCase(kind, parts, instrName, lineNumber);
-            case ILT, ILE, IGT, IGE, IEQ, INE, DLT, DLE, DGT, DGE, DEQ, DNE -> comparisonCase(kind, parts, instrName, lineNumber);
+            case ILT, ILE, IGT, IGE, IEQ, INE -> integerComparisonCase(kind, parts, instrName, lineNumber);
+            case DLT, DLE, DGT, DGE, DEQ, DNE -> doubleComparisonCase(kind, parts, instrName, lineNumber);
             case STREQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case STRNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case ISHL -> noOperand(parts, instrName, lineNumber, vm -> {
@@ -651,8 +654,8 @@ public class VM {
                 yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
             }
             default -> {
-                JaverLogger.error("Invalid kind: " + kind);
-                yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
     }
@@ -704,13 +707,13 @@ public class VM {
                 vm.pushDouble(a / b);
             });
             default -> {
-                JaverLogger.error("Invalid kind: " + kind);
-                yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
     }
 
-    private Instruction comparisonCase(InstructionKind kind,
+    private Instruction integerComparisonCase(InstructionKind kind,
                                  String[] parts,
                                  String instrName,
                                  int lineNumber) throws ParseException {
@@ -737,6 +740,18 @@ public class VM {
             });
             case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
             case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
+            default -> {
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
+            }
+        };
+    }
+
+    private Instruction doubleComparisonCase(InstructionKind kind,
+                                       String[] parts,
+                                       String instrName,
+                                       int lineNumber) throws ParseException {
+        return switch (kind) {
             case DLT -> noOperand(parts, instrName, lineNumber, vm -> {
                 double b = vm.popDouble();
                 double a = vm.popDouble();
@@ -760,8 +775,8 @@ public class VM {
             case DEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
             case DNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
             default -> {
-                JaverLogger.error("Invalid kind: " + kind);
-                yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
     }
