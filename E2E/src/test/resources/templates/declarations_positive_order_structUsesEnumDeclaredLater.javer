@@ -1,0 +1,12 @@
+struct Holder {
+    enum Color color;
+}
+
+enum Color {
+    red,
+    blue
+}
+
+fn void main() {
+    call printi(1);
+}

@@ -243,8 +243,8 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
             ParameterEntry variadicParameter) {
         return node.getArguments().size() == fixedCount + 1
                 && TypeRules.isAssignable(
-                        variadicParameter.getType(),
-                        node.getArguments().get(fixedCount).getResultingType());
+                variadicParameter.getType(),
+                node.getArguments().get(fixedCount).getResultingType());
     }
 
     private boolean validateArgument(CallExpression node, int index, TypeInfo expected) {
@@ -267,7 +267,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         TypeInfo result = switch (node.getOperator()) {
             case OR, AND -> {
                 if (!TypeRules.isConditionType(left) || !TypeRules.isConditionType(right)) {
-                    report(node, "Logical operator requires value operands.");
+                    report(node, "Logical operator requires boolean operands.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
                 yield PrimitiveTypeInfo.BOOL;
@@ -444,7 +444,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
     }
 
     private boolean isSwitchType(TypeInfo type) {
-        return TypeRules.isConditionType(type);
+        return TypeRules.isSwitchType(type);
     }
 
     private void validateCaseLabels(SwitchCase switchCase, TypeInfo switchType, Set<String> seenLabels) {
@@ -536,7 +536,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         TypeInfo conditionType = condition.getResultingType();
         if (!isConditionType(conditionType)) {
-            report(owner, context + " condition must produce a value, but was: " + conditionType);
+            report(owner, context + " condition must be boolean, but was: " + conditionType);
         }
     }
 
@@ -558,7 +558,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         TypeInfo result = switch (node.getKind()) {
             case LOGICAL_NOT -> {
                 if (!TypeRules.isConditionType(operandType)) {
-                    report(node, "Logical not requires a value operand.");
+                    report(node, "Logical not requires a boolean operand.");
                     yield UnknownTypeInfo.INSTANCE;
                 }
                 yield PrimitiveTypeInfo.BOOL;

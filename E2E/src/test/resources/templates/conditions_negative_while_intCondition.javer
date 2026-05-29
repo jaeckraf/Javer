@@ -1,0 +1,5 @@
+fn void main() {
+    while (1) {
+        call printi(1);
+    }
+}

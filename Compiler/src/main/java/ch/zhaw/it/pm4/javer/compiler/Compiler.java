@@ -65,7 +65,11 @@ public class Compiler {
         try {
             CompilerOptions options = CompilerOptions.create(args);
             configureLogging(options);
-            new Compiler(options).compile();
+            Compiler compiler = new Compiler(options);
+            compiler.compile();
+            if (compiler.context.getDiagnosticBag().hasErrors()) {
+                System.exit(1);
+            }
         } catch (IllegalArgumentException exception) {
             System.err.println(exception.getMessage());
             System.exit(2);

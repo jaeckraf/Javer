@@ -142,6 +142,15 @@ public class DiagnosticBag {
     }
 
     /**
+     * Returns an immutable snapshot of the diagnostics collected so far.
+     *
+     * @return diagnostics in insertion order
+     */
+    public List<Diagnostic> getDiagnostics() {
+        return List.copyOf(diagnostics);
+    }
+
+    /**
      * Generates a formatted, human-readable report of all diagnostics in the current phase.
      * Uses the SourceCache to print the exact line of code where the error occurred.
      *

@@ -1,0 +1,7 @@
+enum E {
+    red,
+    red
+}
+
+fn void main() {
+}

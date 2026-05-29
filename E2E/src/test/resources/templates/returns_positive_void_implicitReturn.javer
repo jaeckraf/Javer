@@ -1,0 +1,7 @@
+fn void helper() {
+}
+
+fn void main() {
+    call helper();
+    call printi(1);
+}

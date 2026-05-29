@@ -1,0 +1,5 @@
+fn void main() {
+    if ("hello") {
+        call printi(1);
+    }
+}

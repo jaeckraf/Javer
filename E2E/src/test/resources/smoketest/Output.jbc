@@ -1,29 +1,9 @@
 .code
 _main:
-ENTER, 4
-LOCAL, 0
-PUSHI, 1
-STORE4
-while_condition_0:
-PUSHI, 1
-JUMPF, while_end_1
-LOCAL, 0
-LOAD4
-DUP, 4
-PUSHI, 1
-IEQ
-JUMPT, switch_case_4
-JUMP, switch_no_match_3
-switch_case_4:
-POP, 4
-JUMP, while_end_1
-JUMP, switch_end_2
-switch_no_match_3:
-POP, 4
-JUMP, switch_end_2
-switch_end_2:
-JUMP, while_condition_0
-while_end_1:
+ENTER, 0
+RET, 0
+_f:
+ENTER, 0
 RET, 0
 
 .data
