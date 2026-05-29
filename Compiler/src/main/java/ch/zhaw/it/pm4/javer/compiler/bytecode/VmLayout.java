@@ -8,6 +8,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Centralizes the byte layout expected by the VM bytecode target.
@@ -39,6 +40,7 @@ public final class VmLayout {
         if (isWordStackType(type)) {
             return WORD_BYTES;
         }
+        JaverLogger.error("Type has no stack representation: " + type);
         throw new IllegalArgumentException("Type has no stack representation: " + type);
     }
 
@@ -75,6 +77,7 @@ public final class VmLayout {
         if (type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo) {
             return MemoryWidth.WORD;
         }
+        JaverLogger.error("Type has no memory width: " + type);
         throw new IllegalArgumentException("Type has no memory width: " + type);
     }
 

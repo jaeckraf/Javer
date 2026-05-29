@@ -194,7 +194,21 @@ public class GuiController {
             return;
         }
 
-        Path targetPath = ensureExtension(selectedFile.toPath(), SOURCE_FILE_EXTENSION);
+        saveJaverFile(selectedFile);
+    }
+    
+    /**
+     * Saves the contents of the source editor to the specified file.
+     * Appends the standard source file extension if it is missing.
+     * 
+     * @param file the target file to save the source code to
+     */
+    public void saveJaverFile(File file) {
+        if (file == null) {
+            return;
+        }
+
+        Path targetPath = ensureExtension(file.toPath(), SOURCE_FILE_EXTENSION);
         saveTextFile(targetPath, consoleInput.getText(), "Javer source file");
     }
 
@@ -214,7 +228,21 @@ public class GuiController {
             return;
         }
 
-        Path sourcePath = selectedFile.toPath().toAbsolutePath().normalize();
+        loadJaverFile(selectedFile);
+    }
+    
+    /**
+     * Loads the contents of the specified file into the source editor.
+     * Validates that the file has the correct source file extension before loading.
+     * 
+     * @param file the file containing the source code to load
+     */
+    public void loadJaverFile(File file) {
+        if (file == null) {
+            return;
+        }
+        
+        Path sourcePath = file.toPath().toAbsolutePath().normalize();
         if (!hasExtension(sourcePath, SOURCE_FILE_EXTENSION)) {
             JaverLogger.error("Only .javer files can be loaded as source files.");
             return;
@@ -250,7 +278,21 @@ public class GuiController {
             return;
         }
 
-        Path targetPath = ensureExtension(selectedFile.toPath(), BYTECODE_FILE_EXTENSION);
+        saveJbcFile(selectedFile);
+    }
+    
+    /**
+     * Copies the current internal VM input file to the specified target file.
+     * Appends the standard bytecode file extension if it is missing.
+     * 
+     * @param file the target file to save the bytecode to
+     */
+    public void saveJbcFile(File file) {
+        if (file == null) {
+            return;
+        }
+        
+        Path targetPath = ensureExtension(file.toPath(), BYTECODE_FILE_EXTENSION);
         copyFile(
                 vmInputFile,
                 targetPath,
@@ -275,7 +317,21 @@ public class GuiController {
             return;
         }
 
-        Path sourcePath = selectedFile.toPath().toAbsolutePath().normalize();
+        loadJbcFile(selectedFile);
+    }
+    
+    /**
+     * Copies the specified bytecode file to the internal VM input file location.
+     * Validates that the file has the correct bytecode file extension before copying.
+     * 
+     * @param file the file containing the bytecode to load
+     */
+    public void loadJbcFile(File file) {
+        if (file == null) {
+            return;
+        }
+        
+        Path sourcePath = file.toPath().toAbsolutePath().normalize();
         if (!hasExtension(sourcePath, BYTECODE_FILE_EXTENSION)) {
             JaverLogger.error("Only .jbc files can be loaded as bytecode files.");
             return;
@@ -307,7 +363,7 @@ public class GuiController {
         }
 
         List<String> command = buildCompilerCommand(inputPath);
-        if (command == null) {
+        if (command.isEmpty()) {
             return;
         }
 
@@ -331,7 +387,7 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         List<String> command = buildVmCommand();
-        if (command == null) {
+        if (command.isEmpty()) {
             return;
         }
 
@@ -402,7 +458,7 @@ public class GuiController {
         List<String> compilerCommand = buildCompilerCommand(inputPath);
         List<String> vmCommand = buildVmCommand();
 
-        if (compilerCommand == null || vmCommand == null) {
+        if (compilerCommand.isEmpty() || vmCommand.isEmpty()) {
             return;
         }
 

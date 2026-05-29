@@ -89,8 +89,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public static final String DUP = "DUP, ";
     public static final String PUSHD = "PUSHD, ";
 
-
-
     private final DiagnosticBag diagnostics;
     private final Path outputFile;
     private final StringBuilder output = new StringBuilder();
@@ -495,7 +493,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case BITWISE_XOR_ASSIGN -> BinaryExpressionKind.BITWISE_XOR;
             case LEFT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_LEFT;
             case RIGHT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_RIGHT;
-            case ASSIGN, INVALID -> throw new IllegalStateException("Unexpected compound assignment operator: " + node.getOperator());
+            case ASSIGN, INVALID -> {
+                JaverLogger.error("Unexpected compound assignment operator: " + node.getOperator());
+                throw new IllegalStateException("Unexpected compound assignment operator: " + node.getOperator());
+            }
         };
     }
 
@@ -577,7 +578,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case INVALID -> {
+                JaverLogger.error("Unexpected binary operator: " + operator);
+                throw new IllegalStateException("Unexpected binary operator: " + operator);
+            }
         };
     }
 
@@ -586,7 +590,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> true;
             case ADD, SUBTRACT, MULTIPLY, DIVIDE,
                  AND, OR, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case INVALID -> {
+                JaverLogger.error("Unexpected binary operator: " + operator);
+                throw new IllegalStateException("Unexpected binary operator: " + operator);
+            }
         };
     }
 
@@ -596,7 +603,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  AND, OR -> false;
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case INVALID -> {
+                JaverLogger.error("Unexpected binary operator: " + operator);
+                throw new IllegalStateException("Unexpected binary operator: " + operator);
+            }
         };
     }
 
@@ -656,7 +666,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
             }
             case PRE_INCREMENT -> emitPrefixStep(node.getOperand(), 1);
             case PRE_DECREMENT -> emitPrefixStep(node.getOperand(), -1);
-            case INVALID -> throw new IllegalStateException("Unexpected unary operator: " + node.getKind());
+            case INVALID -> {
+                JaverLogger.error("Unexpected unary operator: " + node.getKind());
+                throw new IllegalStateException("Unexpected unary operator: " + node.getKind());
+            }
         }
     }
 
@@ -678,7 +691,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
         int delta = switch (node.getKind()) {
             case INCREMENT -> 1;
             case DECREMENT -> -1;
-            case INVALID -> throw new IllegalStateException("Unexpected postfix operator: " + node.getKind());
+            case INVALID -> {
+                JaverLogger.error("Unexpected postfix operator: " + node.getKind());
+                throw new IllegalStateException("Unexpected postfix operator: " + node.getKind());
+            }
         };
         TypeInfo type = target.getResultingType();
         emitAddress(target);
@@ -852,6 +868,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private void emitJaggedArrayAllocation(NewExpression node, TypeInfo leafType) {
         NewExpression.JaggedArrayTempLayout temps = node.getJaggedArrayTempLayout();
         if (temps == null) {
+            JaverLogger.error("Missing temporary storage for jagged array allocation.");
             throw new IllegalStateException("Missing temporary storage for jagged array allocation.");
         }
 
@@ -1008,6 +1025,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 if (kind1 == PrimitiveTypeKind.DOUBLE) {
                     writeLine("I2D");
                 } else {
+                    JaverLogger.error("Unexpected conversion from " + from + " to " + to);
                     throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
                 }
             }
@@ -1015,10 +1033,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 if (kind1 == PrimitiveTypeKind.INT) {
                     writeLine("D2I");
                 } else {
+                    JaverLogger.error("Unexpected conversion from " + from + " to " + to);
                     throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
                 }
             }
-            default -> throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
+            default -> {
+                JaverLogger.error("Unexpected conversion from " + from + " to " + to);
+                throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
+            }
         }
     }
 
@@ -1041,6 +1063,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLine("D2I");
             return;
         }
+        JaverLogger.error("Unexpected unchecked cast from " + from + " to " + to);
         throw new IllegalStateException("Unexpected unchecked cast from " + from + " to " + to);
     }
 
@@ -1136,8 +1159,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case GREATER_EQUALS -> writeLine(isDouble ? "DGE" : "IGE");
             case EQUALS -> writeLine(isDouble ? "DEQ" : "IEQ");
             case NOT_EQUALS -> writeLine(isDouble ? "DNE" : "INE");
-            case AND, OR -> throw new IllegalStateException("Logical operators require expression-level emission.");
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case AND, OR -> {
+                JaverLogger.error("Logical operators require expression-level emission");
+                throw new IllegalStateException("Logical operators require expression-level emission.");
+            }
+            case INVALID -> {
+                JaverLogger.error("Unexpected binary operator: " + operator);
+                throw new IllegalStateException("Unexpected binary operator: " + operator);
+            }
         }
     }
 
@@ -1149,7 +1178,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  LESS, LESS_EQUALS, GREATER, GREATER_EQUALS, EQUALS, NOT_EQUALS ->
                     emitBinaryOp(node.getOperator(), operandType);
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + node.getOperator());
+            case INVALID -> {
+                JaverLogger.error("Unexpected binary operator: " + node.getOperator());
+                throw new IllegalStateException("Unexpected binary operator: " + node.getOperator());
+            }
         }
     }
 
