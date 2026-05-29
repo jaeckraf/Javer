@@ -83,10 +83,20 @@ class GuiTest {
         JarConfigLoader.loadConfiguration();
         
         Path root = getProjectRoot();
-        if (root != null) {
-            System.setProperty("javer.compiler.jar", root.resolve("Compiler/target/Compiler-1.0-SNAPSHOT-all.jar").toString());
-            System.setProperty("javer.vm.jar", root.resolve("VM/target/VM-1.0-SNAPSHOT-all.jar").toString());
-        }
+        System.setProperty("javer.compiler.jar", root.resolve("Compiler/target/Compiler-1.0-SNAPSHOT-all.jar").toString());
+        System.setProperty("javer.vm.jar", root.resolve("VM/target/VM-1.0-SNAPSHOT-all.jar").toString());
+
+        Path compilerJar = root.resolve(
+                "Compiler/target/Compiler-1.0-SNAPSHOT-all.jar");
+
+        Path vmJar = root.resolve(
+                "VM/target/VM-1.0-SNAPSHOT-all.jar");
+
+        assertTrue(Files.exists(compilerJar),
+                "Compiler JAR must be built before running GuiTest");
+
+        assertTrue(Files.exists(vmJar),
+                "VM JAR must be built before running GuiTest");
 
         FXMLLoader fxmlLoader = new FXMLLoader(GuiApplication.class.getResource("gui-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 600, 400);
@@ -388,6 +398,10 @@ class GuiTest {
         TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
         waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Expert Mode set to On."));
+        assertTrue(
+                statusOutput.getText().contains("Expert Mode set to On."),
+                "Status output should confirm expert mode toggle"
+        );
     }
 
     @Test
@@ -487,6 +501,10 @@ class GuiTest {
 
             TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
             waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+            assertTrue(
+                    statusOutput.getText().contains("Configured jar does not exist"),
+                    "Expected error message about missing compiler jar"
+            );
         } finally {
             System.setProperty("javer.compiler.jar", originalCompilerJar);
         }
@@ -532,9 +550,17 @@ class GuiTest {
 
         TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to On."));
+        assertTrue(
+                statusOutput.getText().contains("Dump Lexer set to On."),
+                "Expected log message for enabling Dump Lexer"
+        );
 
         robot.clickOn("#compilerDumpLexerOption");
         waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to Off."));
+        assertTrue(
+                statusOutput.getText().contains("Dump Lexer set to Off."),
+                "Expected log message for disabling Dump Lexer"
+        );
     }
 
     @Test
@@ -578,6 +604,10 @@ class GuiTest {
 
             TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
             waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+            assertTrue(
+                    statusOutput.getText().contains("Configured jar does not exist"),
+                    "Expected VM error message when VM jar is missing"
+            );
         } finally {
             System.setProperty("javer.vm.jar", originalVmJar);
         }

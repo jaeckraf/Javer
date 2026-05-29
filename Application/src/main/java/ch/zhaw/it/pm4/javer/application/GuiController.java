@@ -363,7 +363,7 @@ public class GuiController {
         }
 
         List<String> command = buildCompilerCommand(inputPath);
-        if (command == null) {
+        if (command.isEmpty()) {
             return;
         }
 
@@ -387,7 +387,7 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         List<String> command = buildVmCommand();
-        if (command == null) {
+        if (command.isEmpty()) {
             return;
         }
 
@@ -458,7 +458,7 @@ public class GuiController {
         List<String> compilerCommand = buildCompilerCommand(inputPath);
         List<String> vmCommand = buildVmCommand();
 
-        if (compilerCommand == null || vmCommand == null) {
+        if (compilerCommand.isEmpty() || vmCommand.isEmpty()) {
             return;
         }
 
