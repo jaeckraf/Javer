@@ -16,10 +16,6 @@ public final class TypeRules {
         return type instanceof UnknownTypeInfo;
     }
 
-    public static boolean isVoid(TypeInfo type) {
-        return type instanceof VoidTypeInfo;
-    }
-
     public static boolean isNull(TypeInfo type) {
         return type instanceof NullTypeInfo;
     }
@@ -35,6 +31,10 @@ public final class TypeRules {
         return PrimitiveTypeInfo.INT.equals(type) || PrimitiveTypeInfo.DOUBLE.equals(type);
     }
 
+    public static boolean isBoolean(TypeInfo type) {
+        return PrimitiveTypeInfo.BOOL.equals(type);
+    }
+
     public static boolean isInteger(TypeInfo type) {
         return PrimitiveTypeInfo.INT.equals(type);
     }
@@ -44,7 +44,16 @@ public final class TypeRules {
     }
 
     public static boolean isConditionType(TypeInfo type) {
-        return isUnknown(type) || !isVoid(type);
+        return isUnknown(type) || isBoolean(type);
+    }
+
+    public static boolean isSwitchType(TypeInfo type) {
+        return isUnknown(type)
+                || isNull(type)
+                || isNumeric(type)
+                || isBoolean(type)
+                || isChar(type)
+                || isReferenceType(type);
     }
 
     public static boolean isAssignable(TypeInfo target, TypeInfo source) {
@@ -57,7 +66,7 @@ public final class TypeRules {
         if (target.equals(source)) {
             return true;
         }
-        return PrimitiveTypeInfo.DOUBLE.equals(target) && PrimitiveTypeInfo.INT.equals(source);
+        return isNumeric(target) && isNumeric(source);
     }
 
     public static boolean needsConversion(TypeInfo from, TypeInfo to) {

@@ -1,0 +1,10 @@
+fn void greet() {
+    call prints("hi");
+    return;
+}
+
+fn void main() {
+    call greet();
+    call greet();
+    return;
+}

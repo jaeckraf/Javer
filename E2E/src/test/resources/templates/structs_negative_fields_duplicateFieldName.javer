@@ -1,0 +1,7 @@
+struct S {
+    int x;
+    int x;
+}
+
+fn void main() {
+}

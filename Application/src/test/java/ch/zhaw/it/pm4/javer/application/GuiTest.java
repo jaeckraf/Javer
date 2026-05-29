@@ -27,11 +27,13 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.testfx.util.WaitForAsyncUtils.waitFor;
+import static org.testfx.util.WaitForAsyncUtils.waitForFxEvents;
 
 @ExtendWith(ApplicationExtension.class)
 class GuiTest {
@@ -62,6 +64,27 @@ class GuiTest {
 
     private Path getVmInputFile() {
         return getProjectRoot().resolve("vm-input.jbc");
+    }
+
+    private String textOf(FxRobot robot, String selector) {
+        TextArea textArea = robot.lookup(selector).queryAs(TextArea.class);
+        AtomicReference<String> text = new AtomicReference<>();
+        robot.interact(() -> text.set(textArea.getText()));
+        return text.get();
+    }
+
+    private void clearTextAreas(FxRobot robot, String... selectors) {
+        TextArea[] textAreas = new TextArea[selectors.length];
+        for (int i = 0; i < selectors.length; i++) {
+            textAreas[i] = robot.lookup(selectors[i]).queryAs(TextArea.class);
+        }
+
+        robot.interact(() -> {
+            for (TextArea textArea : textAreas) {
+                textArea.clear();
+            }
+        });
+        waitForFxEvents();
     }
 
     @BeforeAll
@@ -98,10 +121,7 @@ class GuiTest {
 
     @BeforeEach
     void setUp(FxRobot robot) throws IOException {
-        robot.lookup("#consoleInput").queryAs(TextArea.class).clear();
-        robot.lookup("#compilerOutput").queryAs(TextArea.class).clear();
-        robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).clear();
-        robot.lookup("#statusOutput").queryAs(TextArea.class).clear();
+        clearTextAreas(robot, "#consoleInput", "#compilerOutput", "#virtualMachineOutput", "#statusOutput");
 
         Files.deleteIfExists(getConsoleInputFile());
         Files.deleteIfExists(getVmInputFile());
@@ -109,6 +129,10 @@ class GuiTest {
 
     @AfterEach
     void tearDown() throws IOException {
+        if (controller != null) {
+            controller.shutdown();
+            waitForFxEvents();
+        }
         Files.deleteIfExists(getConsoleInputFile());
         Files.deleteIfExists(getVmInputFile());
     }
@@ -122,12 +146,12 @@ class GuiTest {
         robot.clickOn("#runCompilerAndVMButton");
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#compilerOutput");
             return output.toLowerCase().contains("compilation successful");
         });
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#virtualMachineOutput");
             return output.contains("Works!");
         });
 
@@ -142,32 +166,33 @@ class GuiTest {
         robot.clickOn("#runCompilerButton");
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#compilerOutput");
             return output.toLowerCase().contains("compilation successful");
         });
 
         assertTrue(Files.exists(getConsoleInputFile()), "Console input file should be created");
         assertTrue(Files.exists(getVmInputFile()), "VM input file should be created");
-        assertTrue(robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText().isEmpty(), "VM output should be empty");
+        assertTrue(textOf(robot, "#virtualMachineOutput").isEmpty(), "VM output should be empty");
     }
 
     @Test
     void shouldRunVMOnly_whenRunVMButtonIsClicked(FxRobot robot) throws TimeoutException, IOException {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
-        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> textOf(robot, "#compilerOutput").toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> !robot.lookup("#runCompilerButton").queryButton().isDisabled());
+        waitForFxEvents();
 
-        robot.lookup("#compilerOutput").queryAs(TextArea.class).clear();
-        robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).clear();
+        clearTextAreas(robot, "#compilerOutput", "#virtualMachineOutput");
 
         robot.clickOn("#runVMButton");
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#virtualMachineOutput");
             return output.contains("Works!");
         });
 
-        assertTrue(robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().isEmpty(), "Compiler output should be empty");
+        assertTrue(textOf(robot, "#compilerOutput").isEmpty(), "Compiler output should be empty");
     }
 
     @Test
@@ -186,7 +211,7 @@ class GuiTest {
         assertTrue(robot.lookup("#stopVMButton").queryButton().isDisabled());
         robot.clickOn("#consoleInput").write("fn void main () {while (true) {}}");
         robot.clickOn("#runCompilerButton");
-        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> textOf(robot, "#compilerOutput").toLowerCase().contains("compilation successful"));
         robot.clickOn("#runVMButton");
         waitFor(1, TimeUnit.SECONDS, () -> !robot.lookup("#stopVMButton").queryButton().isDisabled());
         robot.clickOn("#stopVMButton");
@@ -199,7 +224,7 @@ class GuiTest {
         assertFalse(Files.exists(getVmInputFile()));
         robot.clickOn("#runVMButton");
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#virtualMachineOutput");
             return output.toLowerCase().contains("error reading file");
         });
     }
@@ -240,7 +265,7 @@ class GuiTest {
         robot.clickOn("#runVMButton");
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#virtualMachineOutput");
             return output.toLowerCase().contains("error");
         });
     }
@@ -252,16 +277,16 @@ class GuiTest {
         robot.doubleClickOn("#runCompilerAndVMButton");
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#compilerOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#compilerOutput");
             return output.toLowerCase().contains("compilation successful");
         });
 
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#virtualMachineOutput");
             return output.contains("Works!");
         });
 
-        String log = robot.lookup("#statusOutput").queryAs(TextArea.class).getText();
+        String log = textOf(robot, "#statusOutput");
         long count = log.lines().filter(line -> line.contains("Starting Compiler with command")).count();
         assertEquals(1, count, "Compiler should only be started once on double-click.");
     }
@@ -308,7 +333,7 @@ class GuiTest {
 
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
-        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> textOf(robot, "#compilerOutput").toLowerCase().contains("compilation successful"));
 
         controller.saveJbcFile(testFile);
         assertTrue(Files.exists(testFile.toPath()));
@@ -318,7 +343,7 @@ class GuiTest {
 
         robot.clickOn("#runVMButton");
         waitFor(10, TimeUnit.SECONDS, () -> {
-            String output = robot.lookup("#virtualMachineOutput").queryAs(TextArea.class).getText();
+            String output = textOf(robot, "#virtualMachineOutput");
             return output.contains("Works!");
         });
 
@@ -376,18 +401,16 @@ class GuiTest {
 
     @Test
     void shouldUpdateLineNumbers_whenTextIsEntered(FxRobot robot) {
-        TextArea lineNumbers = robot.lookup("#consoleInputLineNumbers").queryAs(TextArea.class);
-
-        assertEquals("1", lineNumbers.getText());
+        assertEquals("1", textOf(robot, "#consoleInputLineNumbers"));
         robot.clickOn("#consoleInput").write("line 1\nline 2\nline 3");
-        assertEquals("1\n2\n3", lineNumbers.getText());
+        waitForFxEvents();
+        assertEquals("1\n2\n3", textOf(robot, "#consoleInputLineNumbers"));
     }
     
     @Test
     void shouldLogAction_whenExpertModeIsToggled(FxRobot robot) throws TimeoutException {
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
-        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Expert Mode set to On."));
+        waitFor(2, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Expert Mode set to On."));
     }
 
     @Test
@@ -403,10 +426,9 @@ class GuiTest {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
 
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Starting Compiler with command"));
+        waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Starting Compiler with command"));
 
-        String logText = statusOutput.getText();
+        String logText = textOf(robot, "#statusOutput");
         assertTrue(logText.contains("--dump-lexer"));
         assertTrue(logText.contains("--dump-ast"));
         assertTrue(logText.contains("--dump-symboltable"));
@@ -421,7 +443,7 @@ class GuiTest {
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
         
-        waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
+        waitFor(10, TimeUnit.SECONDS, () -> textOf(robot, "#compilerOutput").toLowerCase().contains("compilation successful"));
 
         robot.interact(() -> {
             ((RadioButton) namespace.get("vmStackSizeKbOption")).setSelected(true);
@@ -430,10 +452,9 @@ class GuiTest {
 
         robot.clickOn("#runVMButton");
 
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Starting VM with command"));
+        waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Starting VM with command"));
 
-        String logText = statusOutput.getText();
+        String logText = textOf(robot, "#statusOutput");
         assertTrue(logText.contains("--stack-size"));
         assertTrue(logText.contains("KB"));
         assertTrue(logText.contains("--dump-on-error"));
@@ -445,7 +466,6 @@ class GuiTest {
         waitFor(2, TimeUnit.SECONDS, () -> robot.lookup("#vmOptionsBox").queryAs(VBox.class).isVisible());
 
         Spinner<Integer> stackSizeSpinner = (Spinner<Integer>) namespace.get("vmStackSizeValueOption");
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         RadioButton vmStackSizeKbOption = (RadioButton) namespace.get("vmStackSizeKbOption");
         RadioButton vmStackSizeMbOption = (RadioButton) namespace.get("vmStackSizeMbOption");
 
@@ -456,20 +476,20 @@ class GuiTest {
         });
 
         robot.interact(() -> stackSizeSpinner.getValueFactory().setValue(8));
-        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size set to 8MB."));
+        waitFor(2, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("VM stack size set to 8MB."));
 
         robot.interact(() -> vmStackSizeKbOption.setSelected(true));
-        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size unit set to KB."));
+        waitFor(2, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("VM stack size unit set to KB."));
         robot.interact(() -> {
             assertEquals(8, stackSizeSpinner.getValue());
             assertEquals(16384, ((SpinnerValueFactory.IntegerSpinnerValueFactory) stackSizeSpinner.getValueFactory()).getMax());
         });
 
         robot.interact(() -> stackSizeSpinner.getValueFactory().setValue(2048));
-        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size set to 2048KB."));
+        waitFor(2, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("VM stack size set to 2048KB."));
 
         robot.interact(() -> vmStackSizeMbOption.setSelected(true));
-        waitFor(2, TimeUnit.SECONDS, () -> statusOutput.getText().contains("VM stack size unit set to MB."));
+        waitFor(2, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("VM stack size unit set to MB."));
         robot.interact(() -> {
             assertEquals(16, stackSizeSpinner.getValue());
             assertEquals(16, ((SpinnerValueFactory.IntegerSpinnerValueFactory) stackSizeSpinner.getValueFactory()).getMax());
@@ -485,8 +505,7 @@ class GuiTest {
             robot.clickOn("#consoleInput").write(TEST_CODE);
             robot.clickOn("#runCompilerButton");
 
-            TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-            waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+            waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Configured jar does not exist"));
         } finally {
             System.setProperty("javer.compiler.jar", originalCompilerJar);
         }
@@ -505,22 +524,20 @@ class GuiTest {
             assertEquals(initialText, consoleInput.getText());
         });
 
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Only .javer files can be loaded as source files."));
+        waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Only .javer files can be loaded as source files."));
 
         Files.deleteIfExists(testFile.toPath());
     }
 
     @Test
     void shouldHandleVariousLineEndingsForLineNumbers(FxRobot robot) {
-        TextArea lineNumbers = robot.lookup("#consoleInputLineNumbers").queryAs(TextArea.class);
         TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
 
         robot.interact(() -> consoleInput.setText("line 1\r\nline 2\nline 3\n"));
-        assertEquals("1\n2\n3\n4", lineNumbers.getText());
+        assertEquals("1\n2\n3\n4", textOf(robot, "#consoleInputLineNumbers"));
 
         robot.interact(() -> consoleInput.setText(""));
-        assertEquals("1", lineNumbers.getText());
+        assertEquals("1", textOf(robot, "#consoleInputLineNumbers"));
     }
 
     @Test
@@ -530,11 +547,10 @@ class GuiTest {
 
         robot.clickOn("#compilerDumpLexerOption");
 
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to On."));
+        waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Dump Lexer set to On."));
 
         robot.clickOn("#compilerDumpLexerOption");
-        waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Dump Lexer set to Off."));
+        waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Dump Lexer set to Off."));
     }
 
     @Test
@@ -542,11 +558,9 @@ class GuiTest {
         robot.clickOn("#consoleInput").write("this is not valid javer code");
         robot.clickOn("#runCompilerButton");
 
-        TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-        waitFor(10, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Compiler finished with exit code"));
+        waitFor(10, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Compiler finished with exit code"));
 
-        TextArea compilerOutput = robot.lookup("#compilerOutput").queryAs(TextArea.class);
-        String output = compilerOutput.getText().toLowerCase();
+        String output = textOf(robot, "#compilerOutput").toLowerCase();
         assertTrue(output.contains("=== error report ==="),
                 "Compiler output should show error report on failure. Actual output:\n" + output);
         assertFalse(output.contains("compilation successful"),
@@ -576,8 +590,7 @@ class GuiTest {
         try {
             robot.clickOn("#runVMButton");
 
-            TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
-            waitFor(5, TimeUnit.SECONDS, () -> statusOutput.getText().contains("Configured jar does not exist"));
+            waitFor(5, TimeUnit.SECONDS, () -> textOf(robot, "#statusOutput").contains("Configured jar does not exist"));
         } finally {
             System.setProperty("javer.vm.jar", originalVmJar);
         }

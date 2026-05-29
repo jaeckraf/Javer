@@ -1,0 +1,10 @@
+enum E {
+    a
+}
+
+enum E {
+    b
+}
+
+fn void main() {
+}

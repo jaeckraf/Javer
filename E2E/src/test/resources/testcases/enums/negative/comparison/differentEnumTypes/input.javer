@@ -1,0 +1,11 @@
+enum A {
+    value
+}
+
+enum B {
+    value
+}
+
+fn void main() {
+    call printb(A.value == B.value);
+}

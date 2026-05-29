@@ -1,0 +1,10 @@
+fn void main() {
+    if () {
+        let int x = 1
+    } else {
+        while true) {
+            x++;
+        }
+    }
+    return;
+}
