@@ -15,16 +15,18 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-import javax.sql.rowset.serial.SerialJavaObject;
-
 /**
  * Stack-based virtual machine for Javer bytecode.
  */
 public class VM {
 
-    public static final String CODE = ".code";
+    public static final String CODE_SECTION = ".code";
+    public static final String DATA_SECTION = ".data";
     public static final String SEPARATOR = "========================================";
-    
+    public static final String LINE = "Line ";
+    public static final String SIZE = ", size=";
+
+
     private static final int DEFAULT_STACK_SIZE = 1024 * 1024;
     private static final int MAX_STACK_SIZE = 16 * 1024 * 1024;
     private static final int STACK_WINDOW = 32;
@@ -42,12 +44,10 @@ public class VM {
     private static final int FRAME_HEADER_SIZE = 16;
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
-    public static final String LINE = "Line ";
-    public static final String DATA = ".data";
 
     private final byte[] stack;
     private final long stackBase;
-    private static final long stackTop = ADDRESS_SPACE_SIZE;
+    private static final long STACK_LIMIT = ADDRESS_SPACE_SIZE;
     private final Map<Integer, Instruction> code = new HashMap<>();
     private final Map<Integer, Integer> instructionLineNumbers = new HashMap<>();
     private final Map<String, Integer> dataLabels = new HashMap<>();
@@ -218,7 +218,7 @@ public class VM {
         validateStackSize(stackSizeBytes);
         this.stack = new byte[stackSizeBytes];
         this.stackBase = ADDRESS_SPACE_SIZE - stackSizeBytes;
-        this.sp = stackTop;
+        this.sp = STACK_LIMIT;
         this.fp = 0;
         this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
         addRegion(new MemoryRegion((int) stackBase, stackSizeBytes, true, "stack", stack));
@@ -251,9 +251,7 @@ public class VM {
             throw new ParseException(errors);
         }
 
-        int instructionAddress = analyzeCodeSection(result, errors);
-
-        programEndAddress = instructionAddress;
+        programEndAddress = analyzeCodeSection(result, errors);
         allocateCodeRegion(CODE_BASE, Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
                 ? 0
                 : programEndAddress - CODE_BASE + 1);
@@ -288,20 +286,24 @@ public class VM {
 
     private void parseDataSection(SectionBounds result, List<String> errors) {
         for (int i = result.dataLineIndex() + 1; i < lines.size(); i++) {
-            String line = stripComment(lines.get(i)).trim();
-            if (!line.isEmpty()) {
-                if (line.equals(CODE) || line.equals(DATA)) {
-                    errors.add(LINE + (i + 1) + ": section marker not allowed inside data section");
-                } else {
-                    if (isLabel(line)) {
-                        errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
-                    }
-                    else {
-                        try {
-                            parseDataLine(line, i + 1);
-                        } catch (ParseException e) {
-                            errors.addAll(e.getErrors());
-                        }
+            handleDataLine(errors, i);
+        }
+    }
+
+    private void handleDataLine(List<String> errors, int i) {
+        String line = stripComment(lines.get(i)).trim();
+        if (!line.isEmpty()) {
+            if (line.equals(CODE_SECTION) || line.equals(DATA_SECTION)) {
+                errors.add(LINE + (i + 1) + ": section marker not allowed inside data section");
+            } else {
+                if (isLabel(line)) {
+                    errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
+                }
+                else {
+                    try {
+                        parseDataLine(line, i + 1);
+                    } catch (ParseException e) {
+                        errors.addAll(e.getErrors());
                     }
                 }
             }
@@ -331,7 +333,7 @@ public class VM {
         for (int i = result.codeLineIndex() + 1; i < result.dataLineIndex(); i++) {
             String line = stripComment(lines.get(i)).trim();
             if (!line.isEmpty()) {
-                if (line.equals(CODE) || line.equals(DATA)) {
+                if (line.equals(CODE_SECTION) || line.equals(DATA_SECTION)) {
                     errors.add(LINE + (i + 1) + ": nested section marker not allowed inside code section");
                 } else if (isLabel(line)) {
                     String labelName = extractLabelName(line);
@@ -355,14 +357,14 @@ public class VM {
         for (int i = 0; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
             switch (line) {
-                case CODE -> {
+                case CODE_SECTION -> {
                     if (codeLineIndex != -1) {
                         errors.add(LINE + (i + 1) + ": duplicate '.code' section");
                     } else {
                         codeLineIndex = i;
                     }
                 }
-                case DATA -> {
+                case DATA_SECTION -> {
                     if (codeLineIndex == -1) {
                         errors.add(LINE + (i + 1) + ": '.data' section must appear after '.code'");
                     } else if (dataLineIndex != -1) {
@@ -506,7 +508,7 @@ public class VM {
     ) throws ParseException {
 
         return switch (kind) {
-            case PUSHI, PUSHD, PUSHR, LOCAL -> PushCase(kind, parts, instrName, lineNumber);
+            case PUSHI, PUSHD, PUSHR, LOCAL -> pushCase(kind, parts, instrName, lineNumber);
             case LOAD1 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readByte(vm.popInt())));
             case LOAD2 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readChar(vm.popInt())));
             case LOAD4 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readInt(vm.popInt())));
@@ -553,91 +555,8 @@ public class VM {
                 int size = parseStackValueSize(parts[1], instrName, lineNumber, false);
                 yield vm -> vm.pushRaw(vm.peekRaw(size));
             }
-            case IADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() + vm.popInt()));
-            case ISUB -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a - b);
-            });
-            case IMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() * vm.popInt()));
-            case IDIV -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                if (b == 0) {
-                    JaverLogger.error(LINE + lineNumber + ": division by zero");
-                    throw new VMExecutionException("Division by zero");
-                }
-                vm.pushInt(a / b);
-            });
-            case IMOD -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                if (b == 0) {
-                    JaverLogger.error(LINE + lineNumber + ": modulo by zero");
-                    throw new VMExecutionException("Modulo by zero");
-                }
-                vm.pushInt(a % b);
-            });
-            case DADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() + vm.popDouble()));
-            case DSUB -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushDouble(a - b);
-            });
-            case DMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() * vm.popDouble()));
-            case DDIV -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                if (b == 0.0) {
-                    JaverLogger.error(LINE + lineNumber + ": division by zero");
-                    throw new VMExecutionException("Division by zero");
-                }
-                vm.pushDouble(a / b);
-            });
-            case ILT -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a < b ? 1 : 0);
-            });
-            case ILE -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a <= b ? 1 : 0);
-            });
-            case IGT -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a > b ? 1 : 0);
-            });
-            case IGE -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a >= b ? 1 : 0);
-            });
-            case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
-            case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
-            case DLT -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a < b ? 1 : 0);
-            });
-            case DLE -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a <= b ? 1 : 0);
-            });
-            case DGT -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a > b ? 1 : 0);
-            });
-            case DGE -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a >= b ? 1 : 0);
-            });
-            case DEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
-            case DNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
+            case IADD, ISUB, IMUL, IDIV, IMOD, DADD, DSUB, DMUL, DDIV -> arithmeticCase(kind, parts, instrName, lineNumber);
+            case ILT, ILE, IGT, IGE, IEQ, INE, DLT, DLE, DGT, DGE, DEQ, DNE -> comparisonCase(kind, parts, instrName, lineNumber);
             case STREQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case STRNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case ISHL -> noOperand(parts, instrName, lineNumber, vm -> {
@@ -706,7 +625,7 @@ public class VM {
         };
     }
 
-    private Instruction PushCase(InstructionKind kind,
+    private Instruction pushCase(InstructionKind kind,
                                  String[] parts,
                                  String instrName,
                                  int lineNumber) throws ParseException {
@@ -731,6 +650,115 @@ public class VM {
                 int offset = parseIntOperand(parts[1], instrName, lineNumber);
                 yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
             }
+            default -> {
+                JaverLogger.error("Invalid kind: " + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
+            }
+        };
+    }
+
+    private Instruction arithmeticCase(InstructionKind kind,
+                                 String[] parts,
+                                 String instrName,
+                                 int lineNumber) throws ParseException {
+        return switch (kind) {
+            case IADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() + vm.popInt()));
+            case ISUB -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                vm.pushInt(a - b);
+            });
+            case IMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() * vm.popInt()));
+            case IDIV -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                if (b == 0) {
+                    JaverLogger.error(LINE + lineNumber + ": division by zero");
+                    throw new VMExecutionException("Division by zero");
+                }
+                vm.pushInt(a / b);
+            });
+            case IMOD -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                if (b == 0) {
+                    JaverLogger.error(LINE + lineNumber + ": modulo by zero");
+                    throw new VMExecutionException("Modulo by zero");
+                }
+                vm.pushInt(a % b);
+            });
+            case DADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() + vm.popDouble()));
+            case DSUB -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                vm.pushDouble(a - b);
+            });
+            case DMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() * vm.popDouble()));
+            case DDIV -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                if (b == 0.0) {
+                    JaverLogger.error(LINE + lineNumber + ": division by zero");
+                    throw new VMExecutionException("Division by zero");
+                }
+                vm.pushDouble(a / b);
+            });
+            default -> {
+                JaverLogger.error("Invalid kind: " + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
+            }
+        };
+    }
+
+    private Instruction comparisonCase(InstructionKind kind,
+                                 String[] parts,
+                                 String instrName,
+                                 int lineNumber) throws ParseException {
+        return switch (kind) {
+            case ILT -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                vm.pushInt(a < b ? 1 : 0);
+            });
+            case ILE -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                vm.pushInt(a <= b ? 1 : 0);
+            });
+            case IGT -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                vm.pushInt(a > b ? 1 : 0);
+            });
+            case IGE -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                vm.pushInt(a >= b ? 1 : 0);
+            });
+            case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
+            case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
+            case DLT -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                vm.pushInt(a < b ? 1 : 0);
+            });
+            case DLE -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                vm.pushInt(a <= b ? 1 : 0);
+            });
+            case DGT -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                vm.pushInt(a > b ? 1 : 0);
+            });
+            case DGE -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                vm.pushInt(a >= b ? 1 : 0);
+            });
+            case DEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
+            case DNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
             default -> {
                 JaverLogger.error("Invalid kind: " + kind);
                 yield vm -> vm.pushInt(vm.frameAddress(-1, "Error"));
@@ -1035,15 +1063,15 @@ public class VM {
             throw new VMExecutionException("Negative memory access size: " + size);
         }
         if (address == NULL_REF) {
-            JaverLogger.error("Memory access to null reference (address=" + formatAddress(address) + ", size=" + size + ")");
+            JaverLogger.error("Memory access to null reference (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException("Null reference");
         }
 
         long start = Integer.toUnsignedLong(address);
         long end = start + size;
         if (end > ADDRESS_SPACE_SIZE) {
-            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")");
-            throw new VMExecutionException("Memory access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")");
+            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
+            throw new VMExecutionException("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
         }
 
         Map.Entry<Integer, MemoryRegion> entry = regions.floorEntry(address);
@@ -1056,9 +1084,9 @@ public class VM {
         long regionBase = Integer.toUnsignedLong(region.base());
         long regionEnd = regionEnd(region);
         if (start < regionBase || end > regionEnd) {
-            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")");
+            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException(
-                    region.name() + " access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")"
+                    region.name() + " access out of bounds (address=" + formatAddress(address) + SIZE + size + ")"
             );
         }
 
@@ -1068,7 +1096,7 @@ public class VM {
     private MemoryAccess resolveWritableRegion(int address, int size) {
         MemoryAccess access = resolveRegion(address, size);
         if (!access.region().writable()) {
-            JaverLogger.error("Writable memory access to read-only region (address=" + formatAddress(address) + ", size=" + size + ")");
+            JaverLogger.error("Writable memory access to read-only region (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException(access.region().name() + " is read-only");
         }
         return access;
@@ -1220,7 +1248,7 @@ public class VM {
         int previousFp = readInt(checkedAddress(fp + FRAME_PREVIOUS_FP_OFFSET, "RET"));
 
         sp = fp + FRAME_HEADER_SIZE + argBytes;
-        if (sp < stackBase || sp > stackTop) {
+        if (sp < stackBase || sp > STACK_LIMIT) {
             JaverLogger.error("RET: restored stack pointer out of bounds");
             throw new VMExecutionException("RET: restored stack pointer is out of bounds");
         }
@@ -1259,7 +1287,7 @@ public class VM {
     }
 
     private int stackBytesUsed() {
-        long used = stackTop - sp;
+        long used = STACK_LIMIT - sp;
         if (used > Integer.MAX_VALUE) {
             return Integer.MAX_VALUE;
         }
@@ -1298,7 +1326,7 @@ public class VM {
             JaverLogger.error("Negative stack pop size: " + bytesToPop);
             throw new VMExecutionException("Negative stack pop size: " + bytesToPop);
         }
-        if (sp + bytesToPop > stackTop) {
+        if (sp + bytesToPop > STACK_LIMIT) {
             JaverLogger.error("Stack underflow while popping " + bytesToPop + " byte(s)");
             throw new VMExecutionException("Stack underflow while popping " + bytesToPop + " byte(s)");
         }
@@ -1549,7 +1577,7 @@ public class VM {
         public String toString() {
             return "MemoryRegion{" +
                     "base=" + base +
-                    ", size=" + size +
+                    SIZE + size +
                     ", writable=" + writable +
                     ", name='" + name + '\'' +
                     ", bytes=" + java.util.Arrays.toString(bytes) +

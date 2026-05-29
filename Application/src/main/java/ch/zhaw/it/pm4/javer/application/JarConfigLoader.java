@@ -29,8 +29,8 @@ public final class JarConfigLoader {
     public static void loadConfiguration() {
         try {
             Properties props = loadPropertiesFromClasspath();
-            
-            if (props != null) {
+
+            if (!props.isEmpty()) {
                 setSystemProperties(props);
                 logLoadedConfiguration();
             } else {

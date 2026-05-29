@@ -69,6 +69,8 @@ public class AstPrinter extends AstNodeVisitorBase {
     public static final String CONDITION = "condition";
     public static final String TARGET = "target";
     public static final String OPERATOR = "operator";
+    public static final String SIZE_BYTES = "sizeBytes";
+
     private final List<Boolean> isLastStack = new ArrayList<>();
     private Appendable output;
 
@@ -471,7 +473,7 @@ public class AstPrinter extends AstNodeVisitorBase {
             switch (entry) {
                 case StorageEntry storage -> {
                     children.add(childIsLast -> scalarChild("type", storage.getType(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("sizeBytes", storage.getSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild(SIZE_BYTES, storage.getSizeBytes(), null, childIsLast));
                     children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
                     if (entry instanceof VariableEntry variable) {
                         children.add(childIsLast -> scalarChild("hasExplicitInitializer", variable.hasExplicitInitializer(), null, childIsLast));
@@ -489,7 +491,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                     }
                 }
                 case StructEntry struct -> {
-                    children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild(SIZE_BYTES, struct.getSizeBytes(), null, childIsLast));
                     if (hasStructScopeContent(struct.getScope())) {
                         children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
                     }
@@ -497,7 +499,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                 case EnumEntry enumEntry -> {
                     children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
                     children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("sizeBytes", enumEntry.getSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild(SIZE_BYTES, enumEntry.getSizeBytes(), null, childIsLast));
                     if (hasEnumScopeContent(enumEntry.getScope())) {
                         children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
                     }
@@ -505,7 +507,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                 case EnumValueEntry enumValue -> {
                     children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
                     children.add(childIsLast -> scalarChild(VALUE, enumValue.getValue(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("sizeBytes", enumValue.getSizeBytes(), null, childIsLast));
+                    children.add(childIsLast -> scalarChild(SIZE_BYTES, enumValue.getSizeBytes(), null, childIsLast));
                     children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
                     children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
                 }
@@ -515,9 +517,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                     children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
                     children.add(childIsLast -> scalarChild(VALUE, quoteValue(dataEntry.getValue()), null, childIsLast));
                 }
-                default -> {
-                    JaverLogger.error("Invalid entry type " + entry.getClass());
-                }
+                default -> JaverLogger.error("Invalid entry type " + entry.getClass());
             }
             visitMany(children);
         }, isLast);

@@ -87,10 +87,10 @@ class ManagedProcessRunnerTest {
         var completionOpt = runner.start(command);
         assertTrue(completionOpt.isPresent());
 
-        long deadline = System.currentTimeMillis() + 2000;
+        long deadline = System.currentTimeMillis() + 500;
 
         while (!runner.isRunning() && System.currentTimeMillis() < deadline) {
-            Thread.sleep(10);
+            Thread.onSpinWait();
         }
         assertTrue(runner.isRunning());
 

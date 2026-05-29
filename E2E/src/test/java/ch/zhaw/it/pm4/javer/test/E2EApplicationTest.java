@@ -650,7 +650,7 @@ public final class E2EApplicationTest {
                 continue;
             }
 
-            if (result.length() > 0) {
+            if (!result.isEmpty()) {
                 result.append("\n");
             }
             result.append(line);

@@ -62,7 +62,7 @@ class ParserRecoverySnapshotTest {
                 + ". Actual output was also written to " + actualFile);
     }
 
-    private DiagnosticBag parse(Path sourceFile) throws Exception {
+    private DiagnosticBag parse(Path sourceFile) {
         SourceCache sourceCache = new SourceCache(sourceFile.toString());
         DiagnosticBag diagnosticBag = new DiagnosticBag(
                 sourceFile.toString(),

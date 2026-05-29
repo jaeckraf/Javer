@@ -19,6 +19,7 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolDeclarationVisitor;
 import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableAstPrinter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.TypeCheckVisitor;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Coordinates one complete compiler invocation from command-line options to
@@ -71,7 +72,7 @@ public class Compiler {
                 System.exit(1);
             }
         } catch (IllegalArgumentException exception) {
-            System.err.println(exception.getMessage());
+            JaverLogger.error(exception.getMessage());
             System.exit(2);
         }
     }

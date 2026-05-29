@@ -15,7 +15,8 @@ class TokenTest {
     @Test
     @DisplayName("Should throw NullPointerException with correct message when type is null")
     void testTokenTypeCannotBeNull() {
-        NullPointerException exception = assertThrows(NullPointerException.class, () -> new Token(null, "value", new SourceLocation(1, 2, 1)));
+        SourceLocation sourceLocation = new SourceLocation(1, 2, 1);
+        NullPointerException exception = assertThrows(NullPointerException.class, () -> new Token(null, "value", sourceLocation));
         assertEquals("Token type cannot be null", exception.getMessage());
     }
     
