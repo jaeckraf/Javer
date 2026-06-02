@@ -1,8 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.builtin;
 
-import java.util.Arrays;
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
@@ -10,6 +7,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Registry of VM-backed functions provided by the language runtime.
@@ -47,8 +47,8 @@ public enum BuiltInFunction {
      * @return the matching BuiltInFunction or {@code null} if not found
      */
     public static BuiltInFunction find(String name) {
-        for(BuiltInFunction builtInFunction : values()) {
-            if(builtInFunction.getName().equals(name)) return builtInFunction;
+        for (BuiltInFunction builtInFunction : values()) {
+            if (builtInFunction.getName().equals(name)) return builtInFunction;
         }
         return null;
     }

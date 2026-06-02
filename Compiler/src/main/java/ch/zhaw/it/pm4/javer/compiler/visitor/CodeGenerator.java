@@ -1,17 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
@@ -19,57 +7,22 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignOperator;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BreakStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CastExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ContinueStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitExpressionList;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ReturnStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.StatementAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.misc.JaverLogger;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
 
 /**
  * Emits VM bytecode from a semantically checked AST.
@@ -94,9 +47,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private final DiagnosticBag diagnostics;
     private final Path outputFile;
     private final StringBuilder output = new StringBuilder();
+    private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private DataSection dataSection;
     private FunctionEntry currentFunction;
-    private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
     private boolean outputDirectoryReady = true;
     private boolean failed;
@@ -754,8 +707,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
             ParameterEntry variadicParameter) {
         return node.getArguments().size() == fixedCount + 1
                 && TypeRules.isAssignable(
-                        variadicParameter.getType(),
-                        node.getArguments().get(fixedCount).getResultingType());
+                variadicParameter.getType(),
+                node.getArguments().get(fixedCount).getResultingType());
     }
 
     private void emitVariadicArray(List<ExpressionAstNode> arguments, int firstVariadicIndex, TypeInfo elementType) {

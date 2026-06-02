@@ -1,21 +1,20 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
+
+import java.util.List;
 
 /**
  * AST node for a struct declaration and its fields.
  */
 public final class StructDeclaration extends AstNodeBase implements DeclarationAstNode {
 
-     private final String name;
-     private final List<StructField> fields;
-     private StructScope structScope;
-     private StructEntry symbolEntry;
+    private final String name;
+    private final List<StructField> fields;
+    private StructScope structScope;
+    private StructEntry symbolEntry;
 
     public StructDeclaration(String name, List<StructField> fields) {
         this.name = name;
@@ -47,7 +46,7 @@ public final class StructDeclaration extends AstNodeBase implements DeclarationA
     }
 
     @Override
-     public void accept(ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor visitor) {
+    public void accept(ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor visitor) {
         visitor.visit(this);
-     }
+    }
 }

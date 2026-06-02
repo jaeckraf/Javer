@@ -1,8 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import java.nio.file.Path;
-
 import ch.zhaw.it.pm4.misc.JaverLogger;
+
+import java.nio.file.Path;
 
 /**
  * Validated command-line configuration for one compiler run.
@@ -42,49 +42,6 @@ public class CompilerOptions {
         this.dumpLexer = dumpLexer;
         this.dumpAst = dumpAst;
         this.dumpSymbolTable = dumpSymbolTable;
-    }
-
-    /**
-     * @return source file path with a {@code .javer} extension
-     */
-    public String getInputFilePath() {
-        return inputFilePath;
-    }
-
-    /**
-     * @return normalized bytecode output file path with a {@code .jbc}
-     *         extension
-     */
-    public String getOutputFilePath() {
-        return outputFilePath;
-    }
-
-    /**
-     * @return true when compiler-internal logging is enabled
-     */
-    public boolean isLoggingEnabled() {
-        return loggingEnabled;
-    }
-
-    /**
-     * @return true when token dump output should be printed
-     */
-    public boolean isDumpLexer() {
-        return dumpLexer;
-    }
-
-    /**
-     * @return true when AST dump output should be printed
-     */
-    public boolean isDumpAst() {
-        return dumpAst;
-    }
-
-    /**
-     * @return true when symbol-table dump output should be printed
-     */
-    public boolean isDumpSymbolTable() {
-        return dumpSymbolTable;
     }
 
     /**
@@ -185,5 +142,48 @@ public class CompilerOptions {
     private static String fileName(String path) {
         Path fileName = Path.of(path).getFileName();
         return fileName == null ? path : fileName.toString();
+    }
+
+    /**
+     * @return source file path with a {@code .javer} extension
+     */
+    public String getInputFilePath() {
+        return inputFilePath;
+    }
+
+    /**
+     * @return normalized bytecode output file path with a {@code .jbc}
+     * extension
+     */
+    public String getOutputFilePath() {
+        return outputFilePath;
+    }
+
+    /**
+     * @return true when compiler-internal logging is enabled
+     */
+    public boolean isLoggingEnabled() {
+        return loggingEnabled;
+    }
+
+    /**
+     * @return true when token dump output should be printed
+     */
+    public boolean isDumpLexer() {
+        return dumpLexer;
+    }
+
+    /**
+     * @return true when AST dump output should be printed
+     */
+    public boolean isDumpAst() {
+        return dumpAst;
+    }
+
+    /**
+     * @return true when symbol-table dump output should be printed
+     */
+    public boolean isDumpSymbolTable() {
+        return dumpSymbolTable;
     }
 }

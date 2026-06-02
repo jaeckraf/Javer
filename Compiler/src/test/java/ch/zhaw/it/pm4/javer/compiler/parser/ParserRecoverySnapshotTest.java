@@ -26,6 +26,15 @@ class ParserRecoverySnapshotTest {
     private static final Path DEFAULT_RESOURCE_ROOT = defaultResourceRoot();
     private static final Path OUTPUT_ROOT = Path.of("target", "parser-recovery-output");
 
+    private static Path defaultResourceRoot() {
+        Path fromProjectRoot = Path.of("Compiler", "src", "test", "resources", "parser-recovery");
+        if (Files.isDirectory(fromProjectRoot)) {
+            return fromProjectRoot;
+        }
+
+        return Path.of("src", "test", "resources", "parser-recovery");
+    }
+
     @TestFactory
     Stream<DynamicTest> parserRecoveryFixturesMatchSnapshots() throws Exception {
         Path resourceRoot = Path.of(System.getProperty("parser.recovery.resources", DEFAULT_RESOURCE_ROOT.toString()));
@@ -100,14 +109,5 @@ class ParserRecoverySnapshotTest {
                 .replace('\r', '\n')
                 .replaceAll("[ \t]+\\n", "\n")
                 .strip();
-    }
-
-    private static Path defaultResourceRoot() {
-        Path fromProjectRoot = Path.of("Compiler", "src", "test", "resources", "parser-recovery");
-        if (Files.isDirectory(fromProjectRoot)) {
-            return fromProjectRoot;
-        }
-
-        return Path.of("src", "test", "resources", "parser-recovery");
     }
 }

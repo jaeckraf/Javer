@@ -33,12 +33,12 @@ public final class MemberAccessExpression extends ExpressionAstNodeBase {
         visitor.visit(this);
     }
 
-    public void setValue(int value) {
-        this.value = value;
-    }
-
     public int getValue() {
         return value;
+    }
+
+    public void setValue(int value) {
+        this.value = value;
     }
 
     public FieldEntry getResolvedField() {

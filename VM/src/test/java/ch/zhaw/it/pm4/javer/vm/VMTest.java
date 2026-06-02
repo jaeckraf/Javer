@@ -7,7 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class VMTest {
 
@@ -25,7 +26,7 @@ class VMTest {
                 PUSHI, 0
                 IDIV
                 RET, 0
-
+                
                 .data
                 """, StandardCharsets.UTF_8);
 

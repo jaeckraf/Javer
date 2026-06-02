@@ -19,12 +19,12 @@ public class Token {
     private final TokenType type;
     private final String value;
     private final SourceLocation position;
-    
+
     /**
      * Creates a new Token with the specified type, value, and position.
-     * 
-     * @param type the type of the token (must not be null)
-     * @param value the string value of the token
+     *
+     * @param type     the type of the token (must not be null)
+     * @param value    the string value of the token
      * @param position the position of the token in the source (must not be null)
      * @throws NullPointerException if type or position is null
      */
@@ -33,35 +33,35 @@ public class Token {
         this.position = Objects.requireNonNull(position, "Token position cannot be null");
         this.value = value;
     }
-    
+
     /**
      * Gets the type of this token.
-     * 
+     *
      * @return the TokenType of this token
      */
     public TokenType getTokenType() {
         return type;
     }
-    
+
     /**
      * Gets the string value of this token.
-     * 
+     *
      * @return the token's value
      */
     public String getValue() {
         return value;
     }
-    
+
     /**
      * Gets the position of this token in the source code.
      * This is useful for error reporting and diagnostics.
-     * 
+     *
      * @return the position of the token
      */
     public SourceLocation getPosition() {
         return position;
     }
-    
+
     @Override
     public String toString() {
         return String.format(

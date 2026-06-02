@@ -1,20 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +17,6 @@ public final class SymbolTableAstPrinter extends AstPrinter {
     public static final String SIZE_BYTES = "sizeBytes";
     public static final String OFFSET_BYTES = "offsetBytes";
     public static final String NONE = "<none>";
-
 
 
     @Override

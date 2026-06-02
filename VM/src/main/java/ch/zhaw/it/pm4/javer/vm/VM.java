@@ -7,13 +7,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * Stack-based virtual machine for Javer bytecode.
@@ -25,18 +19,16 @@ public class VM {
     public static final String SEPARATOR = "========================================";
     public static final String LINE = "Line ";
     public static final String SIZE = ", size=";
-
-
+    public static final String INVALID_KIND = "Invalid kind: ";
+    public static final String ERROR = "Error";
     private static final int DEFAULT_STACK_SIZE = 1024 * 1024;
     private static final int MAX_STACK_SIZE = 16 * 1024 * 1024;
     private static final int STACK_WINDOW = 32;
-
     private static final int NULL_REF = 0;
     private static final int DATA_BASE = 0x00001000;
     private static final int CODE_BASE = 0x01000000;
     private static final int HEAP_BASE = 0x10000000;
     private static final long ADDRESS_SPACE_SIZE = 1L << 32;
-
     private static final int FRAME_LOCAL_BYTES_OFFSET = 0;
     private static final int FRAME_ARG_BYTES_OFFSET = 4;
     private static final int FRAME_RETURN_PC_OFFSET = 8;
@@ -44,12 +36,9 @@ public class VM {
     private static final int FRAME_HEADER_SIZE = 16;
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
-    public static final String INVALID_KIND = "Invalid kind: ";
-    public static final String ERROR = "Error";
-
+    private static final long STACK_LIMIT = ADDRESS_SPACE_SIZE;
     private final byte[] stack;
     private final long stackBase;
-    private static final long STACK_LIMIT = ADDRESS_SPACE_SIZE;
     private final Map<Integer, Instruction> code = new HashMap<>();
     private final Map<Integer, Integer> instructionLineNumbers = new HashMap<>();
     private final Map<String, Integer> dataLabels = new HashMap<>();
@@ -64,6 +53,36 @@ public class VM {
     private int nextHeapAddress = HEAP_BASE;
     private int programEndAddress = CODE_BASE;
     private boolean halted;
+
+    /**
+     * Loads and parses a bytecode program.
+     *
+     * @param filePath path to the bytecode file
+     * @throws IOException    if the bytecode file cannot be read
+     * @throws ParseException if bytecode parsing fails
+     */
+    public VM(String filePath) throws IOException, ParseException {
+        this(filePath, DEFAULT_STACK_SIZE);
+    }
+
+    /**
+     * Loads and parses a bytecode program with a custom VM stack size.
+     *
+     * @param filePath       path to the bytecode file
+     * @param stackSizeBytes stack size in bytes
+     * @throws IOException    if the bytecode file cannot be read
+     * @throws ParseException if bytecode parsing fails
+     */
+    public VM(String filePath, int stackSizeBytes) throws IOException, ParseException {
+        validateStackSize(stackSizeBytes);
+        this.stack = new byte[stackSizeBytes];
+        this.stackBase = ADDRESS_SPACE_SIZE - stackSizeBytes;
+        this.sp = STACK_LIMIT;
+        this.fp = 0;
+        this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
+        addRegion(new MemoryRegion((int) stackBase, stackSizeBytes, true, "stack", stack));
+        parse();
+    }
 
     /**
      * Starts the VM for a bytecode file.
@@ -197,36 +216,6 @@ public class VM {
         }
     }
 
-    /**
-     * Loads and parses a bytecode program.
-     *
-     * @param filePath path to the bytecode file
-     * @throws IOException    if the bytecode file cannot be read
-     * @throws ParseException if bytecode parsing fails
-     */
-    public VM(String filePath) throws IOException, ParseException {
-        this(filePath, DEFAULT_STACK_SIZE);
-    }
-
-    /**
-     * Loads and parses a bytecode program with a custom VM stack size.
-     *
-     * @param filePath       path to the bytecode file
-     * @param stackSizeBytes stack size in bytes
-     * @throws IOException    if the bytecode file cannot be read
-     * @throws ParseException if bytecode parsing fails
-     */
-    public VM(String filePath, int stackSizeBytes) throws IOException, ParseException {
-        validateStackSize(stackSizeBytes);
-        this.stack = new byte[stackSizeBytes];
-        this.stackBase = ADDRESS_SPACE_SIZE - stackSizeBytes;
-        this.sp = STACK_LIMIT;
-        this.fp = 0;
-        this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
-        addRegion(new MemoryRegion((int) stackBase, stackSizeBytes, true, "stack", stack));
-        parse();
-    }
-
     private static void validateStackSize(int stackSizeBytes) {
         if (stackSizeBytes < 1 || stackSizeBytes > MAX_STACK_SIZE) {
             JaverLogger.error("stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes");
@@ -300,8 +289,7 @@ public class VM {
             } else {
                 if (isLabel(line)) {
                     errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
-                }
-                else {
+                } else {
                     try {
                         parseDataLine(line, i + 1);
                     } catch (ParseException e) {
@@ -381,9 +369,6 @@ public class VM {
             }
         }
         return new SectionBounds(codeLineIndex, dataLineIndex);
-    }
-
-    private record SectionBounds(int codeLineIndex, int dataLineIndex) {
     }
 
     private int nextCodeAddress(int address, int lineNumber, List<String> errors) {
@@ -557,11 +542,14 @@ public class VM {
                 int size = parseStackValueSize(parts[1], instrName, lineNumber, false);
                 yield vm -> vm.pushRaw(vm.peekRaw(size));
             }
-            case IADD, ISUB, IMUL, IDIV, IMOD, DADD, DSUB, DMUL, DDIV -> arithmeticCase(kind, parts, instrName, lineNumber);
+            case IADD, ISUB, IMUL, IDIV, IMOD, DADD, DSUB, DMUL, DDIV ->
+                    arithmeticCase(kind, parts, instrName, lineNumber);
             case ILT, ILE, IGT, IGE, IEQ, INE -> integerComparisonCase(kind, parts, instrName, lineNumber);
             case DLT, DLE, DGT, DGE, DEQ, DNE -> doubleComparisonCase(kind, parts, instrName, lineNumber);
-            case STREQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
-            case STRNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
+            case STREQ ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
+            case STRNE ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case ISHL -> noOperand(parts, instrName, lineNumber, vm -> {
                 int b = vm.popInt();
                 int a = vm.popInt();
@@ -661,9 +649,9 @@ public class VM {
     }
 
     private Instruction arithmeticCase(InstructionKind kind,
-                                 String[] parts,
-                                 String instrName,
-                                 int lineNumber) throws ParseException {
+                                       String[] parts,
+                                       String instrName,
+                                       int lineNumber) throws ParseException {
         return switch (kind) {
             case IADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() + vm.popInt()));
             case ISUB -> noOperand(parts, instrName, lineNumber, vm -> {
@@ -714,9 +702,9 @@ public class VM {
     }
 
     private Instruction integerComparisonCase(InstructionKind kind,
-                                 String[] parts,
-                                 String instrName,
-                                 int lineNumber) throws ParseException {
+                                              String[] parts,
+                                              String instrName,
+                                              int lineNumber) throws ParseException {
         return switch (kind) {
             case ILT -> noOperand(parts, instrName, lineNumber, vm -> {
                 int b = vm.popInt();
@@ -748,9 +736,9 @@ public class VM {
     }
 
     private Instruction doubleComparisonCase(InstructionKind kind,
-                                       String[] parts,
-                                       String instrName,
-                                       int lineNumber) throws ParseException {
+                                             String[] parts,
+                                             String instrName,
+                                             int lineNumber) throws ParseException {
         return switch (kind) {
             case DLT -> noOperand(parts, instrName, lineNumber, vm -> {
                 double b = vm.popDouble();
@@ -772,8 +760,10 @@ public class VM {
                 double a = vm.popDouble();
                 vm.pushInt(a >= b ? 1 : 0);
             });
-            case DEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
-            case DNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
+            case DEQ ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
+            case DNE ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
             default -> {
                 JaverLogger.error(INVALID_KIND + kind);
                 yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
@@ -1535,11 +1525,6 @@ public class VM {
         }
     }
 
-    @FunctionalInterface
-    private interface Instruction {
-        void execute(VM vm);
-    }
-
     private enum InstructionKind {
         PUSHI, PUSHD, PUSHR,
         LOCAL,
@@ -1562,6 +1547,14 @@ public class VM {
         PRINTB, PRINTC, PRINTI, PRINTD, PRINTS
     }
 
+    @FunctionalInterface
+    private interface Instruction {
+        void execute(VM vm);
+    }
+
+    private record SectionBounds(int codeLineIndex, int dataLineIndex) {
+    }
+
     private record PendingJumpCheck(String labelName, int lineNumber) {
     }
 
@@ -1572,7 +1565,8 @@ public class VM {
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof MemoryRegion(int base1, int size1, boolean writable1, String name1, byte[] bytes1))) return false;
+            if (!(o instanceof MemoryRegion(int base1, int size1, boolean writable1, String name1, byte[] bytes1)))
+                return false;
 
             return base == base1
                     && size == size1

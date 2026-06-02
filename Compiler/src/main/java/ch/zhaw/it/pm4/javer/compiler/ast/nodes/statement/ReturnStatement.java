@@ -15,16 +15,21 @@ public final class ReturnStatement extends AstNodeBase implements StatementAstNo
         this.expression = builder.expression;
     }
 
-    public ExpressionAstNode getExpression() {
-        return expression;
-    }
-
     public static Builder builder() {
         return new Builder();
     }
 
     public static Builder builder(ExpressionAstNode expression) {
         return new Builder().expression(expression);
+    }
+
+    public ExpressionAstNode getExpression() {
+        return expression;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 
     public static final class Builder {
@@ -38,10 +43,5 @@ public final class ReturnStatement extends AstNodeBase implements StatementAstNo
         public ReturnStatement build() {
             return new ReturnStatement(this);
         }
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

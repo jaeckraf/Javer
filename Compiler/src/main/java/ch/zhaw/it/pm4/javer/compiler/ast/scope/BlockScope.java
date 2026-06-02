@@ -1,12 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 
 /**
  * Symbol scope for local variables declared inside a block.

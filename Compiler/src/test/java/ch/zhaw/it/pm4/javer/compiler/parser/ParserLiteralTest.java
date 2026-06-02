@@ -109,7 +109,7 @@ class ParserLiteralTest {
         assertEquals(LiteralKind.CHAR, expr.getKind());
         assertEquals('a', expr.getValue());
     }
-    
+
     @Test
     void testParseCharEscaped() throws Exception {
         Parser parser = createParser(token(TokenType.LITERAL_CHAR, "\n"), token(TokenType.SPECIAL_END_OF_FILE, ""));

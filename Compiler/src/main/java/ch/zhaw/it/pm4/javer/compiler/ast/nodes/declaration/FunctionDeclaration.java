@@ -1,13 +1,13 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
-import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
+import java.util.List;
 
 /**
  * AST node for a function declaration, including return type, parameters, and body.

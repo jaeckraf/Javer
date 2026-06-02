@@ -10,6 +10,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TypeRulesTest {
 
+    private static StructTypeInfo structType(String name) {
+        return new StructTypeInfo(new StructEntry(name));
+    }
+
+    private static EnumTypeInfo enumType(String name) {
+        return new EnumTypeInfo(new EnumEntry(name));
+    }
+
     @Test
     void assignabilityAllowsExactTypesAndNumericConversions() {
         assertAll(
@@ -262,13 +270,5 @@ class TypeRulesTest {
         assertEquals(new ArrayTypeInfo(new ArrayTypeInfo(new ArrayTypeInfo(PrimitiveTypeInfo.CHAR))), nestedArray);
         assertEquals(PrimitiveTypeInfo.CHAR, TypeRules.leafElementType(nestedArray));
         assertEquals(PrimitiveTypeInfo.INT, TypeRules.arrayType(PrimitiveTypeInfo.INT, 0));
-    }
-
-    private static StructTypeInfo structType(String name) {
-        return new StructTypeInfo(new StructEntry(name));
-    }
-
-    private static EnumTypeInfo enumType(String name) {
-        return new EnumTypeInfo(new EnumEntry(name));
     }
 }

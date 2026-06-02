@@ -15,7 +15,7 @@ public class CompilationContext {
     /**
      * Creates a compilation context from the phase-shared objects.
      *
-     * @param options compiler options for this run
+     * @param options     compiler options for this run
      * @param diagnostics diagnostic collector for this run
      * @param sourceCache cached source text and source file metadata
      */

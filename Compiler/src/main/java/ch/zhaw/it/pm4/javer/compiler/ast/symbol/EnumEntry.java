@@ -7,9 +7,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
  */
 public final class EnumEntry extends SymbolEntry {
 
-    private EnumScope scope;
     private final String dataLabel;
     private final int elementSizeBytes;
+    private EnumScope scope;
     private int sizeBytes;
 
     public EnumEntry(String name) {

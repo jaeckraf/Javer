@@ -24,7 +24,7 @@ public final class JaverLogger {
     /**
      * Logs a debug message with a throwable.
      *
-     * @param message message text
+     * @param message   message text
      * @param throwable related throwable
      */
     public static void debug(String message, Throwable throwable) {
@@ -43,7 +43,7 @@ public final class JaverLogger {
     /**
      * Logs an informational message with a throwable.
      *
-     * @param message message text
+     * @param message   message text
      * @param throwable related throwable
      */
     public static void info(String message, Throwable throwable) {
@@ -62,7 +62,7 @@ public final class JaverLogger {
     /**
      * Logs a warning message with a throwable.
      *
-     * @param message message text
+     * @param message   message text
      * @param throwable related throwable
      */
     public static void warning(String message, Throwable throwable) {
@@ -81,7 +81,7 @@ public final class JaverLogger {
     /**
      * Logs an error message with a throwable.
      *
-     * @param message message text
+     * @param message   message text
      * @param throwable related throwable
      */
     public static void error(String message, Throwable throwable) {

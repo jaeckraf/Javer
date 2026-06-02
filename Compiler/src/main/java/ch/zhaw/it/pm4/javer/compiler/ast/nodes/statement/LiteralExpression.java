@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
 import java.util.Objects;
 
 /**
@@ -8,6 +9,7 @@ import java.util.Objects;
  *
  * @param <V> the type of the value held by this literal expression
  */
+
 /**
  * Expression node representing a literal value.
  *

@@ -1,45 +1,22 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Builds scopes and symbol-table entries for declarations before name
@@ -62,6 +39,10 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
      */
     public SymbolDeclarationVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
+    }
+
+    private static Object defaultValueOf(TypeInfo type) {
+        return TypeRules.defaultValue(type);
     }
 
     @Override
@@ -405,9 +386,5 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             }
             case INVALID -> UnknownTypeInfo.INSTANCE;
         };
-    }
-
-    private static Object defaultValueOf(TypeInfo type) {
-        return TypeRules.defaultValue(type);
     }
 }

@@ -1,12 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.LabelEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Symbol scope for parameters, labels, and the root block of a function.

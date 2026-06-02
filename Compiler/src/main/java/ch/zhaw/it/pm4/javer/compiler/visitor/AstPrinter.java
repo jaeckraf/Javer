@@ -1,46 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CastExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitExpressionList;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitVarDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ReturnStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
@@ -48,17 +13,16 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.LabelEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
 import ch.zhaw.it.pm4.misc.JaverLogger;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Formats the AST as a human-readable tree.
@@ -73,6 +37,45 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     private final List<Boolean> isLastStack = new ArrayList<>();
     private Appendable output;
+
+    private static <T> void visitMany(List<T> items, VisitOne<T> visitOne) {
+        for (int i = 0; i < items.size(); i++) {
+            visitOne.visit(items.get(i), i == items.size() - 1);
+        }
+    }
+
+    private static String nodeName(AstNode node) {
+        return removeAstNodeSuffix(node.getClass().getSimpleName());
+    }
+
+    private static String nodeTitle(AstNode node) {
+        return nodeName(node) + " " + node.getSourceRange();
+    }
+
+    private static String removeAstNodeSuffix(String typeName) {
+        return typeName.endsWith("AstNode") ? typeName.substring(0, typeName.length() - "AstNode".length()) : typeName;
+    }
+
+    /**
+     * Quotes a string value for tree output.
+     *
+     * @param value string value, or null
+     * @return quoted value or {@code <null>}
+     */
+    protected static String quote(String value) {
+        return value == null ? "<null>" : "'" + value.replace("'", "\\'") + "'";
+    }
+
+    /**
+     * Quotes string objects and formats all other values with
+     * {@link String#valueOf(Object)}.
+     *
+     * @param value value to format
+     * @return formatted value
+     */
+    protected static String quoteValue(Object value) {
+        return value instanceof String stringValue ? quote(stringValue) : String.valueOf(value);
+    }
 
     /**
      * Prints an AST into a string.
@@ -89,7 +92,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     /**
      * Prints an AST into an arbitrary appendable target.
      *
-     * @param node root compilation unit
+     * @param node   root compilation unit
      * @param output appendable that receives formatted output
      */
     public void print(CompilationUnit node, Appendable output) {
@@ -539,9 +542,9 @@ public class AstPrinter extends AstNodeVisitorBase {
     /**
      * Writes a scalar child branch.
      *
-     * @param label branch label
-     * @param value scalar value
-     * @param range optional source range
+     * @param label  branch label
+     * @param value  scalar value
+     * @param range  optional source range
      * @param isLast whether this is the last sibling branch
      */
     protected void scalarChild(String label, Object value, SourceRange range, boolean isLast) {
@@ -551,8 +554,8 @@ public class AstPrinter extends AstNodeVisitorBase {
     /**
      * Writes a named AST-node child branch.
      *
-     * @param label branch label
-     * @param node child node, or null
+     * @param label  branch label
+     * @param node   child node, or null
      * @param isLast whether this is the last sibling branch
      */
     protected void labeledNodeChild(String label, AstNode node, boolean isLast) {
@@ -573,8 +576,8 @@ public class AstPrinter extends AstNodeVisitorBase {
     /**
      * Writes a list of AST nodes as one labeled child branch.
      *
-     * @param label branch label
-     * @param nodes child nodes
+     * @param label  branch label
+     * @param nodes  child nodes
      * @param isLast whether this is the last sibling branch
      */
     protected void nodesChild(String label, List<? extends AstNode> nodes, boolean isLast) {
@@ -590,7 +593,7 @@ public class AstPrinter extends AstNodeVisitorBase {
     /**
      * Writes one tree branch line with the current indentation.
      *
-     * @param text branch text
+     * @param text   branch text
      * @param isLast whether this is the last sibling branch
      */
     protected void writeBranchLine(String text, boolean isLast) {
@@ -605,19 +608,13 @@ public class AstPrinter extends AstNodeVisitorBase {
     /**
      * Runs output logic one indentation level deeper.
      *
-     * @param body output logic for child branches
+     * @param body   output logic for child branches
      * @param isLast whether the parent branch is the last sibling
      */
     protected void withChildren(Runnable body, boolean isLast) {
         isLastStack.add(isLast);
         body.run();
         isLastStack.removeLast();
-    }
-
-    private static <T> void visitMany(List<T> items, VisitOne<T> visitOne) {
-        for (int i = 0; i < items.size(); i++) {
-            visitOne.visit(items.get(i), i == items.size() - 1);
-        }
     }
 
     /**
@@ -627,39 +624,6 @@ public class AstPrinter extends AstNodeVisitorBase {
      */
     protected void visitMany(List<Consumer<Boolean>> children) {
         visitMany(children, Consumer::accept);
-    }
-
-    private static String nodeName(AstNode node) {
-        return removeAstNodeSuffix(node.getClass().getSimpleName());
-    }
-
-    private static String nodeTitle(AstNode node) {
-        return nodeName(node) + " " + node.getSourceRange();
-    }
-
-    private static String removeAstNodeSuffix(String typeName) {
-        return typeName.endsWith("AstNode") ? typeName.substring(0, typeName.length() - "AstNode".length()) : typeName;
-    }
-
-    /**
-     * Quotes a string value for tree output.
-     *
-     * @param value string value, or null
-     * @return quoted value or {@code <null>}
-     */
-    protected static String quote(String value) {
-        return value == null ? "<null>" : "'" + value.replace("'", "\\'") + "'";
-    }
-
-    /**
-     * Quotes string objects and formats all other values with
-     * {@link String#valueOf(Object)}.
-     *
-     * @param value value to format
-     * @return formatted value
-     */
-    protected static String quoteValue(Object value) {
-        return value instanceof String stringValue ? quote(stringValue) : String.valueOf(value);
     }
 
     /**

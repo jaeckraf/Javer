@@ -1,8 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
@@ -21,24 +21,6 @@ public final class EnumItem extends AstNodeBase implements AstNode {
 
     public static Builder builder(String name) {
         return new Builder(name);
-    }
-
-    public static final class Builder {
-        private final String name;
-        private Integer value;
-
-        private Builder(String name) {
-            this.name = name;
-        }
-
-        public Builder value(Integer value) {
-            this.value = value;
-            return this;
-        }
-
-        public EnumItem build() {
-            return new EnumItem(this);
-        }
     }
 
     public String getName() {
@@ -64,5 +46,23 @@ public final class EnumItem extends AstNodeBase implements AstNode {
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public static final class Builder {
+        private final String name;
+        private Integer value;
+
+        private Builder(String name) {
+            this.name = name;
+        }
+
+        public Builder value(Integer value) {
+            this.value = value;
+            return this;
+        }
+
+        public EnumItem build() {
+            return new EnumItem(this);
+        }
     }
 }

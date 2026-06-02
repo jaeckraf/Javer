@@ -26,6 +26,31 @@ public final class NewExpression extends ExpressionAstNodeBase {
         return new Builder(type);
     }
 
+    public TypeAstNode getType() {
+        return type;
+    }
+
+    public List<ExpressionAstNode> getDimensions() {
+        return dimensions;
+    }
+
+    public ArrayInitExpression getArrayInit() {
+        return arrayInit;
+    }
+
+    public JaggedArrayTempLayout getJaggedArrayTempLayout() {
+        return jaggedArrayTempLayout;
+    }
+
+    public void setJaggedArrayTempLayout(JaggedArrayTempLayout jaggedArrayTempLayout) {
+        this.jaggedArrayTempLayout = jaggedArrayTempLayout;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
     public static final class Builder {
         private final TypeAstNode type;
         private List<ExpressionAstNode> dimensions = List.of();
@@ -50,32 +75,13 @@ public final class NewExpression extends ExpressionAstNodeBase {
         }
     }
 
-    public TypeAstNode getType() {
-        return type;
-    }
-
-    public List<ExpressionAstNode> getDimensions() {
-        return dimensions;
-    }
-
-    public ArrayInitExpression getArrayInit() {
-        return arrayInit;
-    }
-
-    public JaggedArrayTempLayout getJaggedArrayTempLayout() {
-        return jaggedArrayTempLayout;
-    }
-
-    public void setJaggedArrayTempLayout(JaggedArrayTempLayout jaggedArrayTempLayout) {
-        this.jaggedArrayTempLayout = jaggedArrayTempLayout;
-    }
-
     public record JaggedArrayTempLayout(int[] dimensionOffsets, int[] baseOffsets, int[] indexOffsets) {
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (!(o instanceof JaggedArrayTempLayout(int[] offsets, int[] baseOffsets1, int[] indexOffsets1))) return false;
+            if (!(o instanceof JaggedArrayTempLayout(int[] offsets, int[] baseOffsets1, int[] indexOffsets1)))
+                return false;
 
             return Arrays.equals(dimensionOffsets, offsets)
                     && Arrays.equals(baseOffsets, baseOffsets1)
@@ -98,10 +104,5 @@ public final class NewExpression extends ExpressionAstNodeBase {
                     ", indexOffsets=" + Arrays.toString(indexOffsets) +
                     '}';
         }
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

@@ -2,12 +2,7 @@ package ch.zhaw.it.pm4.javer.application;
 
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.CheckMenuItem;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterEach;
@@ -42,6 +37,14 @@ class GuiTest {
     private Map<String, Object> namespace;
     private GuiController controller;
 
+    @BeforeAll
+    static void setupHeadlessMode() {
+        System.setProperty("testfx.robot", "glass");
+        System.setProperty("testfx.headless", "true");
+        System.setProperty("prism.order", "sw");
+        System.setProperty("prism.text", "t2k");
+    }
+
     private Path getProjectRoot() {
         Path path = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         while (path != null) {
@@ -64,14 +67,6 @@ class GuiTest {
         return getProjectRoot().resolve("vm-input.jbc");
     }
 
-    @BeforeAll
-    static void setupHeadlessMode() {
-        System.setProperty("testfx.robot", "glass");
-        System.setProperty("testfx.headless", "true");
-        System.setProperty("prism.order", "sw");
-        System.setProperty("prism.text", "t2k");
-    }
-
     @Start
     void start(Stage stage) throws IOException {
         URL logbackConfig = Launcher.class.getResource("/ch/zhaw/it/pm4/javer/application/logback.xml");
@@ -81,7 +76,7 @@ class GuiTest {
         System.setProperty("MODULE", "app");
         System.setProperty("LOG_LEVEL", "INFO");
         JarConfigLoader.loadConfiguration();
-        
+
         Path root = getProjectRoot();
         System.setProperty("javer.compiler.jar", root.resolve("Compiler/target/Compiler-1.0-SNAPSHOT-all.jar").toString());
         System.setProperty("javer.vm.jar", root.resolve("VM/target/VM-1.0-SNAPSHOT-all.jar").toString());
@@ -127,7 +122,7 @@ class GuiTest {
     void shouldCompileAndRun_whenButtonIsClicked(FxRobot robot) throws TimeoutException, IOException {
         Files.createFile(getVmInputFile());
         assertTrue(Files.exists(getVmInputFile()), "Pre-existing VM input file should exist");
-        
+
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerAndVMButton");
 
@@ -229,14 +224,14 @@ class GuiTest {
     void shouldDisableAllRunButtons_whenProcessIsRunning(FxRobot robot) throws TimeoutException {
         robot.clickOn("#consoleInput").write("some invalid code that hangs or is slow...");
         robot.clickOn("#runCompilerButton");
-        
+
         waitFor(1, TimeUnit.SECONDS, () -> robot.lookup("#runCompilerButton").queryButton().isDisabled());
         assertTrue(robot.lookup("#runCompilerButton").queryButton().isDisabled());
         assertTrue(robot.lookup("#runCompilerAndVMButton").queryButton().isDisabled());
         assertFalse(robot.lookup("#runVMButton").queryButton().isDisabled());
-        
+
         robot.clickOn("#stopCompilerButton");
-        
+
         waitFor(10, TimeUnit.SECONDS, () -> !robot.lookup("#runCompilerButton").queryButton().isDisabled());
         assertFalse(robot.lookup("#runVMButton").queryButton().isDisabled());
         assertFalse(robot.lookup("#runCompilerAndVMButton").queryButton().isDisabled());
@@ -299,7 +294,7 @@ class GuiTest {
     @Test
     void shouldSaveAndLoadJaverFile(FxRobot robot) throws IOException {
         File testFile = getProjectRoot().resolve("test.javer").toFile();
-        
+
         robot.interact(() -> {
             TextArea consoleInput = robot.lookup("#consoleInput").queryAs(TextArea.class);
             consoleInput.setText(SAVE_LOAD_TEST_CONTENT);
@@ -308,7 +303,7 @@ class GuiTest {
             controller.loadJaverFile(testFile);
             assertEquals(SAVE_LOAD_TEST_CONTENT, consoleInput.getText());
         });
-        
+
         Files.deleteIfExists(testFile.toPath());
     }
 
@@ -392,7 +387,7 @@ class GuiTest {
         robot.clickOn("#consoleInput").write("line 1\nline 2\nline 3");
         assertEquals("1\n2\n3", lineNumbers.getText());
     }
-    
+
     @Test
     void shouldLogAction_whenExpertModeIsToggled(FxRobot robot) throws TimeoutException {
         TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
@@ -434,7 +429,7 @@ class GuiTest {
 
         robot.clickOn("#consoleInput").write(TEST_CODE);
         robot.clickOn("#runCompilerButton");
-        
+
         waitFor(10, TimeUnit.SECONDS, () -> robot.lookup("#compilerOutput").queryAs(TextArea.class).getText().toLowerCase().contains("compilation successful"));
 
         robot.interact(() -> {

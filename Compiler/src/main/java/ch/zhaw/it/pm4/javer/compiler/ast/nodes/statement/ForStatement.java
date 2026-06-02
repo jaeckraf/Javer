@@ -1,11 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
+import java.util.List;
 
 /**
  * Statement node representing a {@code for} loop.
@@ -27,36 +26,6 @@ public final class ForStatement extends AstNodeBase implements StatementAstNode 
 
     public static Builder builder(StatementAstNode body) {
         return new Builder(body);
-    }
-
-    public static final class Builder {
-        private ForInit forInit;
-        private ExpressionAstNode condition;
-        private List<ExpressionAstNode> update;
-        private final StatementAstNode body;
-
-        private Builder(StatementAstNode body) {
-            this.body = body;
-        }
-
-        public Builder forInit(ForInit forInit) {
-            this.forInit = forInit;
-            return this;
-        }
-
-        public Builder condition(ExpressionAstNode condition) {
-            this.condition = condition;
-            return this;
-        }
-
-        public Builder update(List<ExpressionAstNode> update) {
-            this.update = update;
-            return this;
-        }
-
-        public ForStatement build() {
-            return new ForStatement(this);
-        }
     }
 
     public StatementAstNode getBody() {
@@ -86,5 +55,35 @@ public final class ForStatement extends AstNodeBase implements StatementAstNode 
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public static final class Builder {
+        private final StatementAstNode body;
+        private ForInit forInit;
+        private ExpressionAstNode condition;
+        private List<ExpressionAstNode> update;
+
+        private Builder(StatementAstNode body) {
+            this.body = body;
+        }
+
+        public Builder forInit(ForInit forInit) {
+            this.forInit = forInit;
+            return this;
+        }
+
+        public Builder condition(ExpressionAstNode condition) {
+            this.condition = condition;
+            return this;
+        }
+
+        public Builder update(List<ExpressionAstNode> update) {
+            this.update = update;
+            return this;
+        }
+
+        public ForStatement build() {
+            return new ForStatement(this);
+        }
     }
 }

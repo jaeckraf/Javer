@@ -21,7 +21,7 @@ public enum TokenType {
     // Identifiers
     ID_IDENTIFIER("Identifier"),
 
-    
+
     // Keywords
     KEYWORD_IF("if"),
     KEYWORD_ELSE("else"),
@@ -85,7 +85,7 @@ public enum TokenType {
     OPERATOR_BITWISE_XOR_ASSIGN("^="),
     OPERATOR_BITSHIFT_LEFT_ASSIGN("<<="),
     OPERATOR_BITSHIFT_RIGHT_ASSIGN(">>="),
-    
+
     // Delimiters
     SYMBOL_LEFT_PARENTHESIS("("),
     SYMBOL_RIGHT_PARENTHESIS(")"),
@@ -99,7 +99,7 @@ public enum TokenType {
     SYMBOL_DOT("."),
     SYMBOL_COLON(":"),
     SYMBOL_QUESTION_MARK("?"),
-    
+
     // Special Tokens
     SPECIAL_END_OF_FILE("end of file"),
     SPECIAL_UNKNOWN("unknown token");
@@ -110,15 +110,6 @@ public enum TokenType {
     TokenType(String diagnosticName, String... lexemes) {
         this.diagnosticName = diagnosticName;
         this.lexemes = lexemes;
-    }
-
-    /**
-     * Returns the human-readable diagnostic name of this token type.
-     *
-     * @return diagnostic name used in error messages and reporting
-     */
-    public String diagnosticName() {
-        return diagnosticName;
     }
 
     /**
@@ -139,7 +130,7 @@ public enum TokenType {
     /**
      * Finds the best matching fixed token at the given source position.
      *
-     * @param source the source code being scanned
+     * @param source     the source code being scanned
      * @param startIndex position in the source string
      * @return the longest matching fixed token, or null if none found
      */
@@ -155,6 +146,15 @@ public enum TokenType {
             }
         }
         return bestMatch;
+    }
+
+    /**
+     * Returns the human-readable diagnostic name of this token type.
+     *
+     * @return diagnostic name used in error messages and reporting
+     */
+    public String diagnosticName() {
+        return diagnosticName;
     }
 
     private boolean isWordToken() {

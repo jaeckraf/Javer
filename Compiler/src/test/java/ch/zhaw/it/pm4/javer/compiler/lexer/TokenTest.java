@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests validation of constructor parameters.
  */
 class TokenTest {
-    
+
     @Test
     @DisplayName("Should throw NullPointerException with correct message when type is null")
     void testTokenTypeCannotBeNull() {
@@ -19,14 +19,14 @@ class TokenTest {
         NullPointerException exception = assertThrows(NullPointerException.class, () -> new Token(null, "value", sourceLocation));
         assertEquals("Token type cannot be null", exception.getMessage());
     }
-    
+
     @Test
     @DisplayName("Should throw NullPointerException with correct message when position is null")
     void testTokenPositionCannotBeNull() {
         NullPointerException exception = assertThrows(NullPointerException.class, () -> new Token(TokenType.SYMBOL_LEFT_PARENTHESIS, "value", null));
         assertEquals("Token position cannot be null", exception.getMessage());
     }
-    
+
     @Test
     @DisplayName("Should accept position with valid values")
     void testTokenPositionValid() {
@@ -34,7 +34,7 @@ class TokenTest {
             new Token(TokenType.SYMBOL_LEFT_PARENTHESIS, "", new SourceLocation(1, 2, 1));
         });
     }
-    
+
     @Test
     @DisplayName("Should accept null value (edge case)")
     void testTokenValueCanBeNull() {

@@ -1,10 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**

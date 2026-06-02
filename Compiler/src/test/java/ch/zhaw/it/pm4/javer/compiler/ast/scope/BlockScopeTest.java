@@ -5,11 +5,24 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class BlockScopeTest {
+
+    private static FunctionScope functionScope() {
+        return new FunctionScope(new FunctionEntry("test"));
+    }
+
+    private static VariableEntry variable(String name, int declarationOrder) {
+        return new VariableEntry(
+                name,
+                PrimitiveTypeInfo.INT,
+                PrimitiveTypeInfo.INT.sizeBytes(),
+                0,
+                false,
+                0,
+                declarationOrder);
+    }
 
     @Test
     void resolvesOnlyVariablesDeclaredBeforeCurrentDeclarationOrder() {
@@ -46,20 +59,5 @@ class BlockScopeTest {
         assertTrue(childScope.defineVariable(childVariable));
 
         assertNull(parentScope.resolveVisibleVariable("value", 1));
-    }
-
-    private static FunctionScope functionScope() {
-        return new FunctionScope(new FunctionEntry("test"));
-    }
-
-    private static VariableEntry variable(String name, int declarationOrder) {
-        return new VariableEntry(
-                name,
-                PrimitiveTypeInfo.INT,
-                PrimitiveTypeInfo.INT.sizeBytes(),
-                0,
-                false,
-                0,
-                declarationOrder);
     }
 }

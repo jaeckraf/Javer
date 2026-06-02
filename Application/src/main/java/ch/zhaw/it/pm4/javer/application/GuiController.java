@@ -1,5 +1,13 @@
 package ch.zhaw.it.pm4.javer.application;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,22 +20,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import ch.zhaw.it.pm4.misc.JaverLogger;
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.CheckMenuItem;
-import javafx.scene.control.MenuButton;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.ScrollBar;
-import javafx.scene.control.Spinner;
-import javafx.scene.control.SpinnerValueFactory;
-import javafx.scene.control.TextArea;
-import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Window;
-
 /**
  * Controller for the main GUI. It owns the source input, process output panes,
  * status log pane, compiler/VM process runners, and runtime files used to pass
@@ -35,6 +27,11 @@ import javafx.stage.Window;
  */
 public class GuiController {
 
+    public static final String COMPILER = "Compiler";
+    public static final String TOOLS = "tools";
+    public static final String VM_INPUT_FILE = "VM input file";
+    public static final String VM_IS_ALREADY_RUNNING = "VM is already running.";
+    public static final String USER_DIR = "user.dir";
     private static final String CONSOLE_INPUT_FILE_NAME = "console-input.javer";
     private static final String VM_INPUT_FILE_NAME = "vm-input.jbc";
     private static final String SOURCE_FILE_EXTENSION = ".javer";
@@ -52,16 +49,9 @@ public class GuiController {
             "-Dstdout.encoding=UTF-8",
             "-Dstderr.encoding=UTF-8"
     );
-
-    public static final String COMPILER = "Compiler";
-    public static final String TOOLS = "tools";
     // Packaged release layout inside Application app image
     private static final Path RELEASE_COMPILER_EXE = Path.of("app", TOOLS, COMPILER, "javer-compiler.exe");
     private static final Path RELEASE_VM_EXE = Path.of("app", TOOLS, "VM", "javer-vm.exe");
-    public static final String VM_INPUT_FILE = "VM input file";
-    public static final String VM_IS_ALREADY_RUNNING = "VM is already running.";
-    public static final String USER_DIR = "user.dir";
-
     private final Path runtimeDirectory = resolveRuntimeDirectory();
     private final Path consoleInputFile = runtimeDirectory.resolve(CONSOLE_INPUT_FILE_NAME);
     private final Path vmInputFile = runtimeDirectory.resolve(VM_INPUT_FILE_NAME);
@@ -142,6 +132,66 @@ public class GuiController {
         // Required by JavaFX for reflective instantiation; must remain empty.
     }
 
+    private static Path resolveRuntimeDirectory() {
+        Path workingDirectory = Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
+        Path codeLocation = getCodeLocation();
+        Path packagedRoot = findPackagedAppRoot(codeLocation);
+        if (packagedRoot != null) {
+            return packagedRoot;
+        }
+
+        Path projectRoot = findProjectRoot(workingDirectory);
+        if (projectRoot != null) {
+            return projectRoot;
+        }
+
+        projectRoot = findProjectRoot(codeLocation);
+        if (projectRoot != null) {
+            return projectRoot;
+        }
+
+        return workingDirectory;
+    }
+
+    private static Path getCodeLocation() {
+        try {
+            return Path.of(GuiController.class.getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI()).toAbsolutePath().normalize();
+        } catch (Exception exception) {
+            return Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
+        }
+    }
+
+    private static Path findPackagedAppRoot(Path start) {
+        Path path = Files.isRegularFile(start) ? start.getParent() : start;
+        while (path != null) {
+            Path fileName = path.getFileName();
+            if (fileName != null
+                    && "app".equalsIgnoreCase(fileName.toString())
+                    && Files.isDirectory(path.resolve(TOOLS))) {
+                return path.getParent();
+            }
+            path = path.getParent();
+        }
+        return null;
+    }
+
+    private static Path findProjectRoot(Path start) {
+        Path path = Files.isRegularFile(start) ? start.getParent() : start;
+        while (path != null) {
+            if (Files.isRegularFile(path.resolve("pom.xml"))
+                    && Files.isDirectory(path.resolve("Application"))
+                    && Files.isDirectory(path.resolve(COMPILER))
+                    && Files.isDirectory(path.resolve("VM"))) {
+                return path;
+            }
+            path = path.getParent();
+        }
+        return null;
+    }
+
     /**
      * Initializes process runners, logging integration, and initial button
      * state after FXML injection has completed.
@@ -196,11 +246,11 @@ public class GuiController {
 
         saveJaverFile(selectedFile);
     }
-    
+
     /**
      * Saves the contents of the source editor to the specified file.
      * Appends the standard source file extension if it is missing.
-     * 
+     *
      * @param file the target file to save the source code to
      */
     public void saveJaverFile(File file) {
@@ -230,18 +280,18 @@ public class GuiController {
 
         loadJaverFile(selectedFile);
     }
-    
+
     /**
      * Loads the contents of the specified file into the source editor.
      * Validates that the file has the correct source file extension before loading.
-     * 
+     *
      * @param file the file containing the source code to load
      */
     public void loadJaverFile(File file) {
         if (file == null) {
             return;
         }
-        
+
         Path sourcePath = file.toPath().toAbsolutePath().normalize();
         if (!hasExtension(sourcePath, SOURCE_FILE_EXTENSION)) {
             JaverLogger.error("Only .javer files can be loaded as source files.");
@@ -280,18 +330,18 @@ public class GuiController {
 
         saveJbcFile(selectedFile);
     }
-    
+
     /**
      * Copies the current internal VM input file to the specified target file.
      * Appends the standard bytecode file extension if it is missing.
-     * 
+     *
      * @param file the target file to save the bytecode to
      */
     public void saveJbcFile(File file) {
         if (file == null) {
             return;
         }
-        
+
         Path targetPath = ensureExtension(file.toPath(), BYTECODE_FILE_EXTENSION);
         copyFile(
                 vmInputFile,
@@ -319,18 +369,18 @@ public class GuiController {
 
         loadJbcFile(selectedFile);
     }
-    
+
     /**
      * Copies the specified bytecode file to the internal VM input file location.
      * Validates that the file has the correct bytecode file extension before copying.
-     * 
+     *
      * @param file the file containing the bytecode to load
      */
     public void loadJbcFile(File file) {
         if (file == null) {
             return;
         }
-        
+
         Path sourcePath = file.toPath().toAbsolutePath().normalize();
         if (!hasExtension(sourcePath, BYTECODE_FILE_EXTENSION)) {
             JaverLogger.error("Only .jbc files can be loaded as bytecode files.");
@@ -884,66 +934,6 @@ public class GuiController {
 
         JaverLogger.info("Resolved " + label + " executable to: " + path);
         return path;
-    }
-
-    private static Path resolveRuntimeDirectory() {
-        Path workingDirectory = Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
-        Path codeLocation = getCodeLocation();
-        Path packagedRoot = findPackagedAppRoot(codeLocation);
-        if (packagedRoot != null) {
-            return packagedRoot;
-        }
-
-        Path projectRoot = findProjectRoot(workingDirectory);
-        if (projectRoot != null) {
-            return projectRoot;
-        }
-
-        projectRoot = findProjectRoot(codeLocation);
-        if (projectRoot != null) {
-            return projectRoot;
-        }
-
-        return workingDirectory;
-    }
-
-    private static Path getCodeLocation() {
-        try {
-            return Path.of(GuiController.class.getProtectionDomain()
-                    .getCodeSource()
-                    .getLocation()
-                    .toURI()).toAbsolutePath().normalize();
-        } catch (Exception exception) {
-            return Path.of(System.getProperty(USER_DIR)).toAbsolutePath().normalize();
-        }
-    }
-
-    private static Path findPackagedAppRoot(Path start) {
-        Path path = Files.isRegularFile(start) ? start.getParent() : start;
-        while (path != null) {
-            Path fileName = path.getFileName();
-            if (fileName != null
-                    && "app".equalsIgnoreCase(fileName.toString())
-                    && Files.isDirectory(path.resolve(TOOLS))) {
-                return path.getParent();
-            }
-            path = path.getParent();
-        }
-        return null;
-    }
-
-    private static Path findProjectRoot(Path start) {
-        Path path = Files.isRegularFile(start) ? start.getParent() : start;
-        while (path != null) {
-            if (Files.isRegularFile(path.resolve("pom.xml"))
-                    && Files.isDirectory(path.resolve("Application"))
-                    && Files.isDirectory(path.resolve(COMPILER))
-                    && Files.isDirectory(path.resolve("VM"))) {
-                return path;
-            }
-            path = path.getParent();
-        }
-        return null;
     }
 
     private Path resolveJarFromProperty(String propertyName) {

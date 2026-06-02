@@ -4,7 +4,7 @@ package ch.zhaw.it.pm4.javer.compiler.misc;
  * Inclusive source span from a start location to an end location.
  *
  * @param start first source location in the span
- * @param end last source location in the span
+ * @param end   last source location in the span
  */
 public record SourceRange(SourceLocation start, SourceLocation end) {
 

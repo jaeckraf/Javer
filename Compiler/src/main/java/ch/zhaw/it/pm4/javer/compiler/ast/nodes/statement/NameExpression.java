@@ -25,11 +25,11 @@ public final class NameExpression extends ExpressionAstNodeBase {
         visitor.visit(this);
     }
 
-    public void setSymbolEntry(SymbolEntry symbolEntry) {
-        this.symbolEntry = symbolEntry;
-    }
-
     public SymbolEntry getSymbolEntry() {
         return symbolEntry;
+    }
+
+    public void setSymbolEntry(SymbolEntry symbolEntry) {
+        this.symbolEntry = symbolEntry;
     }
 }

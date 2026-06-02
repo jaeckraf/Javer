@@ -1,10 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
+import java.util.List;
 
 /**
  * Statement node representing a block with its own nested statements.

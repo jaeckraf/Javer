@@ -1,9 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
+
+import java.util.List;
 
 /**
  * Symbol table entry for a static data constant.

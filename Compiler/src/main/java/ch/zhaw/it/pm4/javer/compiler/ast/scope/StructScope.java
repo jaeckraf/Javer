@@ -1,10 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Symbol scope containing fields declared by a single struct.

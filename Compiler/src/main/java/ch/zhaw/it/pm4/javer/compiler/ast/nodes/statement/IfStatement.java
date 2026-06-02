@@ -23,6 +23,23 @@ public final class IfStatement extends AstNodeBase implements StatementAstNode {
         return new Builder(condition, thenBranch);
     }
 
+    public StatementAstNode getThenBranch() {
+        return thenBranch;
+    }
+
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public StatementAstNode getElseBranch() {
+        return elseBranch;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
     public static final class Builder {
         private final ExpressionAstNode condition;
         private final StatementAstNode thenBranch;
@@ -41,23 +58,6 @@ public final class IfStatement extends AstNodeBase implements StatementAstNode {
         public IfStatement build() {
             return new IfStatement(this);
         }
-    }
-
-    public StatementAstNode getThenBranch() {
-        return thenBranch;
-    }
-
-    public ExpressionAstNode getCondition() {
-        return condition;
-    }
-
-    public StatementAstNode getElseBranch() {
-        return elseBranch;
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 
 }

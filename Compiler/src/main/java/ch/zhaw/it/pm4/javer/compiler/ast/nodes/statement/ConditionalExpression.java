@@ -21,6 +21,23 @@ public final class ConditionalExpression extends ExpressionAstNodeBase {
         return new Builder(condition);
     }
 
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public ExpressionAstNode getTrueExpression() {
+        return trueExpression;
+    }
+
+    public ExpressionAstNode getFalseExpression() {
+        return falseExpression;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
     public static final class Builder {
         private final ExpressionAstNode condition;
         private ExpressionAstNode trueExpression;
@@ -43,22 +60,5 @@ public final class ConditionalExpression extends ExpressionAstNodeBase {
         public ConditionalExpression build() {
             return new ConditionalExpression(this);
         }
-    }
-
-    public ExpressionAstNode getCondition() {
-        return condition;
-    }
-
-    public ExpressionAstNode getTrueExpression() {
-        return trueExpression;
-    }
-
-    public ExpressionAstNode getFalseExpression() {
-        return falseExpression;
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

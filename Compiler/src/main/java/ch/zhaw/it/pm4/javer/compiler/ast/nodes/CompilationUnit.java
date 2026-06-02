@@ -1,12 +1,12 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes;
 
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.SemanticContext;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
+import java.util.List;
 
 /**
  * Root node of a parsed Javer program.

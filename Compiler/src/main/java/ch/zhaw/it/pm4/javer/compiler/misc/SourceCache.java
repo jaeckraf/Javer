@@ -1,14 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
+import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Holds the full source code of the single input file and maintains

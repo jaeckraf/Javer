@@ -1,8 +1,8 @@
 package ch.zhaw.it.pm4.javer.application;
 
-import java.net.URL;
-
 import javafx.application.Application;
+
+import java.net.URL;
 
 /**
  * Native-launcher-friendly entry point that configures logging and starts the

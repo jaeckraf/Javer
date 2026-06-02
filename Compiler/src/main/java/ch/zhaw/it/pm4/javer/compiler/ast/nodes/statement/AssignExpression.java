@@ -21,6 +21,23 @@ public final class AssignExpression extends ExpressionAstNodeBase {
         return new Builder(target);
     }
 
+    public ExpressionAstNode getTarget() {
+        return target;
+    }
+
+    public AssignOperator getOperator() {
+        return operator;
+    }
+
+    public ExpressionAstNode getValue() {
+        return value;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
+    }
+
     public static final class Builder {
         private final ExpressionAstNode target;
         private AssignOperator operator;
@@ -43,22 +60,5 @@ public final class AssignExpression extends ExpressionAstNodeBase {
         public AssignExpression build() {
             return new AssignExpression(this);
         }
-    }
-
-    public ExpressionAstNode getTarget() {
-        return target;
-    }
-
-    public AssignOperator getOperator() {
-        return operator;
-    }
-
-    public ExpressionAstNode getValue() {
-        return value;
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

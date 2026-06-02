@@ -1,64 +1,13 @@
 package ch.zhaw.it.pm4.javer.compiler.parser;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.Set;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignOperator;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BreakStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CastExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ContinueStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ExpressionAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitExpressionList;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitVarDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixOperationKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ReturnStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.StatementAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpressionKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NameTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.lexer.TokenType;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
@@ -67,6 +16,8 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
+import java.util.*;
+
 /**
  * Recursive-descent parser for Javer source code. It consumes lexer tokens,
  * builds the AST, and records recoverable syntax diagnostics in the supplied
@@ -74,32 +25,22 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
  */
 public class Parser {
 
-    private final List<Token> tokens;
-    private final DiagnosticBag diagnosticBag;
-    private int currentPosition = 0;
-
     private static final Set<TokenType> EOF = EnumSet.of(TokenType.SPECIAL_END_OF_FILE);
-
     private static final Set<TokenType> FIRST_TOP_LEVEL = EnumSet.of(
             TokenType.TYPE_ENUM, TokenType.TYPE_STRUCT, TokenType.KEYWORD_FUNCTION
     );
-
     private static final Set<TokenType> FIRST_PRIMITIVE_TYPE = EnumSet.of(
             TokenType.TYPE_INTEGER, TokenType.TYPE_DOUBLE, TokenType.TYPE_BOOLEAN,
             TokenType.TYPE_STRING, TokenType.TYPE_CHARACTER
     );
-
     private static final Set<TokenType> FIRST_INTEGER_LITERAL = EnumSet.of(
             TokenType.LITERAL_INTEGER, TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
     );
-
     private static final Set<TokenType> FIRST_TYPE = EnumSet.of(
             TokenType.TYPE_INTEGER, TokenType.TYPE_DOUBLE, TokenType.TYPE_BOOLEAN,
             TokenType.TYPE_STRING, TokenType.TYPE_CHARACTER, TokenType.TYPE_STRUCT, TokenType.TYPE_ENUM
     );
-
     private static final Set<TokenType> FIRST_RETURN_TYPE = enumSet(FIRST_TYPE, TokenType.TYPE_VOID);
-
     private static final Set<TokenType> FIRST_ASSIGN_OPERATOR = EnumSet.of(
             TokenType.OPERATOR_ASSIGN, TokenType.OPERATOR_PLUS_ASSIGN, TokenType.OPERATOR_MINUS_ASSIGN,
             TokenType.OPERATOR_MULTIPLY_ASSIGN, TokenType.OPERATOR_DIVIDE_ASSIGN, TokenType.OPERATOR_MODULO_ASSIGN,
@@ -107,7 +48,6 @@ public class Parser {
             TokenType.OPERATOR_BITWISE_XOR_ASSIGN, TokenType.OPERATOR_BITSHIFT_LEFT_ASSIGN,
             TokenType.OPERATOR_BITSHIFT_RIGHT_ASSIGN
     );
-
     private static final Set<TokenType> FIRST_EXPRESSION = EnumSet.of(
             TokenType.OPERATOR_MINUS, TokenType.OPERATOR_DECREMENT, TokenType.OPERATOR_LOGICAL_NOT,
             TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.OPERATOR_PLUS, TokenType.OPERATOR_INCREMENT,
@@ -117,23 +57,19 @@ public class Parser {
             TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING,
             TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
     );
-
     private static final Set<TokenType> FIRST_INITIALIZER = enumSet(FIRST_EXPRESSION, TokenType.SYMBOL_LEFT_BRACE);
-
     private static final Set<TokenType> FIRST_STATEMENT = enumSet(FIRST_EXPRESSION,
             TokenType.SYMBOL_LEFT_BRACE, TokenType.KEYWORD_IF, TokenType.KEYWORD_WHILE,
             TokenType.KEYWORD_DO, TokenType.KEYWORD_FOR, TokenType.KEYWORD_SWITCH,
             TokenType.KEYWORD_BREAK, TokenType.KEYWORD_CONTINUE, TokenType.KEYWORD_RETURN, TokenType.KEYWORD_LET
     );
-
+    private static final Set<TokenType> FOLLOW_STATEMENT = enumSet(FIRST_STATEMENT, TokenType.SYMBOL_RIGHT_BRACE, TokenType.KEYWORD_ELSE, TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SPECIAL_END_OF_FILE);
     private static final Set<TokenType> FIRST_CASE = EnumSet.of(TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT);
-
     private static final Set<TokenType> FIRST_CASE_LABEL = EnumSet.of(
             TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE,
             TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING,
             TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL
     );
-
     private static final Set<TokenType> FOLLOW_TOP_LEVEL = enumSet(FIRST_TOP_LEVEL, TokenType.SPECIAL_END_OF_FILE);
     private static final Set<TokenType> FOLLOW_DECLARATION = FOLLOW_TOP_LEVEL;
     private static final Set<TokenType> FOLLOW_TYPE = EnumSet.of(TokenType.ID_IDENTIFIER);
@@ -141,10 +77,8 @@ public class Parser {
     private static final Set<TokenType> FOLLOW_PARAM = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_RIGHT_PARENTHESIS);
     private static final Set<TokenType> FOLLOW_STRUCT_FIELD = enumSet(FIRST_TYPE, TokenType.SYMBOL_RIGHT_BRACE);
     private static final Set<TokenType> FOLLOW_ENUM_ITEM = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_RIGHT_BRACE);
-    private static final Set<TokenType> FOLLOW_STATEMENT = enumSet(FIRST_STATEMENT, TokenType.SYMBOL_RIGHT_BRACE, TokenType.KEYWORD_ELSE, TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SPECIAL_END_OF_FILE);
     private static final Set<TokenType> FOLLOW_EXPRESSION = EnumSet.of(TokenType.SYMBOL_COMMA, TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COLON, TokenType.SYMBOL_RIGHT_PARENTHESIS, TokenType.SYMBOL_RIGHT_BRACKET, TokenType.SYMBOL_RIGHT_BRACE);
     private static final Set<TokenType> FOLLOW_CASE = EnumSet.of(TokenType.KEYWORD_CASE, TokenType.KEYWORD_DEFAULT, TokenType.SYMBOL_RIGHT_BRACE);
-
     private static final Set<TokenType> FOLLOW_STATEMENT_END = EnumSet.of(
             TokenType.SYMBOL_SEMICOLON,
             TokenType.SYMBOL_RIGHT_BRACE,
@@ -153,6 +87,20 @@ public class Parser {
             TokenType.KEYWORD_DEFAULT,
             TokenType.SPECIAL_END_OF_FILE
     );
+    private final List<Token> tokens;
+    private final DiagnosticBag diagnosticBag;
+    private int currentPosition = 0;
+
+    /**
+     * Creates a parser for a token stream.
+     *
+     * @param tokens        token stream ending with {@code SPECIAL_END_OF_FILE}
+     * @param diagnosticBag collector used for syntax diagnostics
+     */
+    public Parser(List<Token> tokens, DiagnosticBag diagnosticBag) {
+        this.tokens = tokens;
+        this.diagnosticBag = diagnosticBag;
+    }
 
     private static Set<TokenType> enumSet(Set<TokenType> base, TokenType... additional) {
         Set<TokenType> result = EnumSet.copyOf(base);
@@ -161,26 +109,25 @@ public class Parser {
     }
 
     /**
-     * Creates a parser for a token stream.
-     *
-     * @param tokens token stream ending with {@code SPECIAL_END_OF_FILE}
-     * @param diagnosticBag collector used for syntax diagnostics
-     */
-    public Parser(List<Token> tokens, DiagnosticBag diagnosticBag) {
-        this.tokens = tokens;
-        this.diagnosticBag = diagnosticBag;
-    }
-
-    /**
      * Parses the complete token stream as a compilation unit.
      *
      * @return parsed compilation unit
      */
-    public CompilationUnit parse() { return parseCompilationUnit(); }
+    public CompilationUnit parse() {
+        return parseCompilationUnit();
+    }
 
-    private Token currentToken() { return peek(0); }
-    private Token lookahead() { return peek(1); }
-    private Token previousToken() { return peek(currentPosition > 0 ? -1 : 0); }
+    private Token currentToken() {
+        return peek(0);
+    }
+
+    private Token lookahead() {
+        return peek(1);
+    }
+
+    private Token previousToken() {
+        return peek(currentPosition > 0 ? -1 : 0);
+    }
 
     private Token peek(int offset) {
         int index = currentPosition + offset;
@@ -188,12 +135,25 @@ public class Parser {
         return index >= tokens.size() ? tokens.getLast() : tokens.get(index);
     }
 
-    private boolean matchCurrentToken(TokenType tokenType) { return currentToken().getTokenType() == tokenType; }
-    private boolean matchNextToken(TokenType tokenType) { return lookahead().getTokenType() == tokenType; }
-    private boolean currentIs(Set<TokenType> tokenTypes) { return tokenTypes.contains(currentToken().getTokenType()); }
-    private boolean isNotAtEnd() { return !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE); }
+    private boolean matchCurrentToken(TokenType tokenType) {
+        return currentToken().getTokenType() == tokenType;
+    }
 
-    private void consumeToken() { if (currentPosition < tokens.size()) currentPosition++; }
+    private boolean matchNextToken(TokenType tokenType) {
+        return lookahead().getTokenType() == tokenType;
+    }
+
+    private boolean currentIs(Set<TokenType> tokenTypes) {
+        return tokenTypes.contains(currentToken().getTokenType());
+    }
+
+    private boolean isNotAtEnd() {
+        return !matchCurrentToken(TokenType.SPECIAL_END_OF_FILE);
+    }
+
+    private void consumeToken() {
+        if (currentPosition < tokens.size()) currentPosition++;
+    }
 
     private <T extends AstNode> T located(T node, Token startToken) {
         node.setSourceRange(new SourceRange(startToken.getPosition(), previousToken().getPosition()));
@@ -373,7 +333,8 @@ public class Parser {
 
     private DeclarationAstNode parseDeclaration() {
         Token startToken = currentToken();
-        if (!skipErrors(FIRST_TOP_LEVEL, FOLLOW_DECLARATION, false)) return located(new StructDeclaration("<error>", List.of()), startToken);
+        if (!skipErrors(FIRST_TOP_LEVEL, FOLLOW_DECLARATION, false))
+            return located(new StructDeclaration("<error>", List.of()), startToken);
         return switch (currentToken().getTokenType()) {
             case TYPE_ENUM -> parseEnumDeclaration();
             case KEYWORD_FUNCTION -> parseFunctionDeclaration();
@@ -487,7 +448,8 @@ public class Parser {
 
     private TypeAstNode parseType() {
         Token startToken = currentToken();
-        if (!skipErrors(FIRST_TYPE, FOLLOW_TYPE, false)) return located(new PrimitiveType(PrimitiveTypeKind.INVALID), startToken);
+        if (!skipErrors(FIRST_TYPE, FOLLOW_TYPE, false))
+            return located(new PrimitiveType(PrimitiveTypeKind.INVALID), startToken);
         TypeAstNode type = parseTypeHead();
         while (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACKET)) {
             match(TokenType.SYMBOL_LEFT_BRACKET);
@@ -601,7 +563,8 @@ public class Parser {
 
     private ForInit parseForInit() {
         Token startToken = currentToken();
-        if (matchCurrentToken(TokenType.KEYWORD_LET)) return located(new ForInitVarDeclaration(parseVarDeclarationStatement(false)), startToken);
+        if (matchCurrentToken(TokenType.KEYWORD_LET))
+            return located(new ForInitVarDeclaration(parseVarDeclarationStatement(false)), startToken);
         return located(new ForInitExpressionList(parseExpressionList()), startToken);
     }
 
@@ -650,7 +613,8 @@ public class Parser {
     }
 
     private CaseLabelAstNode parseCaseLabel() {
-        if (matchCurrentToken(TokenType.ID_IDENTIFIER) && matchNextToken(TokenType.SYMBOL_DOT)) return parseEnumCaseLabel();
+        if (matchCurrentToken(TokenType.ID_IDENTIFIER) && matchNextToken(TokenType.SYMBOL_DOT))
+            return parseEnumCaseLabel();
         return parseLiteralCaseLabel();
     }
 
@@ -717,7 +681,8 @@ public class Parser {
     }
 
     private ExpressionAstNode parseVarInitializer() {
-        if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COMMA, TokenType.SYMBOL_RIGHT_BRACE), false)) return errorExpression();
+        if (!skipErrors(FIRST_INITIALIZER, EnumSet.of(TokenType.SYMBOL_SEMICOLON, TokenType.SYMBOL_COMMA, TokenType.SYMBOL_RIGHT_BRACE), false))
+            return errorExpression();
         if (matchCurrentToken(TokenType.SYMBOL_LEFT_BRACE)) return parseArrayInitExpression();
         return parseExpression();
     }
@@ -789,16 +754,45 @@ public class Parser {
         return condition;
     }
 
-    private ExpressionAstNode parseLogicalOr() { return parseBinaryLeftAssociative(this::parseLogicalAnd, EnumSet.of(TokenType.OPERATOR_OR)); }
-    private ExpressionAstNode parseLogicalAnd() { return parseBinaryLeftAssociative(this::parseInclusiveOr, EnumSet.of(TokenType.OPERATOR_AND)); }
-    private ExpressionAstNode parseInclusiveOr() { return parseBinaryLeftAssociative(this::parseExclusiveOr, EnumSet.of(TokenType.OPERATOR_BITWISE_OR)); }
-    private ExpressionAstNode parseExclusiveOr() { return parseBinaryLeftAssociative(this::parseAndExpression, EnumSet.of(TokenType.OPERATOR_BITWISE_XOR)); }
-    private ExpressionAstNode parseAndExpression() { return parseBinaryLeftAssociative(this::parseEqualityExpression, EnumSet.of(TokenType.OPERATOR_BITWISE_AND)); }
-    private ExpressionAstNode parseEqualityExpression() { return parseBinaryLeftAssociative(this::parseRelationalExpression, EnumSet.of(TokenType.OPERATOR_EQUALS, TokenType.OPERATOR_NOT_EQUALS)); }
-    private ExpressionAstNode parseRelationalExpression() { return parseBinaryLeftAssociative(this::parseShiftExpression, EnumSet.of(TokenType.OPERATOR_LESS_THAN, TokenType.OPERATOR_LESS_EQUAL, TokenType.OPERATOR_GREATER_THAN, TokenType.OPERATOR_GREATER_EQUAL)); }
-    private ExpressionAstNode parseShiftExpression() { return parseBinaryLeftAssociative(this::parseAdditiveExpression, EnumSet.of(TokenType.OPERATOR_BITSHIFT_LEFT, TokenType.OPERATOR_BITSHIFT_RIGHT)); }
-    private ExpressionAstNode parseAdditiveExpression() { return parseBinaryLeftAssociative(this::parseMultiplicativeExpression, EnumSet.of(TokenType.OPERATOR_PLUS, TokenType.OPERATOR_MINUS)); }
-    private ExpressionAstNode parseMultiplicativeExpression() { return parseBinaryLeftAssociative(this::parseUnaryExpression, EnumSet.of(TokenType.OPERATOR_MULTIPLY, TokenType.OPERATOR_DIVIDE, TokenType.OPERATOR_MODULO)); }
+    private ExpressionAstNode parseLogicalOr() {
+        return parseBinaryLeftAssociative(this::parseLogicalAnd, EnumSet.of(TokenType.OPERATOR_OR));
+    }
+
+    private ExpressionAstNode parseLogicalAnd() {
+        return parseBinaryLeftAssociative(this::parseInclusiveOr, EnumSet.of(TokenType.OPERATOR_AND));
+    }
+
+    private ExpressionAstNode parseInclusiveOr() {
+        return parseBinaryLeftAssociative(this::parseExclusiveOr, EnumSet.of(TokenType.OPERATOR_BITWISE_OR));
+    }
+
+    private ExpressionAstNode parseExclusiveOr() {
+        return parseBinaryLeftAssociative(this::parseAndExpression, EnumSet.of(TokenType.OPERATOR_BITWISE_XOR));
+    }
+
+    private ExpressionAstNode parseAndExpression() {
+        return parseBinaryLeftAssociative(this::parseEqualityExpression, EnumSet.of(TokenType.OPERATOR_BITWISE_AND));
+    }
+
+    private ExpressionAstNode parseEqualityExpression() {
+        return parseBinaryLeftAssociative(this::parseRelationalExpression, EnumSet.of(TokenType.OPERATOR_EQUALS, TokenType.OPERATOR_NOT_EQUALS));
+    }
+
+    private ExpressionAstNode parseRelationalExpression() {
+        return parseBinaryLeftAssociative(this::parseShiftExpression, EnumSet.of(TokenType.OPERATOR_LESS_THAN, TokenType.OPERATOR_LESS_EQUAL, TokenType.OPERATOR_GREATER_THAN, TokenType.OPERATOR_GREATER_EQUAL));
+    }
+
+    private ExpressionAstNode parseShiftExpression() {
+        return parseBinaryLeftAssociative(this::parseAdditiveExpression, EnumSet.of(TokenType.OPERATOR_BITSHIFT_LEFT, TokenType.OPERATOR_BITSHIFT_RIGHT));
+    }
+
+    private ExpressionAstNode parseAdditiveExpression() {
+        return parseBinaryLeftAssociative(this::parseMultiplicativeExpression, EnumSet.of(TokenType.OPERATOR_PLUS, TokenType.OPERATOR_MINUS));
+    }
+
+    private ExpressionAstNode parseMultiplicativeExpression() {
+        return parseBinaryLeftAssociative(this::parseUnaryExpression, EnumSet.of(TokenType.OPERATOR_MULTIPLY, TokenType.OPERATOR_DIVIDE, TokenType.OPERATOR_MODULO));
+    }
 
     private ExpressionAstNode parseBinaryLeftAssociative(ExpressionParser operandParser, Set<TokenType> operators) {
         ExpressionAstNode left = operandParser.parse();
@@ -810,9 +804,6 @@ public class Parser {
         }
         return left;
     }
-
-    @FunctionalInterface
-    private interface ExpressionParser { ExpressionAstNode parse(); }
 
     private ExpressionAstNode parseUnaryExpression() {
         if (matchCurrentToken(TokenType.KEYWORD_CAST)) {
@@ -857,7 +848,8 @@ public class Parser {
     }
 
     private ExpressionAstNode parsePrimaryExpression() {
-        if (!skipErrors(EnumSet.of(TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.KEYWORD_CALL, TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING, TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL), FOLLOW_EXPRESSION, false)) return errorExpression();
+        if (!skipErrors(EnumSet.of(TokenType.SYMBOL_LEFT_PARENTHESIS, TokenType.KEYWORD_CALL, TokenType.LITERAL_BOOLEAN, TokenType.LITERAL_CHAR, TokenType.LITERAL_DOUBLE, TokenType.ID_IDENTIFIER, TokenType.LITERAL_INTEGER, TokenType.KEYWORD_NEW, TokenType.LITERAL_NULL, TokenType.LITERAL_STRING, TokenType.LITERAL_HEX, TokenType.LITERAL_BINARY, TokenType.LITERAL_OCTAL), FOLLOW_EXPRESSION, false))
+            return errorExpression();
         return switch (currentToken().getTokenType()) {
             case SYMBOL_LEFT_PARENTHESIS -> {
                 match(TokenType.SYMBOL_LEFT_PARENTHESIS);
@@ -1053,8 +1045,11 @@ public class Parser {
     }
 
     private double parseDouble(Token token) {
-        try { return Double.parseDouble(token.getValue()); }
-        catch (NumberFormatException ignored) { return 0.0; }
+        try {
+            return Double.parseDouble(token.getValue());
+        } catch (NumberFormatException ignored) {
+            return 0.0;
+        }
     }
 
     private BinaryExpressionKind toBinaryExpressionKind(Token token) {
@@ -1153,5 +1148,10 @@ public class Parser {
                 yield NameTypeKind.INVALID;
             }
         };
+    }
+
+    @FunctionalInterface
+    private interface ExpressionParser {
+        ExpressionAstNode parse();
     }
 }

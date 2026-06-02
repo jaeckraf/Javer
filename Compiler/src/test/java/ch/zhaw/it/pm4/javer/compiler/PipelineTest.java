@@ -37,11 +37,6 @@ public final class PipelineTest {
         }
     }
 
-    @Test
-    void runPipelineTestsWithMaven() throws Exception {
-        assertEquals(0, run(new String[0]));
-    }
-
     public static int run(String[] args) throws Exception {
         disableLogging();
 
@@ -456,6 +451,11 @@ public final class PipelineTest {
         }
 
         return Path.of("src", "test", "resources", "pipelinetests");
+    }
+
+    @Test
+    void runPipelineTestsWithMaven() throws Exception {
+        assertEquals(0, run(new String[0]));
     }
 
     record RunResult(String stdout, String stderr, int exitCode) {

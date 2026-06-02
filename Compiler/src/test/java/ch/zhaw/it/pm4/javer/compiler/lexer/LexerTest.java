@@ -18,15 +18,8 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link Lexer}. Exercises every sub-lexer (identifiers,
@@ -37,6 +30,17 @@ class LexerTest {
 
     private DiagnosticBag diagnosticBag;
 
+    private static String loadResource(String classpath) {
+        try (InputStream in = LexerTest.class.getResourceAsStream(classpath)) {
+            if (in == null) {
+                throw new IllegalStateException("test resource not found: " + classpath);
+            }
+            return new String(in.readAllBytes(), StandardCharsets.US_ASCII);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     @BeforeEach
     void setUp() {
         diagnosticBag = mock(DiagnosticBag.class);
@@ -46,7 +50,9 @@ class LexerTest {
         return new Lexer(source, diagnosticBag).lexSourcecode();
     }
 
-    /** Lex a source that should yield exactly one real token plus an EOF. */
+    /**
+     * Lex a source that should yield exactly one real token plus an EOF.
+     */
     private Token single(String source) {
         List<Token> tokens = lex(source);
         assertEquals(2, tokens.size(), "expected one real token + EOF, got " + tokens);
@@ -79,17 +85,6 @@ class LexerTest {
         assertTrue(messages.getAllValues().stream().anyMatch(m -> m.contains(fragment)),
                 "expected an ERROR diagnostic containing \"" + fragment + "\", got: "
                         + messages.getAllValues());
-    }
-
-    private static String loadResource(String classpath) {
-        try (InputStream in = LexerTest.class.getResourceAsStream(classpath)) {
-            if (in == null) {
-                throw new IllegalStateException("test resource not found: " + classpath);
-            }
-            return new String(in.readAllBytes(), StandardCharsets.US_ASCII);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
     }
 
     // ---------------------------------------------------------------------
@@ -571,7 +566,8 @@ class LexerTest {
     @DisplayName("Lexing errors produce SPECIAL_UNKNOWN and diagnostics")
     void lexingErrors() {
 
-        record Case(String input, String expectedMessage) {}
+        record Case(String input, String expectedMessage) {
+        }
 
         Case[] cases = {
                 new Case("\"oops", "Unterminated string"),
@@ -600,7 +596,7 @@ class LexerTest {
     @Test
     @DisplayName("Every invalid string escape character produces an 'Invalid escape' diagnostic")
     void everyInvalidEscapeSequenceInStringReportsError() {
-        String[] invalid = { "\\q", "\\x", "\\y", "\\z", "\\1", "\\a" };
+        String[] invalid = {"\\q", "\\x", "\\y", "\\z", "\\1", "\\a"};
         for (String esc : invalid) {
             DiagnosticBag scopedBag = mock(DiagnosticBag.class);
             String source = "\"" + esc + "\"";

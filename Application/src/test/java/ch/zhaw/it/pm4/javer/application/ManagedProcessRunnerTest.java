@@ -52,7 +52,8 @@ class ManagedProcessRunnerTest {
                 "TestProcess",
                 System.out::println,
                 System.err::println,
-                state -> {}
+                state -> {
+                }
         );
 
         List<String> command = List.of("nonexistent_command_12345");
@@ -74,7 +75,8 @@ class ManagedProcessRunnerTest {
                 "TestProcess",
                 System.out::println,
                 System.err::println,
-                state -> {}
+                state -> {
+                }
         );
 
         List<String> command;
@@ -108,9 +110,12 @@ class ManagedProcessRunnerTest {
     void shouldHandleNonZeroExitCode() throws ExecutionException, InterruptedException, TimeoutException {
         ManagedProcessRunner runner = new ManagedProcessRunner(
                 "TestProcess",
-                s -> {},
-                s -> {},
-                state -> {}
+                s -> {
+                },
+                s -> {
+                },
+                state -> {
+                }
         );
 
         List<String> command;
@@ -139,7 +144,8 @@ class ManagedProcessRunnerTest {
                 "TestProcess",
                 stdout::append,
                 stderr::append,
-                state -> {}
+                state -> {
+                }
         );
 
         List<String> command;

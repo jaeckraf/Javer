@@ -1,8 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
@@ -11,15 +8,11 @@ import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
-import ch.zhaw.it.pm4.javer.compiler.visitor.AstPrinter;
-import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
-import ch.zhaw.it.pm4.javer.compiler.visitor.LayoutVisitor;
-import ch.zhaw.it.pm4.javer.compiler.visitor.NameResolutionVisitor;
-import ch.zhaw.it.pm4.javer.compiler.visitor.SemanticChecker;
-import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolDeclarationVisitor;
-import ch.zhaw.it.pm4.javer.compiler.visitor.SymbolTableAstPrinter;
-import ch.zhaw.it.pm4.javer.compiler.visitor.TypeCheckVisitor;
+import ch.zhaw.it.pm4.javer.compiler.visitor.*;
 import ch.zhaw.it.pm4.misc.JaverLogger;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Coordinates one complete compiler invocation from command-line options to
@@ -75,6 +68,34 @@ public class Compiler {
             JaverLogger.error(exception.getMessage());
             System.exit(2);
         }
+    }
+
+    private static void configureLogging(CompilerOptions options) {
+        if (options.isLoggingEnabled()) {
+            return;
+        }
+
+        LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).setLevel(Level.OFF);
+    }
+
+    private static void printSection(String title, String content) {
+        System.out.println("=== " + title + " ===");
+        System.out.println(content);
+    }
+
+    private static String dumpTokens(List<Token> tokens) {
+        return tokens.stream()
+                .map(Token::toString)
+                .collect(Collectors.joining(System.lineSeparator()));
+    }
+
+    private static String dumpAst(CompilationUnit rootNode) {
+        return new AstPrinter().printToString(rootNode);
+    }
+
+    private static String dumpSymbolTable(CompilationUnit rootNode) {
+        return new SymbolTableAstPrinter().printToString(rootNode);
     }
 
     /**
@@ -203,34 +224,6 @@ public class Compiler {
     private boolean generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
         return new CodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath()).generate(node);
-    }
-
-    private static void configureLogging(CompilerOptions options) {
-        if (options.isLoggingEnabled()) {
-            return;
-        }
-
-        LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
-        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).setLevel(Level.OFF);
-    }
-
-    private static void printSection(String title, String content) {
-        System.out.println("=== " + title + " ===");
-        System.out.println(content);
-    }
-
-    private static String dumpTokens(List<Token> tokens) {
-        return tokens.stream()
-                .map(Token::toString)
-                .collect(Collectors.joining(System.lineSeparator()));
-    }
-
-    private static String dumpAst(CompilationUnit rootNode) {
-        return new AstPrinter().printToString(rootNode);
-    }
-
-    private static String dumpSymbolTable(CompilationUnit rootNode) {
-        return new SymbolTableAstPrinter().printToString(rootNode);
     }
 
 }

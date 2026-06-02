@@ -1,11 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.misc.diagnostics;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Collects diagnostics for one compilation run and formats user-facing error
@@ -18,10 +18,9 @@ public class DiagnosticBag {
     private final int errorLimit;
     private final String filePath;
     private final SourceCache sourceCache;
-
-    private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
     private final List<PhaseAbortListener> phaseAbortListeners = new ArrayList<>();
+    private CompilationPhase phase;
     private int errorCount;
     private boolean errorLimitReached;
     private boolean phaseAbortRequested;
@@ -29,10 +28,10 @@ public class DiagnosticBag {
     /**
      * Initializes a new DiagnosticBag.
      *
-     * @param filePath The path of the file being compiled.
-     * @param errorLimit The maximum number of errors before compilation aborts.
+     * @param filePath         The path of the file being compiled.
+     * @param errorLimit       The maximum number of errors before compilation aborts.
      * @param compilationPhase initial compiler phase
-     * @param sourceCache The cache holding the raw source code text.
+     * @param sourceCache      The cache holding the raw source code text.
      */
     public DiagnosticBag(String filePath, int errorLimit, CompilationPhase compilationPhase, SourceCache sourceCache) {
         this.filePath = filePath;
@@ -82,7 +81,7 @@ public class DiagnosticBag {
      *
      * @param location source location associated with the diagnostic
      * @param severity diagnostic severity
-     * @param message user-facing message
+     * @param message  user-facing message
      */
     public void add(SourceLocation location, Severity severity, String message) {
         add(new Diagnostic(location, severity, message));
