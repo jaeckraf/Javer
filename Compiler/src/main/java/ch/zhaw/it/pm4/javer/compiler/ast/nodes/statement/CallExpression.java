@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
@@ -9,7 +8,6 @@ import java.util.List;
 /**
  * Expression node representing a function call and its arguments.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class CallExpression extends ExpressionAstNodeBase {
 
     private final String functionName;

@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
@@ -10,7 +9,6 @@ import java.util.List;
 /**
  * For-loop initializer consisting of one or more expressions.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ForInitExpressionList extends AstNodeBase implements ForInit {
 
     private final List<ExpressionAstNode> expressions;

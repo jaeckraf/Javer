@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
@@ -10,7 +9,6 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 /**
  * Statement node representing a variable declaration with an optional initializer.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class VarDeclarationStatement extends AstNodeBase implements StatementAstNode {
 
     private final TypeAstNode type;

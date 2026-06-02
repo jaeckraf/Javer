@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import java.util.List;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
@@ -10,7 +9,6 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 /**
  * Statement node representing a block with its own nested statements.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class BlockStatement extends AstNodeBase implements StatementAstNode {
 
     private final List<StatementAstNode> statements;

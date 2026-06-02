@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 
@@ -12,7 +11,6 @@ import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
  * Collects diagnostics for one compilation run and formats user-facing error
  * reports with source excerpts.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class DiagnosticBag {
 
     private static final int TAB_WIDTH = 4;

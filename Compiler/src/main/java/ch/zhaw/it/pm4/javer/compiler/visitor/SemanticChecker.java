@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
@@ -14,7 +13,6 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
  * Performs semantic checks that depend on control-flow context, such as
  * validating break and continue placement.
  */
-@JacocoGenerated("jacoco-ignore")
 public class SemanticChecker extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
