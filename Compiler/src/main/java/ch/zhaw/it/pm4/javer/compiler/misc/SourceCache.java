@@ -16,7 +16,6 @@ import java.util.List;
  */
 public class SourceCache {
 
-    private final String filePath;
     private final String sourceCode;
     private final List<String> cachedLines;
 
@@ -27,7 +26,6 @@ public class SourceCache {
      * @param filePath The path to the source file to be read.
      */
     public SourceCache(String filePath) {
-        this.filePath = filePath;
         try {
             this.sourceCode = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
             this.cachedLines = buildCache(this.sourceCode);
@@ -45,14 +43,6 @@ public class SourceCache {
      */
     private List<String> buildCache(String source) {
         return Arrays.asList(source.split("\\R", -1));
-    }
-
-    /**
-     * Retrieves the file path this cache was built from.
-     * Useful for the DiagnosticBag when printing error reports.
-     */
-    public String getFilePath() {
-        return filePath;
     }
 
     /**

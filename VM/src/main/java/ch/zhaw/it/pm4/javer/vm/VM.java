@@ -8,6 +8,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.IntBinaryOperator;
 
 /**
  * Stack-based virtual machine for Javer bytecode.
@@ -37,6 +39,10 @@ public class VM {
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
     private static final long STACK_LIMIT = ADDRESS_SPACE_SIZE;
+    private static final IntBinaryOperator LT = (a, b) -> a < b ? 1 : 0;
+    private static final IntBinaryOperator LE = (a, b) -> a <= b ? 1 : 0;
+    private static final IntBinaryOperator GT = (a, b) -> a > b ? 1 : 0;
+    private static final IntBinaryOperator GE = (a, b) -> a >= b ? 1 : 0;
     private final byte[] stack;
     private final long stackBase;
     private final Map<Integer, Instruction> code = new HashMap<>();
@@ -115,7 +121,7 @@ public class VM {
         } catch (VMExecutionException e) {
             System.err.println("Runtime error: " + e.getMessage());
             if (options.dumpOnRuntimeError() && vm != null) {
-                vm.dumpState(System.err);
+                vm.dumpState();
             }
         }
     }
@@ -187,15 +193,16 @@ public class VM {
         String upper = value.toUpperCase(Locale.ROOT);
         long multiplier = 1;
         String number = upper;
+        String substring = upper.substring(0, upper.length() - 2);
         if (upper.endsWith("KB")) {
             multiplier = 1024;
-            number = upper.substring(0, upper.length() - 2);
+            number = substring;
         } else if (upper.endsWith("K")) {
             multiplier = 1024;
             number = upper.substring(0, upper.length() - 1);
         } else if (upper.endsWith("MB")) {
             multiplier = 1024 * 1024L;
-            number = upper.substring(0, upper.length() - 2);
+            number = substring;
         } else if (upper.endsWith("M")) {
             multiplier = 1024 * 1024L;
             number = upper.substring(0, upper.length() - 1);
@@ -243,7 +250,7 @@ public class VM {
         }
 
         programEndAddress = analyzeCodeSection(result, errors);
-        allocateCodeRegion(CODE_BASE, Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
+        allocateCodeRegion(Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
                 ? 0
                 : programEndAddress - CODE_BASE + 1);
 
@@ -380,16 +387,16 @@ public class VM {
         return (int) next;
     }
 
-    private void allocateCodeRegion(int base, int size) {
+    private void allocateCodeRegion(int size) {
         if (size <= 0) {
             return;
         }
-        long end = Integer.toUnsignedLong(base) + size;
+        long end = Integer.toUnsignedLong(VM.CODE_BASE) + size;
         if (end > Integer.toUnsignedLong(HEAP_BASE)) {
             JaverLogger.error("Code section exceeds reserved address range");
             throw new VMExecutionException("Code section exceeds reserved address range");
         }
-        addRegion(new MemoryRegion(base, size, false, "code", new byte[size]));
+        addRegion(new MemoryRegion(VM.CODE_BASE, size, false, "code", new byte[size]));
     }
 
     private void validateEnterInstructions(int codeLineIndex, int dataLineIndex, List<String> errors) {
@@ -633,7 +640,7 @@ public class VM {
             }
             case PUSHR -> {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
-                String name = parseIdentifier(parts[1], instrName, "data name", lineNumber);
+                String name = parseIdentifier(parts[1], instrName, lineNumber);
                 yield vm -> vm.pushInt(vm.makeDataReference(name));
             }
             case LOCAL -> {
@@ -706,26 +713,10 @@ public class VM {
                                               String instrName,
                                               int lineNumber) throws ParseException {
         return switch (kind) {
-            case ILT -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a < b ? 1 : 0);
-            });
-            case ILE -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a <= b ? 1 : 0);
-            });
-            case IGT -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a > b ? 1 : 0);
-            });
-            case IGE -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a >= b ? 1 : 0);
-            });
+            case ILT -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, LT));
+            case ILE -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, LE));
+            case IGT -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, GT));
+            case IGE -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, GE));
             case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
             case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
             default -> {
@@ -735,31 +726,28 @@ public class VM {
         };
     }
 
+    private void compareInts(VM vm, IntBinaryOperator op) {
+        int b = vm.popInt();
+        int a = vm.popInt();
+        vm.pushInt(op.applyAsInt(a, b));
+    }
+
     private Instruction doubleComparisonCase(InstructionKind kind,
                                              String[] parts,
                                              String instrName,
                                              int lineNumber) throws ParseException {
         return switch (kind) {
-            case DLT -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a < b ? 1 : 0);
-            });
-            case DLE -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a <= b ? 1 : 0);
-            });
-            case DGT -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a > b ? 1 : 0);
-            });
-            case DGE -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a >= b ? 1 : 0);
-            });
+            case DLT -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a < b));
+
+            case DLE -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a <= b));
+
+            case DGT -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a > b));
+
+            case DGE -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a >= b));
             case DEQ ->
                     noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
             case DNE ->
@@ -769,6 +757,12 @@ public class VM {
                 yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
+    }
+
+    private void compareDoubles(VM vm, BiPredicate<Double, Double> op) {
+        double b = vm.popDouble();
+        double a = vm.popDouble();
+        vm.pushInt(op.test(a, b) ? 1 : 0);
     }
 
     private Instruction parseJump(
@@ -876,8 +870,9 @@ public class VM {
             return size;
         }
         if (size != 4 && size != 8) {
-            JaverLogger.error(LINE + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size);
-            throw new ParseException(LINE + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size);
+            String message = LINE + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size;
+            JaverLogger.error(message);
+            throw new ParseException(message);
         }
         return size;
     }
@@ -918,12 +913,12 @@ public class VM {
         return value;
     }
 
-    private String parseIdentifier(String operand, String instrName, String description, int lineNumber)
+    private String parseIdentifier(String operand, String instrName, int lineNumber)
             throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            JaverLogger.error(LINE + lineNumber + ": missing " + description + " for instruction '" + instrName + "'");
-            throw new ParseException(LINE + lineNumber + ": missing " + description + " for instruction '" + instrName + "'");
+            JaverLogger.error(LINE + lineNumber + ": missing data name for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": missing data name for instruction '" + instrName + "'");
         }
         return value;
     }
@@ -1372,8 +1367,7 @@ public class VM {
 
     private int peekInt(int offsetBytes) {
         ensureStackAvailable(offsetBytes + 4);
-        byte[] bytes = stack;
-        return intFromBytes(bytes, stackOffset(sp + offsetBytes));
+        return intFromBytes(stack, stackOffset(sp + offsetBytes));
     }
 
     private int intFromBytes(byte[] bytes, int offset) {
@@ -1426,7 +1420,7 @@ public class VM {
         }
         resolveRegion(address + ARRAY_PAYLOAD_OFFSET_BYTES, (int) payloadBytes);
         byte[] bytes = access.region().bytes();
-        int offset = access.offset() + ARRAY_PAYLOAD_OFFSET_BYTES;
+        int offset = ARRAY_PAYLOAD_OFFSET_BYTES;
         for (int i = 0; i < length; i++, offset += Character.BYTES) {
             char c = (char) (((bytes[offset + 1] & 0xFF) << 8) | (bytes[offset] & 0xFF));
             System.out.print(c);
@@ -1480,26 +1474,26 @@ public class VM {
         return formatAddress((int) address);
     }
 
-    private void dumpState(PrintStream out) {
-        out.println(SEPARATOR);
-        out.println("VM STATE DUMP");
-        out.println("pc = " + formatAddress(pc));
-        out.println("sp = " + formatAddress(sp));
-        out.println("fp = " + formatAddress(fp));
-        out.println("halted = " + halted);
-        out.println("programEndAddress = " + formatAddress(programEndAddress));
-        out.println(SEPARATOR);
-        dumpStackWindow(out);
-        out.println();
-        dumpRegions(out);
-        out.println(SEPARATOR);
+    private void dumpState() {
+        System.err.println(SEPARATOR);
+        System.err.println("VM STATE DUMP");
+        System.err.println("pc = " + formatAddress(pc));
+        System.err.println("sp = " + formatAddress(sp));
+        System.err.println("fp = " + formatAddress(fp));
+        System.err.println("halted = " + halted);
+        System.err.println("programEndAddress = " + formatAddress(programEndAddress));
+        System.err.println(SEPARATOR);
+        dumpStackWindow();
+        System.err.println();
+        dumpRegions();
+        System.err.println(SEPARATOR);
     }
 
-    private void dumpStackWindow(PrintStream out) {
-        out.println("=== STACK WINDOW ===");
+    private void dumpStackWindow() {
+        System.err.println("=== STACK WINDOW ===");
         int used = stackBytesUsed();
         if (used == 0) {
-            out.println("<empty>");
+            System.err.println("<empty>");
             return;
         }
 
@@ -1507,14 +1501,14 @@ public class VM {
         int offset = stackOffset(sp);
         for (int i = 0; i < count; i++) {
             long address = sp + i;
-            out.printf("%s 0x%02X%n", formatAddress(address), stack[offset + i] & 0xFF);
+            System.err.printf("%s 0x%02X%n", formatAddress(address), stack[offset + i] & 0xFF);
         }
     }
 
-    private void dumpRegions(PrintStream out) {
-        out.println("=== MEMORY REGIONS ===");
+    private void dumpRegions() {
+        System.err.println("=== MEMORY REGIONS ===");
         for (MemoryRegion region : regions.values()) {
-            out.printf(
+            System.err.printf(
                     "%s %s..%s %s size=%d%n",
                     region.name(),
                     formatAddress(region.base()),
@@ -1597,7 +1591,7 @@ public class VM {
     private record MemoryAccess(MemoryRegion region, int offset) {
     }
 
-    private static final class ParseException extends Exception {
+    public static final class ParseException extends Exception {
         private final List<String> errors;
 
         ParseException(String error) {

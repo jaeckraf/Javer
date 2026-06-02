@@ -14,10 +14,6 @@ public final class DataEntry extends SymbolEntry {
     private final Object value;
     private final int elementSizeBytes;
 
-    public DataEntry(String label, TypeInfo type, Object value) {
-        this(label, type, value, Math.max((type == null ? UnknownTypeInfo.INSTANCE : type).sizeBytes(), 1));
-    }
-
     public DataEntry(String label, TypeInfo type, Object value, int elementSizeBytes) {
         super(label);
         this.type = type == null ? UnknownTypeInfo.INSTANCE : type;

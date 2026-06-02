@@ -87,16 +87,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
         BlockScope previousBlock = currentBlock;
         currentBlock = node.getBlockScope();
 
-        if (node.getForInit() != null) {
-            node.getForInit().accept(this);
-        }
-        if (node.getCondition() != null) {
-            node.getCondition().accept(this);
-        }
-        if (node.getUpdate() != null) {
-            node.getUpdate().forEach(expression -> expression.accept(this));
-        }
-        node.getBody().accept(this);
+        super.visit(node);
 
         currentBlock = previousBlock;
     }
@@ -201,7 +192,6 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
         }
 
         node.setResolvedEnumValue(valueEntry);
-        node.setValue(valueEntry.getValue());
     }
 
     @Override

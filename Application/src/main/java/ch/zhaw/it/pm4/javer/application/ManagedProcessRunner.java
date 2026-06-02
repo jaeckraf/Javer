@@ -172,8 +172,8 @@ public class ManagedProcessRunner {
         boolean interrupted = false;
         int exitCode = -1;
         Throwable failure = null;
-        Thread stdoutThread = null;
-        Thread stderrThread = null;
+        Thread stdoutThread;
+        Thread stderrThread;
 
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -276,6 +276,7 @@ public class ManagedProcessRunner {
          *
          * @param running true while the process is running
          */
+        @SuppressWarnings("unused")
         void onRunningStateChanged(boolean running);
     }
 

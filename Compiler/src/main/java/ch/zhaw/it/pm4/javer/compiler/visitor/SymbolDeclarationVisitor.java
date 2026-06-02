@@ -17,6 +17,7 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Builds scopes and symbol-table entries for declarations before name
@@ -159,7 +160,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                     entry.getElementSizeBytes(),
                     offsetBytes,
                     entry.getDataLabel());
-            item.setSymbolEntry(valueEntry);
 
             if (!scope.defineEnumValue(valueEntry)) {
                 diagnosticBag.add(item.getSourceRange().start(), Severity.ERROR, "Duplicate enum item: " + item.getName());
@@ -221,7 +221,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                     offsetBytes,
                     validVariadic,
                     validVariadic ? elementType : null);
-            parameter.setSymbolEntry(entry);
             if (validVariadic) {
                 function.setVariadicParameter(entry);
             }
@@ -246,7 +245,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             TypeInfo type = resolveType(field.getType());
             int sizeBytes = type.sizeBytes();
             FieldEntry entry = new FieldEntry(field.getName(), type, sizeBytes, offsetBytes);
-            field.setSymbolEntry(entry);
 
             if (!structScope.defineField(entry)) {
                 diagnosticBag.add(field.getSourceRange().start(), Severity.ERROR, "Duplicate field: " + field.getName());
@@ -259,9 +257,26 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     @Override
     public void visit(BlockStatement node) {
+        visitWithNewBlockScope(
+                node::setBlockScope,
+                () -> super.visit(node));
+    }
+
+    @Override
+    public void visit(ForStatement node) {
+        visitWithNewBlockScope(
+                node::setBlockScope,
+                () -> super.visit(node));
+    }
+
+    private void visitWithNewBlockScope(
+            Consumer<BlockScope> scopeSetter,
+            Runnable visitBody) {
+
         BlockScope previousBlock = currentBlock;
         BlockScope blockScope = new BlockScope(currentBlock, currentFunctionScope);
-        node.setBlockScope(blockScope);
+
+        scopeSetter.accept(blockScope);
 
         if (currentBlock == null) {
             currentFunctionScope.setRootBlock(blockScope);
@@ -270,34 +285,11 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         }
 
         currentBlock = blockScope;
-        super.visit(node);
-        currentBlock = previousBlock;
-    }
-
-    @Override
-    public void visit(ForStatement node) {
-        BlockScope previousBlock = currentBlock;
-        BlockScope forScope = new BlockScope(currentBlock, currentFunctionScope);
-        node.setBlockScope(forScope);
-
-        if (currentBlock == null) {
-            currentFunctionScope.setRootBlock(forScope);
-        } else {
-            currentBlock.addChild(forScope);
+        try {
+            visitBody.run();
+        } finally {
+            currentBlock = previousBlock;
         }
-
-        currentBlock = forScope;
-        if (node.getForInit() != null) {
-            node.getForInit().accept(this);
-        }
-        if (node.getCondition() != null) {
-            node.getCondition().accept(this);
-        }
-        if (node.getUpdate() != null) {
-            node.getUpdate().forEach(expression -> expression.accept(this));
-        }
-        node.getBody().accept(this);
-        currentBlock = previousBlock;
     }
 
     @Override
@@ -350,23 +342,8 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         return offsets;
     }
 
-    private TypeInfo resolveType(TypeAstNode type) {
-        if (type instanceof PrimitiveType primitiveType) {
-            return PrimitiveTypeInfo.of(primitiveType.getKind());
-        }
-        if (type instanceof ArrayType arrayType) {
-            return new ArrayTypeInfo(resolveType(arrayType.getBaseType()));
-        }
-        if (type instanceof VoidType) {
-            return VoidTypeInfo.INSTANCE;
-        }
-        if (type instanceof NamedType namedType) {
-            return resolveNamedType(namedType);
-        }
-        return UnknownTypeInfo.INSTANCE;
-    }
-
-    private TypeInfo resolveNamedType(NamedType namedType) {
+    @Override
+    protected  TypeInfo resolveNamedType(NamedType namedType) {
         return switch (namedType.getKind()) {
             case STRUCT -> {
                 StructEntry entry = globalScope.resolveStruct(namedType.getName());

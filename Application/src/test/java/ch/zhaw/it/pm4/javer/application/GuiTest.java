@@ -453,6 +453,7 @@ class GuiTest {
         robot.interact(() -> ((CheckMenuItem) namespace.get("expertModeOption")).setSelected(true));
         waitFor(2, TimeUnit.SECONDS, () -> robot.lookup("#vmOptionsBox").queryAs(VBox.class).isVisible());
 
+        //noinspection unchecked
         Spinner<Integer> stackSizeSpinner = (Spinner<Integer>) namespace.get("vmStackSizeValueOption");
         TextArea statusOutput = robot.lookup("#statusOutput").queryAs(TextArea.class);
         RadioButton vmStackSizeKbOption = (RadioButton) namespace.get("vmStackSizeKbOption");

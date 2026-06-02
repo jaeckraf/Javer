@@ -42,7 +42,7 @@ public class Compiler {
     public Compiler(CompilerOptions options) {
         this.options = options;
         SourceCache sourceCache = new SourceCache(options.getInputFilePath());
-        this.context = new CompilationContext(options,
+        this.context = new CompilationContext(
                 new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
                 sourceCache);
         this.context.getDiagnosticBag().addPhaseAbortListener(phase -> phaseAbortRequested = true);
@@ -221,9 +221,8 @@ public class Compiler {
         new SemanticChecker(context.getDiagnosticBag()).visit(node);
     }
 
-    private boolean generateCode(CompilationUnit node) {
+    private void generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        return new CodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath()).generate(node);
+        new CodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath()).generate(node);
     }
-
 }

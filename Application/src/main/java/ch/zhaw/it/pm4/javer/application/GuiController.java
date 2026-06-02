@@ -259,7 +259,7 @@ public class GuiController {
         }
 
         Path targetPath = ensureExtension(file.toPath(), SOURCE_FILE_EXTENSION);
-        saveTextFile(targetPath, consoleInput.getText(), "Javer source file");
+        saveTextFile(targetPath, consoleInput.getText());
     }
 
     /**
@@ -408,7 +408,7 @@ public class GuiController {
         compilerOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        if (inputPath == null || !deleteFileIfExists(vmInputFile, VM_INPUT_FILE)) {
+        if (inputPath == null || !deleteFileIfExists(vmInputFile)) {
             return;
         }
 
@@ -501,7 +501,7 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        if (inputPath == null || !deleteFileIfExists(vmInputFile, VM_INPUT_FILE)) {
+        if (inputPath == null || !deleteFileIfExists(vmInputFile)) {
             return;
         }
 
@@ -807,7 +807,7 @@ public class GuiController {
         }
     }
 
-    private void saveTextFile(Path targetPath, String text, String label) {
+    private void saveTextFile(Path targetPath, String text) {
         Path absoluteTargetPath = targetPath.toAbsolutePath().normalize();
         try {
             Path parent = absoluteTargetPath.getParent();
@@ -822,9 +822,9 @@ public class GuiController {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
-            JaverLogger.info("Saved " + label + " as: " + absoluteTargetPath);
+            JaverLogger.info("Saved " + "Javer source file" + " as: " + absoluteTargetPath);
         } catch (IOException exception) {
-            JaverLogger.error("Failed to save " + label + ": " + exception.getMessage());
+            JaverLogger.error("Failed to save " + "Javer source file" + ": " + exception.getMessage());
         }
     }
 
@@ -898,18 +898,18 @@ public class GuiController {
         return fileName.endsWith(extension.toLowerCase(Locale.ROOT));
     }
 
-    private boolean deleteFileIfExists(Path path, String label) {
+    private boolean deleteFileIfExists(Path path) {
         try {
             Path parent = path.toAbsolutePath().getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
             if (Files.deleteIfExists(path)) {
-                JaverLogger.info("Deleted previous " + label + ": " + path.toAbsolutePath());
+                JaverLogger.info("Deleted previous " + GuiController.VM_INPUT_FILE + ": " + path.toAbsolutePath());
             }
             return true;
         } catch (IOException e) {
-            JaverLogger.error("Failed to delete previous " + label + ": " + e.getMessage());
+            JaverLogger.error("Failed to delete previous " + GuiController.VM_INPUT_FILE + ": " + e.getMessage());
             return false;
         }
     }

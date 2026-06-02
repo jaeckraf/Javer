@@ -60,14 +60,6 @@ public final class BlockScope {
         children.add(scope);
     }
 
-    public BlockScope getParent() {
-        return parent;
-    }
-
-    public FunctionScope getFunctionScope() {
-        return functionScope;
-    }
-
     public Map<String, VariableEntry> getVariables() {
         return variables;
     }

@@ -13,9 +13,9 @@ class BlockScopeTest {
         return new FunctionScope(new FunctionEntry("test"));
     }
 
-    private static VariableEntry variable(String name, int declarationOrder) {
+    private static VariableEntry variable(int declarationOrder) {
         return new VariableEntry(
-                name,
+                "value",
                 PrimitiveTypeInfo.INT,
                 PrimitiveTypeInfo.INT.sizeBytes(),
                 0,
@@ -28,7 +28,7 @@ class BlockScopeTest {
     void resolvesOnlyVariablesDeclaredBeforeCurrentDeclarationOrder() {
         FunctionScope functionScope = functionScope();
         BlockScope blockScope = new BlockScope(null, functionScope);
-        VariableEntry variable = variable("value", 0);
+        VariableEntry variable = variable(0);
 
         assertTrue(blockScope.defineVariable(variable));
 
@@ -41,7 +41,7 @@ class BlockScopeTest {
         FunctionScope functionScope = functionScope();
         BlockScope parentScope = new BlockScope(null, functionScope);
         BlockScope childScope = new BlockScope(parentScope, functionScope);
-        VariableEntry parentVariable = variable("value", 1);
+        VariableEntry parentVariable = variable(1);
 
         assertTrue(parentScope.defineVariable(parentVariable));
 
@@ -54,7 +54,7 @@ class BlockScopeTest {
         FunctionScope functionScope = functionScope();
         BlockScope parentScope = new BlockScope(null, functionScope);
         BlockScope childScope = new BlockScope(parentScope, functionScope);
-        VariableEntry childVariable = variable("value", 0);
+        VariableEntry childVariable = variable(0);
 
         assertTrue(childScope.defineVariable(childVariable));
 

@@ -470,9 +470,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         if (labelType instanceof NullTypeInfo) {
             return TypeRules.isReferenceType(switchType);
         }
-        if (TypeRules.isReferenceType(switchType)) {
-            return switchType.equals(labelType);
-        }
         return switchType.equals(labelType);
     }
 
@@ -791,23 +788,8 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         return null;
     }
 
-    private TypeInfo resolveType(TypeAstNode type) {
-        if (type instanceof PrimitiveType primitiveType) {
-            return PrimitiveTypeInfo.of(primitiveType.getKind());
-        }
-        if (type instanceof ArrayType arrayType) {
-            return new ArrayTypeInfo(resolveType(arrayType.getBaseType()));
-        }
-        if (type instanceof VoidType) {
-            return VoidTypeInfo.INSTANCE;
-        }
-        if (type instanceof NamedType namedType) {
-            return resolveNamedType(namedType);
-        }
-        return UnknownTypeInfo.INSTANCE;
-    }
-
-    private TypeInfo resolveNamedType(NamedType namedType) {
+    @Override
+    protected TypeInfo resolveNamedType(NamedType namedType) {
         SymbolEntry resolvedEntry = namedType.getResolvedEntry();
         if (resolvedEntry instanceof StructEntry structEntry) {
             return new StructTypeInfo(structEntry);

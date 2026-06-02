@@ -186,7 +186,7 @@ public class Lexer {
     }
 
     private boolean skipLineComment(char currentChar) {
-        if (currentChar == '/' && peek(1) == '/') {
+        if (currentChar == '/' && peek() == '/') {
             while (indexInSourceCode < sourceCode.length()
                     && !isLineTerminator(currentChar())) {
                 advance();
@@ -197,7 +197,7 @@ public class Lexer {
     }
 
     private boolean skipBlockComment(char currentChar) {
-        if (!(currentChar == '/' && peek(1) == '*')) {
+        if (!(currentChar == '/' && peek() == '*')) {
             return false;
         }
 
@@ -211,7 +211,7 @@ public class Lexer {
         boolean closed = false;
 
         while (indexInSourceCode < sourceCode.length()) {
-            if (currentChar() == '*' && peek(1) == '/') {
+            if (currentChar() == '*' && peek() == '/') {
                 advance();
                 advance();
                 closed = true;
@@ -261,7 +261,7 @@ public class Lexer {
             return null;
         }
 
-        return switch (peek(1)) {
+        return switch (peek()) {
             case 'x', 'X' -> lexBasedLiteral(
                     16,
                     TokenType.LITERAL_HEX,
@@ -311,7 +311,7 @@ public class Lexer {
     }
 
     private boolean isMalformedRangeLiteral() {
-        return currentChar() == '.' && peek(1) == '.';
+        return currentChar() == '.' && peek() == '.';
     }
 
     private Token lexMalformedRangeLiteral() {
@@ -326,7 +326,7 @@ public class Lexer {
     }
 
     private boolean lexFractionalPart() {
-        if (currentChar() == '.' && isDecimalDigit(peek(1))) {
+        if (currentChar() == '.' && isDecimalDigit(peek())) {
             advance();
             consumeDigitsForBase(10);
             return true;
@@ -535,8 +535,8 @@ public class Lexer {
      * based on upcoming characters (e.g., distinguishing between '=' and
      * '==').
      */
-    private char peek(int offset) {
-        return indexInSourceCode + offset < sourceCode.length() ? sourceCode.charAt(indexInSourceCode + offset) : '\0';
+    private char peek() {
+        return indexInSourceCode + 1 < sourceCode.length() ? sourceCode.charAt(indexInSourceCode + 1) : '\0';
     }
 
     /**

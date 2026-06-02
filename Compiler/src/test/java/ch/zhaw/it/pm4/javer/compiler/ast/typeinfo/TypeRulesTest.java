@@ -10,12 +10,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TypeRulesTest {
 
-    private static StructTypeInfo structType(String name) {
-        return new StructTypeInfo(new StructEntry(name));
+    private static StructTypeInfo structType() {
+        return new StructTypeInfo(new StructEntry("Point"));
     }
 
-    private static EnumTypeInfo enumType(String name) {
-        return new EnumTypeInfo(new EnumEntry(name));
+    private static EnumTypeInfo enumType() {
+        return new EnumTypeInfo(new EnumEntry("Color"));
     }
 
     @Test
@@ -33,8 +33,8 @@ class TypeRulesTest {
     @Test
     void nullIsAssignableOnlyToReferenceTypes() {
         TypeInfo arrayType = new ArrayTypeInfo(PrimitiveTypeInfo.INT);
-        TypeInfo structType = structType("Point");
-        TypeInfo enumType = enumType("Color");
+        TypeInfo structType = structType();
+        TypeInfo enumType = enumType();
 
         assertAll(
                 () -> assertTrue(TypeRules.isAssignable(PrimitiveTypeInfo.STRING, NullTypeInfo.INSTANCE)),
@@ -229,7 +229,7 @@ class TypeRulesTest {
 
     @Test
     void conditionalResultFindsCommonResultType() {
-        TypeInfo structType = structType("Point");
+        TypeInfo structType = structType();
 
         assertAll(
                 () -> assertEquals(
@@ -258,7 +258,7 @@ class TypeRulesTest {
                 () -> assertEquals(false, TypeRules.defaultValue(PrimitiveTypeInfo.BOOL)),
                 () -> assertEquals('\0', TypeRules.defaultValue(PrimitiveTypeInfo.CHAR)),
                 () -> assertNull(TypeRules.defaultValue(PrimitiveTypeInfo.STRING)),
-                () -> assertNull(TypeRules.defaultValue(enumType("Color"))),
+                () -> assertNull(TypeRules.defaultValue(enumType())),
                 () -> assertNull(TypeRules.defaultValue(new ArrayTypeInfo(PrimitiveTypeInfo.INT)))
         );
     }

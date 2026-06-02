@@ -24,6 +24,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+import static ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind.*;
+
 /**
  * Emits VM bytecode from a semantically checked AST.
  */
@@ -68,14 +70,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
      *
      * @param node root compilation unit
      */
-    public boolean generate(CompilationUnit node) {
+    public void generate(CompilationUnit node) {
         output.setLength(0);
         loopContexts.clear();
         nextLabelId = 0;
 
         if (!outputDirectoryReady) {
             deleteOutputFile();
-            return false;
+            return;
         }
 
         try {
@@ -83,7 +85,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
             if (failed || diagnostics.hasErrors()) {
                 deleteOutputFile();
-                return false;
+                return;
             }
 
             Files.writeString(
@@ -93,11 +95,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE);
-            return true;
         } catch (IOException exception) {
             report("Could not write bytecode output file: " + outputFile + ".");
             deleteOutputFile();
-            return false;
         } finally {
             dataSection = null;
             currentFunction = null;
@@ -359,11 +359,13 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BreakStatement node) {
+        assert loopContexts.peek() != null;
         writeLine(JUMP + loopContexts.peek().breakLabel());
     }
 
     @Override
     public void visit(ContinueStatement node) {
+        assert loopContexts.peek() != null;
         writeLine(JUMP + loopContexts.peek().continueLabel());
     }
 
@@ -442,9 +444,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case SUB_ASSIGN -> BinaryExpressionKind.SUBTRACT;
             case MUL_ASSIGN -> BinaryExpressionKind.MULTIPLY;
             case DIV_ASSIGN -> BinaryExpressionKind.DIVIDE;
-            case MOD_ASSIGN -> BinaryExpressionKind.MODULO;
+            case MOD_ASSIGN -> MODULO;
             case BITWISE_OR_ASSIGN -> BinaryExpressionKind.BITWISE_OR;
-            case BITWISE_AND_ASSIGN -> BinaryExpressionKind.BITWISE_AND;
+            case BITWISE_AND_ASSIGN -> BITWISE_AND;
             case BITWISE_XOR_ASSIGN -> BinaryExpressionKind.BITWISE_XOR;
             case LEFT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_LEFT;
             case RIGHT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_RIGHT;
@@ -541,28 +543,19 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private boolean isIntegerOnlyBinary(BinaryExpressionKind operator) {
-        return switch (operator) {
-            case MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> true;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE,
-                 AND, OR, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> {
-                JaverLogger.error(UNEXPECTED_BINARY_OPERATOR + operator);
-                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + operator);
-            }
-        };
+        return isAmong(operator, MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT);
     }
 
     private boolean isComparison(BinaryExpressionKind operator) {
-        return switch (operator) {
-            case EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> true;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
-                 BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
-                 AND, OR -> false;
-            case INVALID -> {
-                JaverLogger.error(UNEXPECTED_BINARY_OPERATOR + operator);
-                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + operator);
-            }
-        };
+        return isAmong(operator, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS);
+    }
+
+    private boolean isAmong(
+            BinaryExpressionKind operator,
+            BinaryExpressionKind... kinds) {
+
+        return EnumSet.copyOf(Arrays.asList(kinds))
+                .contains(operator);
     }
 
     private void emitLogicalAnd(BinaryExpression node) {
@@ -870,7 +863,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
         emitLoadTemp(baseOffset);
         emitLoadTemp(indexOffset);
-        emitScaleTopBy(VmLayout.WORD_BYTES);
+        emitScaleTopBy();
         emitArrayPayloadOffset();
         writeLine("IADD");
         emitJaggedArrayLevel(depth + 1, dimensionCount, leafType, temps);
@@ -892,11 +885,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
         writeLine("LOAD4");
     }
 
-    private void emitScaleTopBy(int size) {
-        if (size != VmLayout.BYTE_BYTES) {
-            writeLine(PUSHI + size);
-            writeLine("IMUL");
-        }
+    private void emitScaleTopBy() {
+        writeLine(PUSHI + VmLayout.WORD_BYTES);
+        writeLine("IMUL");
     }
 
     private void emitArrayPayloadOffset() {
@@ -957,6 +948,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private void emitPrintBuiltin(CallExpression node) {
         FunctionEntry function = node.getResolvedFunction();
         BuiltInFunction builtIn = BuiltInFunction.find(function.getName());
+        assert builtIn != null;
         emitTyped(node.getArguments().getFirst(), builtIn.getParameterType());
         writeLine(builtIn.getVmInstruction());
     }
@@ -1163,7 +1155,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
             emitIndexAddress(index);
             return;
         }
-        emitMemberAddress((MemberAccessExpression) expression);
+        if (expression instanceof MemberAccessExpression memberExpression)
+            emitMemberAddress(memberExpression);
     }
 
     private void emitStorageAddress(StorageEntry storage) {

@@ -406,8 +406,7 @@ public final class PipelineTest {
     private static String normalizeDiagnostics(String text) {
         return normalize(text)
                 .replace("\\", "/")
-                .replaceAll("File: (?:.*/)?Compiler/src/test/resources/", "File: src/test/resources/")
-                .replaceAll("File: src/test/resources/", "File: src/test/resources/");
+                .replaceAll("File: (?:.*/)?Compiler/src/test/resources/", "File: src/test/resources/");
     }
 
     private static void assertSnapshotEquals(

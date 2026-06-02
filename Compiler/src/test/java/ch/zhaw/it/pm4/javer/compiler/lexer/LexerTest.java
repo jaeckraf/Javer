@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
@@ -30,10 +29,10 @@ class LexerTest {
 
     private DiagnosticBag diagnosticBag;
 
-    private static String loadResource(String classpath) {
-        try (InputStream in = LexerTest.class.getResourceAsStream(classpath)) {
+    private static String loadResource() {
+        try (InputStream in = LexerTest.class.getResourceAsStream("all-tokens.javer")) {
             if (in == null) {
-                throw new IllegalStateException("test resource not found: " + classpath);
+                throw new IllegalStateException("test resource not found: " + "all-tokens.javer");
             }
             return new String(in.readAllBytes(), StandardCharsets.US_ASCII);
         } catch (IOException e) {
@@ -675,7 +674,7 @@ class LexerTest {
     @Test
     @DisplayName("Fixture file covers every lexable TokenType without diagnostics")
     void allTokenTypesFromResourceFile() {
-        String source = loadResource("all-tokens.javer");
+        String source = loadResource();
         List<Token> tokens = lex(source);
 
         Set<TokenType> seen = new HashSet<>();

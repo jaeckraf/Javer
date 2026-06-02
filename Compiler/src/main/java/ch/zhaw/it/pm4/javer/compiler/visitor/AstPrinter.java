@@ -598,9 +598,9 @@ public class AstPrinter extends AstNodeVisitorBase {
      */
     protected void writeBranchLine(String text, boolean isLast) {
         for (boolean last : isLastStack) {
-            write(last ? "    " : "\u2502   ");
+            write(last ? "    " : "│   ");
         }
-        write(isLast ? "\u2514\u2500\u2500 " : "\u251c\u2500\u2500 ");
+        write(isLast ? "└── " : "├── ");
         write(text);
         writeLine();
     }
@@ -658,6 +658,7 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     @FunctionalInterface
     private interface VisitOne<T> {
+        @SuppressWarnings("unused")
         void visit(T item, boolean isLast);
     }
 }

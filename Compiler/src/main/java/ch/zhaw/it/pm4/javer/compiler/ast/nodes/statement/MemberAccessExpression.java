@@ -11,7 +11,6 @@ public final class MemberAccessExpression extends ExpressionAstNodeBase {
 
     private final ExpressionAstNode target;
     private final String memberName;
-    private int value;
     private FieldEntry resolvedField;
     private EnumValueEntry resolvedEnumValue;
 
@@ -31,14 +30,6 @@ public final class MemberAccessExpression extends ExpressionAstNodeBase {
     @Override
     public void accept(AstNodeVisitor visitor) {
         visitor.visit(this);
-    }
-
-    public int getValue() {
-        return value;
-    }
-
-    public void setValue(int value) {
-        this.value = value;
     }
 
     public FieldEntry getResolvedField() {

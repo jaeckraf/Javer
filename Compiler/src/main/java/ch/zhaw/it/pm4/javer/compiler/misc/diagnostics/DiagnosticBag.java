@@ -228,7 +228,7 @@ public class DiagnosticBag {
             char c = line.charAt(i);
             if (c == '\t') {
                 int spaces = TAB_WIDTH - ((column - 1) % TAB_WIDTH);
-                expanded.append(" ".repeat(spaces));
+                expanded.repeat(" ", spaces);
                 column += spaces;
             } else {
                 expanded.append(c);
@@ -239,20 +239,11 @@ public class DiagnosticBag {
     }
 
     /**
-     * Clears all diagnostics from the bag, preparing it for the next compiler phase.
-     */
-    public void flush() {
-        diagnostics.clear();
-        errorCount = 0;
-        errorLimitReached = false;
-        phaseAbortRequested = false;
-    }
-
-    /**
      * Listener for diagnostic-driven phase abort requests.
      */
     @FunctionalInterface
     public interface PhaseAbortListener {
+        @SuppressWarnings("unused")
         void phaseAbortRequested(CompilationPhase phase);
     }
 }

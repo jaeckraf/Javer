@@ -139,8 +139,8 @@ public class Parser {
         return currentToken().getTokenType() == tokenType;
     }
 
-    private boolean matchNextToken(TokenType tokenType) {
-        return lookahead().getTokenType() == tokenType;
+    private boolean matchNextTokenWithDot() {
+        return lookahead().getTokenType() == TokenType.SYMBOL_DOT;
     }
 
     private boolean currentIs(Set<TokenType> tokenTypes) {
@@ -209,8 +209,8 @@ public class Parser {
         return currentIs(first);
     }
 
-    private void synchronize(Set<TokenType> sync) {
-        while (!currentIs(sync) && isNotAtEnd()) consumeToken();
+    private void synchronize() {
+        while (!currentIs(Parser.FOLLOW_STATEMENT_END) && isNotAtEnd()) consumeToken();
     }
 
     private boolean matchStatementSemicolon() {
@@ -219,7 +219,7 @@ public class Parser {
             return true;
         }
         reportExpectedToken(TokenType.SYMBOL_SEMICOLON);
-        synchronize(FOLLOW_STATEMENT_END);
+        synchronize();
         if (matchCurrentToken(TokenType.SYMBOL_SEMICOLON)) consumeToken();
         return false;
     }
@@ -613,7 +613,7 @@ public class Parser {
     }
 
     private CaseLabelAstNode parseCaseLabel() {
-        if (matchCurrentToken(TokenType.ID_IDENTIFIER) && matchNextToken(TokenType.SYMBOL_DOT))
+        if (matchCurrentToken(TokenType.ID_IDENTIFIER) && matchNextTokenWithDot())
             return parseEnumCaseLabel();
         return parseLiteralCaseLabel();
     }

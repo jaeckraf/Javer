@@ -144,7 +144,7 @@ class DataSectionTest {
         DataSection dataSection = new DataSection();
 
         DataEntry bools = dataSection.addArrayTemplate(PrimitiveTypeInfo.BOOL, Arrays.asList(true, false, null));
-        DataEntry chars = dataSection.addArrayTemplate(PrimitiveTypeInfo.CHAR, List.of('A', '\u20AC'));
+        DataEntry chars = dataSection.addArrayTemplate(PrimitiveTypeInfo.CHAR, List.of('A', '€'));
         DataEntry ints = dataSection.addArrayTemplate(PrimitiveTypeInfo.INT, Arrays.asList(1, -1, null));
         DataEntry doubles = dataSection.addArrayTemplate(PrimitiveTypeInfo.DOUBLE, Arrays.asList(1.5, null));
 

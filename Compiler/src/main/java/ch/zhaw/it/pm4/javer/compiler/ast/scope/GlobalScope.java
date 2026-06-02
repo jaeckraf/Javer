@@ -76,18 +76,6 @@ public final class GlobalScope {
         return false;
     }
 
-    public Map<String, FunctionEntry> getFunctions() {
-        return functions;
-    }
-
-    public Map<String, StructEntry> getStructs() {
-        return structs;
-    }
-
-    public Map<String, EnumEntry> getEnums() {
-        return enums;
-    }
-
     public Map<String, SymbolEntry> getAllEntries() {
         Map<String, SymbolEntry> entries = new LinkedHashMap<>();
         functions.forEach((name, entry) -> entries.put("function " + name, entry));

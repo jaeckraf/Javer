@@ -178,17 +178,10 @@ public class SemanticChecker extends AstNodeVisitorBase {
     }
 
     private Completion analyzeWhile(WhileStatement statement) {
-        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
-            return Completion.NORMAL;
-        }
-        Completion bodyCompletion = analyzeCompletion(statement.getBody());
-        if (bodyCompletion == Completion.RETURNS) {
-            return Completion.RETURNS;
-        }
-        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
-            warnComplexInfiniteLoop(statement);
-        }
-        return Completion.DOES_NOT_COMPLETE;
+        return analyzeInfiniteLoop(
+                statement.getCondition(),
+                statement.getBody(),
+                statement);
     }
 
     private Completion analyzeFor(ForStatement statement) {
@@ -206,16 +199,31 @@ public class SemanticChecker extends AstNodeVisitorBase {
     }
 
     private Completion analyzeDoWhile(DoWhileStatement statement) {
-        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
+        return analyzeInfiniteLoop(
+                statement.getCondition(),
+                statement.getBody(),
+                statement);
+    }
+
+    private Completion analyzeInfiniteLoop(
+            ExpressionAstNode condition,
+            StatementAstNode body,
+            StatementAstNode loopStatement) {
+
+        if (isNotBooleanLiteralTrue(condition) || containsBreak(body)) {
             return Completion.NORMAL;
         }
-        Completion bodyCompletion = analyzeCompletion(statement.getBody());
+
+        Completion bodyCompletion = analyzeCompletion(body);
+
         if (bodyCompletion == Completion.RETURNS) {
             return Completion.RETURNS;
         }
-        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
-            warnComplexInfiniteLoop(statement);
+
+        if (bodyCompletion == Completion.NORMAL && containsReturn(body)) {
+            warnComplexInfiniteLoop(loopStatement);
         }
+
         return Completion.DOES_NOT_COMPLETE;
     }
 

@@ -44,22 +44,13 @@ public final class DataSection {
     }
 
     private static String encodeValue(Object value, int width) {
-        if (value == null) {
-            return unsignedHex(0, width);
-        }
-        if (value instanceof Boolean bool) {
-            return unsignedHex(bool ? 1 : 0, width);
-        }
-        if (value instanceof Character character) {
-            return unsignedHex(character, width);
-        }
-        if (value instanceof Double doubleValue) {
-            return "%016X".formatted(Double.doubleToLongBits(doubleValue));
-        }
-        if (value instanceof Number number) {
-            return unsignedHex(number.longValue(), width);
-        }
-        return unsignedHex(0, width);
+        return switch (value) {
+            case Boolean bool -> unsignedHex(bool ? 1 : 0, width);
+            case Character character -> unsignedHex(character, width);
+            case Double doubleValue -> "%016X".formatted(Double.doubleToLongBits(doubleValue));
+            case Number number -> unsignedHex(number.longValue(), width);
+            case null, default -> unsignedHex(0, width);
+        };
     }
 
     private static String unsignedHex(long value, int width) {

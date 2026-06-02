@@ -80,9 +80,8 @@ public final class TypeRules {
         return !switch (operator) {
             case ASSIGN -> isAssignable(target, value);
             case ADD_ASSIGN, SUB_ASSIGN, MUL_ASSIGN, DIV_ASSIGN -> isNumeric(target) && isNumeric(value);
-            case MOD_ASSIGN -> isInteger(target) && isInteger(value);
-            case BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN,
-                 LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN -> isInteger(target) && isInteger(value);
+            case MOD_ASSIGN, BITWISE_OR_ASSIGN, BITWISE_AND_ASSIGN, BITWISE_XOR_ASSIGN, LEFT_SHIFT_ASSIGN,
+                 RIGHT_SHIFT_ASSIGN -> isInteger(target) && isInteger(value);
             case INVALID -> false;
         };
     }
@@ -205,9 +204,6 @@ public final class TypeRules {
                 case DOUBLE -> 0.0;
                 case STRING, INVALID -> null;
             };
-        }
-        if (type instanceof EnumTypeInfo) {
-            return null;
         }
         return null;
     }
