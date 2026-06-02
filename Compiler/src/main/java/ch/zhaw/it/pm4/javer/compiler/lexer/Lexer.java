@@ -371,7 +371,7 @@ public class Lexer {
                     break;
                 }
                 char esc = currentChar();
-                if (!isValidEscape(esc)) {
+                if (isInvalidEscape(esc)) {
                     error("Invalid escape sequence: \\" + esc);
                     value.append(esc);
                 } else {
@@ -431,7 +431,7 @@ public class Lexer {
 
         String value;
 
-        if (!isValidEscape(esc)) {
+        if (isInvalidEscape(esc)) {
             error("Invalid escape sequence: \\" + esc);
             value = String.valueOf(esc);
         } else {
@@ -693,13 +693,13 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a recognised escape sequence
+     * @return returns true if the given character is not a recognised escape sequence
      * character inside a string or char literal.
      * Recognised escapes: n, r, t, b, f, 0, ", ', \.
      */
-    private boolean isValidEscape(char c) {
-        return c == 'n' || c == 'r' || c == 't' || c == 'b' || c == 'f'
-                || c == '0' || c == '"' || c == '\'' || c == '\\';
+    private boolean isInvalidEscape(char c) {
+        return c != 'n' && c != 'r' && c != 't' && c != 'b' && c != 'f'
+                && c != '0' && c != '"' && c != '\'' && c != '\\';
     }
 
     private char resolveEscape(char c) {

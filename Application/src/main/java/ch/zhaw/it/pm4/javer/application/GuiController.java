@@ -312,7 +312,7 @@ public class GuiController {
     @FXML
     protected void onSaveJbcFileClick() {
         JaverLogger.info("Save JBC File selected.");
-        if (!isBytecodeFileReady()) {
+        if (isBytecodeFileUnavailable()) {
             JaverLogger.error("No JBC file is available. Compile source code or load a .jbc file first.");
             return;
         }
@@ -408,7 +408,7 @@ public class GuiController {
         compilerOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        if (inputPath == null || !deleteFileIfExists(vmInputFile)) {
+        if (inputPath == null || !ensureFileDeleted(vmInputFile)) {
             return;
         }
 
@@ -501,7 +501,7 @@ public class GuiController {
         virtualMachineOutput.clear();
 
         String inputPath = writeInputToFile(consoleInput.getText());
-        if (inputPath == null || !deleteFileIfExists(vmInputFile)) {
+        if (inputPath == null || !ensureFileDeleted(vmInputFile)) {
             return;
         }
 
@@ -762,7 +762,7 @@ public class GuiController {
             return;
         }
 
-        if (!isBytecodeFileReady()) {
+        if (isBytecodeFileUnavailable()) {
             JaverLogger.error("Compiler finished, but the VM input file is missing or empty: "
                     + vmInputFile.toAbsolutePath());
             return;
@@ -779,12 +779,12 @@ public class GuiController {
         }
     }
 
-    private boolean isBytecodeFileReady() {
+    private boolean isBytecodeFileUnavailable() {
         try {
-            return Files.isRegularFile(vmInputFile) && Files.size(vmInputFile) > 0;
+            return !Files.isRegularFile(vmInputFile) || Files.size(vmInputFile) <= 0;
         } catch (IOException exception) {
             JaverLogger.error("Failed to inspect VM input file: " + exception.getMessage());
-            return false;
+            return true;
         }
     }
 
@@ -898,7 +898,7 @@ public class GuiController {
         return fileName.endsWith(extension.toLowerCase(Locale.ROOT));
     }
 
-    private boolean deleteFileIfExists(Path path) {
+    private boolean ensureFileDeleted(Path path) {
         try {
             Path parent = path.toAbsolutePath().getParent();
             if (parent != null) {

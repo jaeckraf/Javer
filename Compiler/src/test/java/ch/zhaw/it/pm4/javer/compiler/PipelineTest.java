@@ -338,8 +338,7 @@ public final class PipelineTest {
 
             return new RunResult(
                     stdoutBuffer.toString(StandardCharsets.UTF_8),
-                    stderrBuffer.toString(StandardCharsets.UTF_8),
-                    0
+                    stderrBuffer.toString(StandardCharsets.UTF_8)
             );
         } finally {
             System.setOut(originalOut);
@@ -457,7 +456,7 @@ public final class PipelineTest {
         assertEquals(0, run(new String[0]));
     }
 
-    record RunResult(String stdout, String stderr, int exitCode) {
+    record RunResult(String stdout, String stderr) {
     }
 
     record Fixture(Path sourceFile, String baseName) {
