@@ -322,7 +322,7 @@ class ParserRecoveryTest {
     }
 
     private void assertDiagnosticMessagesContain(ParseResult result, String... expectedFragments) {
-        String allMessages = String.join("\n", result.diagnostics().stream().map(Diagnostic::getMessage).toList());
+        String allMessages = String.join("\n", result.diagnostics().stream().map(Diagnostic::message).toList());
         for (String expectedFragment : expectedFragments) {
             assertTrue(
                     allMessages.contains(expectedFragment),
@@ -334,14 +334,14 @@ class ParserRecoveryTest {
 
     private void assertMessageContains(Diagnostic diagnostic, String expectedFragment) {
         assertTrue(
-                diagnostic.getMessage().contains(expectedFragment),
+                diagnostic.message().contains(expectedFragment),
                 () -> "Expected diagnostic to contain '%s' but got '%s'"
-                        .formatted(expectedFragment, diagnostic.getMessage())
+                        .formatted(expectedFragment, diagnostic.message())
         );
     }
 
     private void assertLocation(Diagnostic diagnostic, int lineNumber, int startColumn) {
-        SourceLocation location = diagnostic.getLocation();
+        SourceLocation location = diagnostic.location();
         assertNotNull(location);
         assertEquals(lineNumber, location.lineNumber());
         assertEquals(startColumn, location.startColumn());

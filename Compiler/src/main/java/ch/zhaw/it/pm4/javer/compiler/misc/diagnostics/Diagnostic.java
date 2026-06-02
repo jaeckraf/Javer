@@ -14,43 +14,39 @@ import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
  * <li>type mismatch (type check)</li>
  * </ul>
  */
-public class Diagnostic {
-
-    private final SourceLocation location;
-    private final Severity severity;
-    private final String message;
+public record Diagnostic(SourceLocation location, Severity severity, String message) {
 
     /**
      * Creates a new Diagnostic with an initial message.
      *
      * @param location The precise location of the issue in the source code.
      * @param severity The severity level of the issue.
-     * @param message The message.
+     * @param message  The message.
      */
-    public Diagnostic(SourceLocation location, Severity severity, String message) {
-        this.location = location;
-        this.severity = severity;
-        this.message = message;
+    public Diagnostic {
     }
 
     /**
      * @return source location associated with the diagnostic
      */
-    public SourceLocation getLocation() {
+    @Override
+    public SourceLocation location() {
         return location;
     }
 
     /**
      * @return diagnostic severity
      */
-    public Severity getSeverity() {
+    @Override
+    public Severity severity() {
         return severity;
     }
 
     /**
      * @return user-facing diagnostic message
      */
-    public String getMessage() {
+    @Override
+    public String message() {
         return message;
     }
 

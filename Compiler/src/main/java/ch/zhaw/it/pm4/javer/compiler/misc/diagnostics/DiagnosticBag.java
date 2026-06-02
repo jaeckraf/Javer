@@ -107,7 +107,7 @@ public class DiagnosticBag {
     }
 
     private boolean isError(Diagnostic diagnostic) {
-        Severity severity = diagnostic.getSeverity();
+        Severity severity = diagnostic.severity();
         return severity == Severity.ERROR || severity == Severity.SEVERE;
     }
 
@@ -136,7 +136,7 @@ public class DiagnosticBag {
      * @return true if there are errors, false otherwise.
      */
     public boolean hasErrors() {
-        return diagnostics.stream().anyMatch(d -> d.getSeverity() == Severity.ERROR || d.getSeverity() == Severity.SEVERE);
+        return diagnostics.stream().anyMatch(d -> d.severity() == Severity.ERROR || d.severity() == Severity.SEVERE);
     }
 
     /**
@@ -177,13 +177,13 @@ public class DiagnosticBag {
     }
 
     private String formatDiagnostic(Diagnostic diagnostic) {
-        SourceLocation location = diagnostic.getLocation();
+        SourceLocation location = diagnostic.location();
         StringBuilder sb = new StringBuilder();
 
         sb.append("[")
-                .append(diagnostic.getSeverity().name())
+                .append(diagnostic.severity().name())
                 .append("] ")
-                .append(diagnostic.getMessage())
+                .append(diagnostic.message())
                 .append("\n");
 
         if (location == null) {
