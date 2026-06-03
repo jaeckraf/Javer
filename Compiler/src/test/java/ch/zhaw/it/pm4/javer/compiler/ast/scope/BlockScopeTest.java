@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class BlockScopeTest {
 
     private static FunctionScope functionScope() {
-        return new FunctionScope(new FunctionEntry("test"));
+        return new FunctionScope();
     }
 
     private static VariableEntry variable(int declarationOrder) {

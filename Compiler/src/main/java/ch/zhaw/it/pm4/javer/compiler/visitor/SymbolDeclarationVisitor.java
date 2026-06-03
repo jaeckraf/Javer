@@ -76,7 +76,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     private void registerTopLevelDeclaration(DeclarationAstNode declaration) {
         if (declaration instanceof FunctionDeclaration function) {
             FunctionEntry entry = new FunctionEntry(function.getName());
-            FunctionScope scope = new FunctionScope(entry);
+            FunctionScope scope = new FunctionScope();
             entry.setScope(scope);
             function.setSymbolEntry(entry);
             function.setFunctionScope(scope);

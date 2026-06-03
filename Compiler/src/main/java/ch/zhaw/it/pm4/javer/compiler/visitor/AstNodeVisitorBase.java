@@ -309,6 +309,7 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
         return UnknownTypeInfo.INSTANCE;
     }
 
+    @SuppressWarnings("java:S1172") // default method, overwritten when resolveType is actually used.
     protected TypeInfo resolveNamedType(NamedType type){
         return UnknownTypeInfo.INSTANCE;
     }

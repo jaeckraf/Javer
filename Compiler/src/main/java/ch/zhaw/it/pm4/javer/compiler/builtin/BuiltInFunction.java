@@ -64,7 +64,7 @@ public enum BuiltInFunction {
         entry.setReturnType(VoidTypeInfo.INSTANCE);
         entry.setBuiltIn(true);
 
-        FunctionScope scope = new FunctionScope(entry);
+        FunctionScope scope = new FunctionScope();
         entry.setScope(scope);
 
         int parameterBytes = VmLayout.stackBytes(parameterType);

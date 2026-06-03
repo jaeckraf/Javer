@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 
@@ -15,7 +14,7 @@ public final class FunctionScope {
     private final Map<String, ParameterEntry> parameters = new LinkedHashMap<>();
     private BlockScope rootBlock;
 
-    public FunctionScope(FunctionEntry owner) {
+    public FunctionScope() {
     }
 
     public boolean defineParameter(ParameterEntry entry) {
