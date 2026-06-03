@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import org.junit.jupiter.api.Test;

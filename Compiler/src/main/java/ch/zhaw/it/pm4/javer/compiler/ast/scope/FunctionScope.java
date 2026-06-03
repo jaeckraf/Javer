@@ -14,9 +14,6 @@ public final class FunctionScope {
     private final Map<String, ParameterEntry> parameters = new LinkedHashMap<>();
     private BlockScope rootBlock;
 
-    public FunctionScope() {
-    }
-
     public boolean defineParameter(ParameterEntry entry) {
         if (parameters.containsKey(entry.getName())) {
             return false;
