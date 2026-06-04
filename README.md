@@ -5,4 +5,4 @@ without being thrown into ceremony.
 
 ## Download
 
-[Download installer-windows.zip](./installer-windows.zip)
+[Download installer-windows.zip](https://github.com/jaeckraf/Javer/releases/download/v1.6.0/installer-windows.zip)
