@@ -2,13 +2,11 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Statement node representing a {@code return} statement.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ReturnStatement extends AstNodeBase implements StatementAstNode {
 
     private final ExpressionAstNode expression;
@@ -17,16 +15,21 @@ public final class ReturnStatement extends AstNodeBase implements StatementAstNo
         this.expression = builder.expression;
     }
 
-    public ExpressionAstNode getExpression() {
-        return expression;
-    }
-
     public static Builder builder() {
         return new Builder();
     }
 
     public static Builder builder(ExpressionAstNode expression) {
         return new Builder().expression(expression);
+    }
+
+    public ExpressionAstNode getExpression() {
+        return expression;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 
     public static final class Builder {
@@ -40,10 +43,5 @@ public final class ReturnStatement extends AstNodeBase implements StatementAstNo
         public ReturnStatement build() {
             return new ReturnStatement(this);
         }
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

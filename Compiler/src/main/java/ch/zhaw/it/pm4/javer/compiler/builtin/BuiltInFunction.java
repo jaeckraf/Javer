@@ -1,9 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.builtin;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
@@ -11,6 +7,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Registry of VM-backed functions provided by the language runtime.
@@ -34,23 +33,38 @@ public enum BuiltInFunction {
         this.vmInstruction = vmInstruction;
     }
 
+    /**
+     * @return all built-in functions.
+     */
     public static List<BuiltInFunction> all() {
         return Arrays.asList(values());
     }
 
+    /**
+     * Finds a built-in function by name.
+     *
+     * @param name the function name
+     * @return the matching BuiltInFunction or {@code null} if not found
+     */
     public static BuiltInFunction find(String name) {
-        for(BuiltInFunction builtInFunction : values()) {
-            if(builtInFunction.getName().equals(name)) return builtInFunction;
+        for (BuiltInFunction builtInFunction : values()) {
+            if (builtInFunction.getName().equals(name)) return builtInFunction;
         }
         return null;
     }
 
+    /**
+     * Creates a function symbol representing this built-in function in the compiler symbol table.
+     * The symbol includes parameter metadata and VM stack layout information.
+     *
+     * @return a fully initialized FunctionEntry for this built-in function
+     */
     public FunctionEntry createSymbol() {
         FunctionEntry entry = new FunctionEntry(name, name);
         entry.setReturnType(VoidTypeInfo.INSTANCE);
         entry.setBuiltIn(true);
 
-        FunctionScope scope = new FunctionScope(entry);
+        FunctionScope scope = new FunctionScope();
         entry.setScope(scope);
 
         int parameterBytes = VmLayout.stackBytes(parameterType);

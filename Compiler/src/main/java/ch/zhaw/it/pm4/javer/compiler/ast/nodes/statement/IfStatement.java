@@ -2,13 +2,11 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Statement node representing an if/else branch.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class IfStatement extends AstNodeBase implements StatementAstNode {
 
     private final ExpressionAstNode condition;
@@ -23,6 +21,23 @@ public final class IfStatement extends AstNodeBase implements StatementAstNode {
 
     public static Builder builder(ExpressionAstNode condition, StatementAstNode thenBranch) {
         return new Builder(condition, thenBranch);
+    }
+
+    public StatementAstNode getThenBranch() {
+        return thenBranch;
+    }
+
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public StatementAstNode getElseBranch() {
+        return elseBranch;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 
     public static final class Builder {
@@ -43,23 +58,6 @@ public final class IfStatement extends AstNodeBase implements StatementAstNode {
         public IfStatement build() {
             return new IfStatement(this);
         }
-    }
-
-    public StatementAstNode getThenBranch() {
-        return thenBranch;
-    }
-
-    public ExpressionAstNode getCondition() {
-        return condition;
-    }
-
-    public StatementAstNode getElseBranch() {
-        return elseBranch;
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 
 }

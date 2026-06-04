@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+
 /**
  * Symbol table entry for a local variable.
  */

@@ -1,18 +1,15 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import java.util.List;
-
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
+import java.util.List;
+
 /**
  * AST node representing an enum declaration and its declared values.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class EnumDeclaration extends AstNodeBase implements DeclarationAstNode {
 
     private final String name;

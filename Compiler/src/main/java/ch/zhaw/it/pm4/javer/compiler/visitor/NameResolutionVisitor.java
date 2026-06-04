@@ -1,26 +1,16 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
@@ -97,16 +87,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
         BlockScope previousBlock = currentBlock;
         currentBlock = node.getBlockScope();
 
-        if (node.getForInit() != null) {
-            node.getForInit().accept(this);
-        }
-        if (node.getCondition() != null) {
-            node.getCondition().accept(this);
-        }
-        if (node.getUpdate() != null) {
-            node.getUpdate().forEach(expression -> expression.accept(this));
-        }
-        node.getBody().accept(this);
+        super.visit(node);
 
         currentBlock = previousBlock;
     }
@@ -211,7 +192,6 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
         }
 
         node.setResolvedEnumValue(valueEntry);
-        node.setValue(valueEntry.getValue());
     }
 
     @Override

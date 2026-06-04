@@ -37,11 +37,6 @@ public final class PipelineTest {
         }
     }
 
-    @Test
-    void runPipelineTestsWithMaven() throws Exception {
-        assertEquals(0, run(new String[0]));
-    }
-
     public static int run(String[] args) throws Exception {
         disableLogging();
 
@@ -343,8 +338,7 @@ public final class PipelineTest {
 
             return new RunResult(
                     stdoutBuffer.toString(StandardCharsets.UTF_8),
-                    stderrBuffer.toString(StandardCharsets.UTF_8),
-                    0
+                    stderrBuffer.toString(StandardCharsets.UTF_8)
             );
         } finally {
             System.setOut(originalOut);
@@ -411,8 +405,7 @@ public final class PipelineTest {
     private static String normalizeDiagnostics(String text) {
         return normalize(text)
                 .replace("\\", "/")
-                .replaceAll("File: (?:.*/)?Compiler/src/test/resources/", "File: src/test/resources/")
-                .replaceAll("File: src/test/resources/", "File: src/test/resources/");
+                .replaceAll("File: (?:.*/)?Compiler/src/test/resources/", "File: src/test/resources/");
     }
 
     private static void assertSnapshotEquals(
@@ -458,7 +451,12 @@ public final class PipelineTest {
         return Path.of("src", "test", "resources", "pipelinetests");
     }
 
-    record RunResult(String stdout, String stderr, int exitCode) {
+    @Test
+    void runPipelineTestsWithMaven() throws Exception {
+        assertEquals(0, run(new String[0]));
+    }
+
+    record RunResult(String stdout, String stderr) {
     }
 
     record Fixture(Path sourceFile, String baseName) {

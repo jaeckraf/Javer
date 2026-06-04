@@ -2,7 +2,6 @@ package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 import java.util.List;
@@ -10,7 +9,6 @@ import java.util.List;
 /**
  * Statement node representing a switch over an expression.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class SwitchStatement extends AstNodeBase implements StatementAstNode {
 
     private final ExpressionAstNode condition;

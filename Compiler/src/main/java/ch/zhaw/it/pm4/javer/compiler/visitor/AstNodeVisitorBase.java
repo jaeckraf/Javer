@@ -2,12 +2,13 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 
 /**
  * Default AST visitor implementation that recursively traverses child nodes and
@@ -26,6 +27,7 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
      *
      * @param node visited node
      */
+    @SuppressWarnings({"EmptyMethod", "unused"}) // empty method is intentional hook
     protected void visitDefault(AstNode node) {
     }
 
@@ -289,5 +291,26 @@ public abstract class AstNodeVisitorBase implements AstNodeVisitor {
         for (ExpressionAstNode expr : node.getExpressions()) {
             expr.accept(this);
         }
+    }
+
+    protected TypeInfo resolveType(TypeAstNode type) {
+        if (type instanceof PrimitiveType primitiveType) {
+            return PrimitiveTypeInfo.of(primitiveType.getKind());
+        }
+        if (type instanceof ArrayType arrayType) {
+            return new ArrayTypeInfo(resolveType(arrayType.getBaseType()));
+        }
+        if (type instanceof VoidType) {
+            return VoidTypeInfo.INSTANCE;
+        }
+        if (type instanceof NamedType namedType) {
+            return resolveNamedType(namedType);
+        }
+        return UnknownTypeInfo.INSTANCE;
+    }
+
+    @SuppressWarnings("java:S1172") // default method, overwritten when resolveType is actually used.
+    protected TypeInfo resolveNamedType(NamedType type){
+        return UnknownTypeInfo.INSTANCE;
     }
 }

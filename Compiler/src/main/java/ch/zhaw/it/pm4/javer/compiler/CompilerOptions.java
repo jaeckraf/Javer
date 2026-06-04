@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 import java.nio.file.Path;
 
 /**
@@ -43,49 +45,6 @@ public class CompilerOptions {
     }
 
     /**
-     * @return source file path with a {@code .javer} extension
-     */
-    public String getInputFilePath() {
-        return inputFilePath;
-    }
-
-    /**
-     * @return normalized bytecode output file path with a {@code .jbc}
-     *         extension
-     */
-    public String getOutputFilePath() {
-        return outputFilePath;
-    }
-
-    /**
-     * @return true when compiler-internal logging is enabled
-     */
-    public boolean isLoggingEnabled() {
-        return loggingEnabled;
-    }
-
-    /**
-     * @return true when token dump output should be printed
-     */
-    public boolean isDumpLexer() {
-        return dumpLexer;
-    }
-
-    /**
-     * @return true when AST dump output should be printed
-     */
-    public boolean isDumpAst() {
-        return dumpAst;
-    }
-
-    /**
-     * @return true when symbol-table dump output should be printed
-     */
-    public boolean isDumpSymbolTable() {
-        return dumpSymbolTable;
-    }
-
-    /**
      * Parses and validates compiler command-line arguments.
      *
      * @param args command-line options
@@ -105,21 +64,33 @@ public class CompilerOptions {
             inputFilePath = args[0];
             outputFilePath = args[1];
         } else {
-            for (int i = 0; i < args.length; i++) {
+            int i = 0;
+            while (i < args.length) {
                 String arg = args[i];
                 switch (arg) {
-                    case "--in-file", "-i" -> inputFilePath = readRequiredValue(args, ++i, arg);
-                    case "--out-file", "-o" -> outputFilePath = readRequiredValue(args, ++i, arg);
+                    case "--in-file", "-i" -> {
+                        i++;
+                        inputFilePath = readRequiredValue(args, i, arg);
+                    }
+                    case "--out-file", "-o" -> {
+                        i++;
+                        outputFilePath = readRequiredValue(args, i, arg);
+                    }
                     case "--dump-lexer" -> dumpLexer = true;
                     case "--dump-ast" -> dumpAst = true;
                     case "--dump-symboltable" -> dumpSymbolTable = true;
                     case "--logging" -> loggingEnabled = true;
-                    default -> throw new IllegalArgumentException("Unknown compiler option: " + arg);
+                    default -> {
+                        JaverLogger.error("Unknown compiler option: " + arg);
+                        throw new IllegalArgumentException("Unknown compiler option: " + arg);
+                    }
                 }
+                i++;
             }
         }
 
         if (inputFilePath == null || outputFilePath == null) {
+            JaverLogger.error("missing input or output files");
             throw new IllegalArgumentException(
                     "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> " +
                             "[--dump-lexer] [--dump-ast] [--dump-symboltable] [--logging]");
@@ -171,5 +142,48 @@ public class CompilerOptions {
     private static String fileName(String path) {
         Path fileName = Path.of(path).getFileName();
         return fileName == null ? path : fileName.toString();
+    }
+
+    /**
+     * @return source file path with a {@code .javer} extension
+     */
+    public String getInputFilePath() {
+        return inputFilePath;
+    }
+
+    /**
+     * @return normalized bytecode output file path with a {@code .jbc}
+     * extension
+     */
+    public String getOutputFilePath() {
+        return outputFilePath;
+    }
+
+    /**
+     * @return true when compiler-internal logging is enabled
+     */
+    public boolean isLoggingEnabled() {
+        return loggingEnabled;
+    }
+
+    /**
+     * @return true when token dump output should be printed
+     */
+    public boolean isDumpLexer() {
+        return dumpLexer;
+    }
+
+    /**
+     * @return true when AST dump output should be printed
+     */
+    public boolean isDumpAst() {
+        return dumpAst;
+    }
+
+    /**
+     * @return true when symbol-table dump output should be printed
+     */
+    public boolean isDumpSymbolTable() {
+        return dumpSymbolTable;
     }
 }

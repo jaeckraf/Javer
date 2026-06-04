@@ -1,15 +1,12 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Switch case label that references an enum value by name.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class EnumCaseLabel extends AstNodeBase implements CaseLabelAstNode {
 
     private final String enumTypeName;

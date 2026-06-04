@@ -1,21 +1,33 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class BlockScopeTest {
+
+    private static FunctionScope functionScope() {
+        return new FunctionScope();
+    }
+
+    private static VariableEntry variable(int declarationOrder) {
+        return new VariableEntry(
+                "value",
+                PrimitiveTypeInfo.INT,
+                PrimitiveTypeInfo.INT.sizeBytes(),
+                0,
+                false,
+                0,
+                declarationOrder);
+    }
 
     @Test
     void resolvesOnlyVariablesDeclaredBeforeCurrentDeclarationOrder() {
         FunctionScope functionScope = functionScope();
         BlockScope blockScope = new BlockScope(null, functionScope);
-        VariableEntry variable = variable("value", 0);
+        VariableEntry variable = variable(0);
 
         assertTrue(blockScope.defineVariable(variable));
 
@@ -28,7 +40,7 @@ class BlockScopeTest {
         FunctionScope functionScope = functionScope();
         BlockScope parentScope = new BlockScope(null, functionScope);
         BlockScope childScope = new BlockScope(parentScope, functionScope);
-        VariableEntry parentVariable = variable("value", 1);
+        VariableEntry parentVariable = variable(1);
 
         assertTrue(parentScope.defineVariable(parentVariable));
 
@@ -41,25 +53,10 @@ class BlockScopeTest {
         FunctionScope functionScope = functionScope();
         BlockScope parentScope = new BlockScope(null, functionScope);
         BlockScope childScope = new BlockScope(parentScope, functionScope);
-        VariableEntry childVariable = variable("value", 0);
+        VariableEntry childVariable = variable(0);
 
         assertTrue(childScope.defineVariable(childVariable));
 
         assertNull(parentScope.resolveVisibleVariable("value", 1));
-    }
-
-    private static FunctionScope functionScope() {
-        return new FunctionScope(new FunctionEntry("test"));
-    }
-
-    private static VariableEntry variable(String name, int declarationOrder) {
-        return new VariableEntry(
-                name,
-                PrimitiveTypeInfo.INT,
-                PrimitiveTypeInfo.INT.sizeBytes(),
-                0,
-                false,
-                0,
-                declarationOrder);
     }
 }

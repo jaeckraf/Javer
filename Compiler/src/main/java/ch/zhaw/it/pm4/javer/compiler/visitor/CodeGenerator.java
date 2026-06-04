@@ -1,50 +1,57 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
+
+import static ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind.*;
 
 /**
  * Emits VM bytecode from a semantically checked AST.
  */
-@JacocoGenerated("jacoco-ignore")
 public class CodeGenerator extends AstNodeVisitorBase {
+
+    public static final String JUMPF = "JUMPF, ";
+    public static final String JUMP = "JUMP, ";
+    public static final String JUMPT = "JUMPT, ";
+    public static final String PUSHI = "PUSHI, ";
+    public static final String PUSHI_0 = "PUSHI, 0";
+    public static final String PUSHI_1 = "PUSHI, 1";
+    public static final String NEWA = "NEWA, ";
+    public static final String PUSHR = "PUSHR, ";
+    public static final String LOCAL = "LOCAL, ";
+    public static final String STORE_4 = "STORE4";
+    public static final String DUP = "DUP, ";
+    public static final String PUSHD = "PUSHD, ";
+    public static final String UNEXPECTED_BINARY_OPERATOR = "Unexpected binary operator: ";
+    public static final String UNEXPECTED_CONVERSION_FROM = "Unexpected conversion from ";
 
     private final DiagnosticBag diagnostics;
     private final Path outputFile;
     private final StringBuilder output = new StringBuilder();
+    private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private DataSection dataSection;
     private FunctionEntry currentFunction;
-    private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private int nextLabelId;
     private boolean outputDirectoryReady = true;
     private boolean failed;
@@ -63,14 +70,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
      *
      * @param node root compilation unit
      */
-    public boolean generate(CompilationUnit node) {
+    public void generate(CompilationUnit node) {
         output.setLength(0);
         loopContexts.clear();
         nextLabelId = 0;
 
         if (!outputDirectoryReady) {
             deleteOutputFile();
-            return false;
+            return;
         }
 
         try {
@@ -78,7 +85,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
             if (failed || diagnostics.hasErrors()) {
                 deleteOutputFile();
-                return false;
+                return;
             }
 
             Files.writeString(
@@ -88,11 +95,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING,
                     StandardOpenOption.WRITE);
-            return true;
         } catch (IOException exception) {
             report("Could not write bytecode output file: " + outputFile + ".");
             deleteOutputFile();
-            return false;
         } finally {
             dataSection = null;
             currentFunction = null;
@@ -135,7 +140,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private void report(String message) {
         failed = true;
-        System.err.println(message);
+        JaverLogger.error(message);
     }
 
     @Override
@@ -185,21 +190,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     @Override
-    public void visit(FunctionParameter node) {
-        super.visit(node);
-    }
-
-    @Override
-    public void visit(StructDeclaration node) {
-        super.visit(node);
-    }
-
-    @Override
-    public void visit(StructField node) {
-        super.visit(node);
-    }
-
-    @Override
     public void visit(BlockStatement node) {
         for (StatementAstNode statement : node.getStatements()) {
             emitStatement(statement);
@@ -240,11 +230,11 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String elseLabel = nextLabel("if_else");
         String endLabel = nextLabel("if_end");
         emitAsBoolean(node.getCondition());
-        writeLine("JUMPF, " + elseLabel);
+        writeLine(JUMPF + elseLabel);
         node.getThenBranch().accept(this);
         boolean elseBranchPossible = node.getElseBranch() != null;
         if (elseBranchPossible) {
-            writeLine("JUMP, " + endLabel);
+            writeLine(JUMP + endLabel);
         }
         writeLabel(elseLabel);
         if (elseBranchPossible) {
@@ -259,11 +249,11 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String endLabel = nextLabel("while_end");
         writeLabel(conditionLabel);
         emitAsBoolean(node.getCondition());
-        writeLine("JUMPF, " + endLabel);
+        writeLine(JUMPF + endLabel);
         loopContexts.push(new LoopContext(endLabel, conditionLabel));
         node.getBody().accept(this);
         loopContexts.pop();
-        writeLine("JUMP, " + conditionLabel);
+        writeLine(JUMP + conditionLabel);
         writeLabel(endLabel);
     }
 
@@ -278,7 +268,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         loopContexts.pop();
         writeLabel(conditionLabel);
         emitAsBoolean(node.getCondition());
-        writeLine("JUMPT, " + bodyLabel);
+        writeLine(JUMPT + bodyLabel);
         writeLabel(endLabel);
     }
 
@@ -294,9 +284,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (node.getCondition() != null) {
             emitAsBoolean(node.getCondition());
         } else {
-            writeLine("PUSHI, 1");
+            writeLine(PUSHI_1);
         }
-        writeLine("JUMPF, " + endLabel);
+        writeLine(JUMPF + endLabel);
         loopContexts.push(new LoopContext(endLabel, updateLabel));
         node.getBody().accept(this);
         loopContexts.pop();
@@ -306,7 +296,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 emitStatement(update);
             }
         }
-        writeLine("JUMP, " + conditionLabel);
+        writeLine(JUMP + conditionLabel);
         writeLabel(endLabel);
     }
 
@@ -326,29 +316,24 @@ public class CodeGenerator extends AstNodeVisitorBase {
             if (!switchCase.isDefault()) {
                 for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
                     emitSwitchComparison(switchType, label);
-                    writeLine("JUMPT, " + caseLabel);
+                    writeLine(JUMPT + caseLabel);
                 }
             }
         }
 
-        writeLine("JUMP, " + defaultLabel);
+        writeLine(JUMP + defaultLabel);
         for (SwitchTarget target : targets) {
             writeLabel(target.label());
             emitPop(switchType);
             target.switchCase().getStatement().accept(this);
-            writeLine("JUMP, " + endLabel);
+            writeLine(JUMP + endLabel);
         }
         if (!hasDefault) {
             writeLabel(defaultLabel);
             emitPop(switchType);
-            writeLine("JUMP, " + endLabel);
+            writeLine(JUMP + endLabel);
         }
         writeLabel(endLabel);
-    }
-
-    @Override
-    public void visit(SwitchCase node) {
-        super.visit(node);
     }
 
     private void emitSwitchComparison(TypeInfo switchType, CaseLabelAstNode label) {
@@ -374,12 +359,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     @Override
     public void visit(BreakStatement node) {
-        writeLine("JUMP, " + loopContexts.peek().breakLabel());
+        assert loopContexts.peek() != null;
+        writeLine(JUMP + loopContexts.peek().breakLabel());
     }
 
     @Override
     public void visit(ContinueStatement node) {
-        writeLine("JUMP, " + loopContexts.peek().continueLabel());
+        assert loopContexts.peek() != null;
+        writeLine(JUMP + loopContexts.peek().continueLabel());
     }
 
     @Override
@@ -457,13 +444,16 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case SUB_ASSIGN -> BinaryExpressionKind.SUBTRACT;
             case MUL_ASSIGN -> BinaryExpressionKind.MULTIPLY;
             case DIV_ASSIGN -> BinaryExpressionKind.DIVIDE;
-            case MOD_ASSIGN -> BinaryExpressionKind.MODULO;
+            case MOD_ASSIGN -> MODULO;
             case BITWISE_OR_ASSIGN -> BinaryExpressionKind.BITWISE_OR;
-            case BITWISE_AND_ASSIGN -> BinaryExpressionKind.BITWISE_AND;
+            case BITWISE_AND_ASSIGN -> BITWISE_AND;
             case BITWISE_XOR_ASSIGN -> BinaryExpressionKind.BITWISE_XOR;
             case LEFT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_LEFT;
             case RIGHT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_RIGHT;
-            case ASSIGN, INVALID -> throw new IllegalStateException("Unexpected compound assignment operator: " + node.getOperator());
+            case ASSIGN, INVALID -> {
+                JaverLogger.error("Unexpected compound assignment operator: " + node.getOperator());
+                throw new IllegalStateException("Unexpected compound assignment operator: " + node.getOperator());
+            }
         };
     }
 
@@ -473,9 +463,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String endLabel = nextLabel("cond_end");
         TypeInfo resultType = node.getResultingType();
         emitAsBoolean(node.getCondition());
-        writeLine("JUMPF, " + falseLabel);
+        writeLine(JUMPF + falseLabel);
         emitTyped(node.getTrueExpression(), resultType);
-        writeLine("JUMP, " + endLabel);
+        writeLine(JUMP + endLabel);
         writeLabel(falseLabel);
         emitTyped(node.getFalseExpression(), resultType);
         writeLabel(endLabel);
@@ -545,38 +535,38 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case INVALID -> {
+                JaverLogger.error(UNEXPECTED_BINARY_OPERATOR + operator);
+                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + operator);
+            }
         };
     }
 
     private boolean isIntegerOnlyBinary(BinaryExpressionKind operator) {
-        return switch (operator) {
-            case MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT -> true;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE,
-                 AND, OR, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
-        };
+        return isAmong(operator, MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT);
     }
 
     private boolean isComparison(BinaryExpressionKind operator) {
-        return switch (operator) {
-            case EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> true;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
-                 BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
-                 AND, OR -> false;
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
-        };
+        return isAmong(operator, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS);
+    }
+
+    private boolean isAmong(
+            BinaryExpressionKind operator,
+            BinaryExpressionKind... kinds) {
+
+        return EnumSet.copyOf(Arrays.asList(kinds))
+                .contains(operator);
     }
 
     private void emitLogicalAnd(BinaryExpression node) {
         String falseLabel = nextLabel("and_false");
         String endLabel = nextLabel("and_end");
         emitAsBoolean(node.getLeft());
-        writeLine("JUMPF, " + falseLabel);
+        writeLine(JUMPF + falseLabel);
         emitAsBoolean(node.getRight());
-        writeLine("JUMP, " + endLabel);
+        writeLine(JUMP + endLabel);
         writeLabel(falseLabel);
-        writeLine("PUSHI, 0");
+        writeLine(PUSHI_0);
         writeLabel(endLabel);
     }
 
@@ -584,11 +574,11 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String trueLabel = nextLabel("or_true");
         String endLabel = nextLabel("or_end");
         emitAsBoolean(node.getLeft());
-        writeLine("JUMPT, " + trueLabel);
+        writeLine(JUMPT + trueLabel);
         emitAsBoolean(node.getRight());
-        writeLine("JUMP, " + endLabel);
+        writeLine(JUMP + endLabel);
         writeLabel(trueLabel);
-        writeLine("PUSHI, 1");
+        writeLine(PUSHI_1);
         writeLabel(endLabel);
     }
 
@@ -615,16 +605,19 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 emitAsBoolean(node.getOperand());
                 String falseLabel = nextLabel("not_false");
                 String endLabel = nextLabel("not_end");
-                writeLine("JUMPF, " + falseLabel);
-                writeLine("PUSHI, 0");
-                writeLine("JUMP, " + endLabel);
+                writeLine(JUMPF + falseLabel);
+                writeLine(PUSHI_0);
+                writeLine(JUMP + endLabel);
                 writeLabel(falseLabel);
-                writeLine("PUSHI, 1");
+                writeLine(PUSHI_1);
                 writeLabel(endLabel);
             }
             case PRE_INCREMENT -> emitPrefixStep(node.getOperand(), 1);
             case PRE_DECREMENT -> emitPrefixStep(node.getOperand(), -1);
-            case INVALID -> throw new IllegalStateException("Unexpected unary operator: " + node.getKind());
+            case INVALID -> {
+                JaverLogger.error("Unexpected unary operator: " + node.getKind());
+                throw new IllegalStateException("Unexpected unary operator: " + node.getKind());
+            }
         }
     }
 
@@ -646,7 +639,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
         int delta = switch (node.getKind()) {
             case INCREMENT -> 1;
             case DECREMENT -> -1;
-            case INVALID -> throw new IllegalStateException("Unexpected postfix operator: " + node.getKind());
+            case INVALID -> {
+                JaverLogger.error("Unexpected postfix operator: " + node.getKind());
+                throw new IllegalStateException("Unexpected postfix operator: " + node.getKind());
+            }
         };
         TypeInfo type = target.getResultingType();
         emitAddress(target);
@@ -704,19 +700,19 @@ public class CodeGenerator extends AstNodeVisitorBase {
             ParameterEntry variadicParameter) {
         return node.getArguments().size() == fixedCount + 1
                 && TypeRules.isAssignable(
-                        variadicParameter.getType(),
-                        node.getArguments().get(fixedCount).getResultingType());
+                variadicParameter.getType(),
+                node.getArguments().get(fixedCount).getResultingType());
     }
 
     private void emitVariadicArray(List<ExpressionAstNode> arguments, int firstVariadicIndex, TypeInfo elementType) {
         int elementSize = memoryBytes(elementType);
         int length = arguments.size() - firstVariadicIndex;
-        writeLine("PUSHI, " + length);
-        writeLine("NEWA, " + elementSize);
+        writeLine(PUSHI + length);
+        writeLine(NEWA + elementSize);
 
         for (int i = 0; i < length; i++) {
             emitDup(PrimitiveTypeInfo.INT);
-            writeLine("PUSHI, " + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
+            writeLine(PUSHI + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
             writeLine("IADD");
             emitTyped(arguments.get(firstVariadicIndex + i), elementType);
             emitStore(elementType);
@@ -750,7 +746,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 StructEntry entry
         )) {
             int sizeBytes = entry.getSizeBytes();
-            writeLine("PUSHI, " + sizeBytes);
+            writeLine(PUSHI + sizeBytes);
             writeLine("NEW");
             return;
         }
@@ -770,8 +766,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
             DataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(init.getElements(), elementType));
             emitDup(PrimitiveTypeInfo.INT);
             emitArrayPayloadOffset();
-            writeLine("PUSHR, " + template.getLabel());
-            writeLine("PUSHI, " + (init.getElements().size() * elementSize));
+            writeLine(PUSHR + template.getLabel());
+            writeLine(PUSHI + (init.getElements().size() * elementSize));
             writeLine("MEMCPY");
             initializeArrayElements(init.getElements(), elementType, elementSize);
         }
@@ -783,12 +779,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
         TypeInfo elementType = arrayType.elementType();
         int elementSize = memoryBytes(elementType);
         DataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(node.getElements(), elementType));
-        writeLine("PUSHI, " + node.getElements().size());
-        writeLine("NEWA, " + elementSize);
+        writeLine(PUSHI + node.getElements().size());
+        writeLine(NEWA + elementSize);
         emitDup(PrimitiveTypeInfo.INT);
         emitArrayPayloadOffset();
-        writeLine("PUSHR, " + template.getLabel());
-        writeLine("PUSHI, " + (node.getElements().size() * elementSize));
+        writeLine(PUSHR + template.getLabel());
+        writeLine(PUSHI + (node.getElements().size() * elementSize));
         writeLine("MEMCPY");
         initializeArrayElements(node.getElements(), elementType, elementSize);
     }
@@ -799,7 +795,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 continue;
             }
             emitDup(PrimitiveTypeInfo.INT);
-            writeLine("PUSHI, " + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
+            writeLine(PUSHI + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
             writeLine("IADD");
             emitTyped(elements.get(i), elementType);
             emitStore(elementType);
@@ -808,26 +804,27 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private void emitArrayAllocation(List<ExpressionAstNode> dimensions, ArrayInitExpression init, int elementSize) {
         if (dimensions.isEmpty()) {
-            writeLine("PUSHI, " + init.getElements().size());
-            writeLine("NEWA, " + elementSize);
+            writeLine(PUSHI + init.getElements().size());
+            writeLine(NEWA + elementSize);
             return;
         }
 
         emitTyped(dimensions.getFirst(), PrimitiveTypeInfo.INT);
-        writeLine("NEWA, " + elementSize);
+        writeLine(NEWA + elementSize);
     }
 
     private void emitJaggedArrayAllocation(NewExpression node, TypeInfo leafType) {
         NewExpression.JaggedArrayTempLayout temps = node.getJaggedArrayTempLayout();
         if (temps == null) {
+            JaverLogger.error("Missing temporary storage for jagged array allocation.");
             throw new IllegalStateException("Missing temporary storage for jagged array allocation.");
         }
 
         List<ExpressionAstNode> dimensions = node.getDimensions();
         for (int i = 0; i < dimensions.size(); i++) {
-            writeLine("LOCAL, " + temps.dimensionOffsets()[i]);
+            writeLine(LOCAL + temps.dimensionOffsets()[i]);
             emitTyped(dimensions.get(i), PrimitiveTypeInfo.INT);
-            writeLine("STORE4");
+            writeLine(STORE_4);
         }
         emitJaggedArrayLevel(0, dimensions.size(), leafType, temps);
     }
@@ -840,7 +837,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         int elementSize = depth + 1 == dimensionCount ? memoryBytes(leafType) : VmLayout.WORD_BYTES;
         if (depth + 1 == dimensionCount) {
             emitLoadTemp(temps.dimensionOffsets()[depth]);
-            writeLine("NEWA, " + elementSize);
+            writeLine(NEWA + elementSize);
             return;
         }
 
@@ -849,54 +846,52 @@ public class CodeGenerator extends AstNodeVisitorBase {
         String loopLabel = nextLabel("jagged_alloc_loop");
         String endLabel = nextLabel("jagged_alloc_end");
 
-        writeLine("LOCAL, " + baseOffset);
+        writeLine(LOCAL + baseOffset);
         emitLoadTemp(temps.dimensionOffsets()[depth]);
-        writeLine("NEWA, " + elementSize);
-        writeLine("STORE4");
+        writeLine(NEWA + elementSize);
+        writeLine(STORE_4);
 
-        writeLine("LOCAL, " + indexOffset);
-        writeLine("PUSHI, 0");
-        writeLine("STORE4");
+        writeLine(LOCAL + indexOffset);
+        writeLine(PUSHI_0);
+        writeLine(STORE_4);
 
         writeLabel(loopLabel);
         emitLoadTemp(indexOffset);
         emitLoadTemp(temps.dimensionOffsets()[depth]);
         writeLine("ILT");
-        writeLine("JUMPF, " + endLabel);
+        writeLine(JUMPF + endLabel);
 
         emitLoadTemp(baseOffset);
         emitLoadTemp(indexOffset);
-        emitScaleTopBy(VmLayout.WORD_BYTES);
+        emitScaleTopBy();
         emitArrayPayloadOffset();
         writeLine("IADD");
         emitJaggedArrayLevel(depth + 1, dimensionCount, leafType, temps);
-        writeLine("STORE4");
+        writeLine(STORE_4);
 
-        writeLine("LOCAL, " + indexOffset);
+        writeLine(LOCAL + indexOffset);
         emitLoadTemp(indexOffset);
-        writeLine("PUSHI, 1");
+        writeLine(PUSHI_1);
         writeLine("IADD");
-        writeLine("STORE4");
-        writeLine("JUMP, " + loopLabel);
+        writeLine(STORE_4);
+        writeLine(JUMP + loopLabel);
 
         writeLabel(endLabel);
         emitLoadTemp(baseOffset);
     }
 
     private void emitLoadTemp(int offset) {
-        writeLine("LOCAL, " + offset);
+        writeLine(LOCAL + offset);
         writeLine("LOAD4");
     }
 
-    private void emitScaleTopBy(int size) {
-        if (size != VmLayout.BYTE_BYTES) {
-            writeLine("PUSHI, " + size);
-            writeLine("IMUL");
-        }
+    private void emitScaleTopBy() {
+        writeLine(PUSHI + VmLayout.WORD_BYTES);
+        writeLine("IMUL");
     }
 
     private void emitArrayPayloadOffset() {
-        writeLine("PUSHI, " + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES);
+        writeLine(PUSHI + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES);
         writeLine("IADD");
     }
 
@@ -907,10 +902,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private Optional<Object> staticArrayTemplateValue(ExpressionAstNode expression, TypeInfo elementType) {
-        if (expression instanceof LiteralExpression<?> literal) {
-            if (literal.getResultingType().equals(elementType) && isPrimitiveTemplateValue(literal)) {
-                return Optional.ofNullable(literal.getValue());
-            }
+        if (expression instanceof LiteralExpression<?> literal && literal.getResultingType().equals(elementType) && isPrimitiveTemplateValue(literal)) {
+            return Optional.ofNullable(literal.getValue());
         }
         return Optional.empty();
     }
@@ -933,9 +926,9 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitEnumValue(EnumValueEntry enumValue) {
-        writeLine("PUSHR, " + enumValue.getDataLabel());
+        writeLine(PUSHR + enumValue.getDataLabel());
         if (enumValue.getOffsetBytes() != 0) {
-            writeLine("PUSHI, " + enumValue.getOffsetBytes());
+            writeLine(PUSHI + enumValue.getOffsetBytes());
             writeLine("IADD");
         }
     }
@@ -955,6 +948,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private void emitPrintBuiltin(CallExpression node) {
         FunctionEntry function = node.getResolvedFunction();
         BuiltInFunction builtIn = BuiltInFunction.find(function.getName());
+        assert builtIn != null;
         emitTyped(node.getArguments().getFirst(), builtIn.getParameterType());
         writeLine(builtIn.getVmInstruction());
     }
@@ -978,17 +972,22 @@ public class CodeGenerator extends AstNodeVisitorBase {
                 if (kind1 == PrimitiveTypeKind.DOUBLE) {
                     writeLine("I2D");
                 } else {
-                    throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
+                    JaverLogger.error(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
+                    throw new IllegalStateException(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
                 }
             }
             case DOUBLE -> {
                 if (kind1 == PrimitiveTypeKind.INT) {
                     writeLine("D2I");
                 } else {
-                    throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
+                    JaverLogger.error(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
+                    throw new IllegalStateException(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
                 }
             }
-            default -> throw new IllegalStateException("Unexpected conversion from " + from + " to " + to);
+            default -> {
+                JaverLogger.error(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
+                throw new IllegalStateException(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
+            }
         }
     }
 
@@ -1011,6 +1010,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             writeLine("D2I");
             return;
         }
+        JaverLogger.error("Unexpected unchecked cast from " + from + " to " + to);
         throw new IllegalStateException("Unexpected unchecked cast from " + from + " to " + to);
     }
 
@@ -1020,31 +1020,31 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
             String falseLabel = nextLabel("bool_false");
             String endLabel = nextLabel("bool_end");
-            writeLine("DUP, " + VmLayout.DOUBLE_BYTES);
+            writeLine(DUP + VmLayout.DOUBLE_BYTES);
             writeLine("PUSHD, 0.0");
             writeLine("DEQ");
-            writeLine("JUMPT, " + falseLabel);
-            writeLine("DUP, " + VmLayout.DOUBLE_BYTES);
+            writeLine(JUMPT + falseLabel);
+            writeLine(DUP + VmLayout.DOUBLE_BYTES);
             writeLine("DEQ");
-            writeLine("JUMP, " + endLabel);
+            writeLine(JUMP + endLabel);
             writeLabel(falseLabel);
             writeLine("POP, " + VmLayout.DOUBLE_BYTES);
-            writeLine("PUSHI, 0");
+            writeLine(PUSHI_0);
             writeLabel(endLabel);
         }
     }
 
     private void emitLiteralPush(LiteralExpression<?> node) {
         switch (node.getKind()) {
-            case INT -> writeLine("PUSHI, " + node.getValue());
-            case DOUBLE -> writeLine("PUSHD, " + formatDouble((Double) node.getValue()));
-            case BOOLEAN -> writeLine("PUSHI, " + (Boolean.TRUE.equals(node.getValue()) ? "1" : "0"));
-            case CHAR -> writeLine("PUSHI, " + (int) (Character) node.getValue());
+            case INT -> writeLine(PUSHI + node.getValue());
+            case DOUBLE -> writeLine(PUSHD + formatDouble((Double) node.getValue()));
+            case BOOLEAN -> writeLine(PUSHI + (Boolean.TRUE.equals(node.getValue()) ? "1" : "0"));
+            case CHAR -> writeLine(PUSHI + (int) (Character) node.getValue());
             case STRING -> {
                 var entry = dataSection.internString((String) node.getValue());
-                writeLine("PUSHR, " + entry.getLabel());
+                writeLine(PUSHR + entry.getLabel());
             }
-            case NULL -> writeLine("PUSHI, 0");
+            case NULL -> writeLine(PUSHI_0);
         }
     }
 
@@ -1057,34 +1057,34 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private void emitNumericLiteralPush(TypeInfo type, int value) {
         if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
-            writeLine("PUSHD, " + formatDouble(value));
+            writeLine(PUSHD + formatDouble(value));
             return;
         }
-        writeLine("PUSHI, " + value);
+        writeLine(PUSHI + value);
     }
 
     private void emitDefaultValue(TypeInfo type, Object value) {
         if (type instanceof EnumTypeInfo) {
-            writeLine("PUSHI, 0");
+            writeLine(PUSHI_0);
             return;
         }
         if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
-            writeLine("PUSHD, " + formatDouble((Double) value));
+            writeLine(PUSHD + formatDouble((Double) value));
             return;
         }
         if (PrimitiveTypeInfo.BOOL.equals(type)) {
-            writeLine("PUSHI, " + (Boolean.TRUE.equals(value) ? 1 : 0));
+            writeLine(PUSHI + (Boolean.TRUE.equals(value) ? 1 : 0));
             return;
         }
         if (PrimitiveTypeInfo.CHAR.equals(type)) {
-            writeLine("PUSHI, " + (int) (Character) value);
+            writeLine(PUSHI + (int) (Character) value);
             return;
         }
         if (value instanceof Number number) {
-            writeLine("PUSHI, " + number.intValue());
+            writeLine(PUSHI + number.intValue());
             return;
         }
-        writeLine("PUSHI, 0");
+        writeLine(PUSHI_0);
     }
 
     private void emitBinaryOp(BinaryExpressionKind operator, TypeInfo operandType) {
@@ -1106,8 +1106,14 @@ public class CodeGenerator extends AstNodeVisitorBase {
             case GREATER_EQUALS -> writeLine(isDouble ? "DGE" : "IGE");
             case EQUALS -> writeLine(isDouble ? "DEQ" : "IEQ");
             case NOT_EQUALS -> writeLine(isDouble ? "DNE" : "INE");
-            case AND, OR -> throw new IllegalStateException("Logical operators require expression-level emission.");
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + operator);
+            case AND, OR -> {
+                JaverLogger.error("Logical operators require expression-level emission");
+                throw new IllegalStateException("Logical operators require expression-level emission.");
+            }
+            case INVALID -> {
+                JaverLogger.error(UNEXPECTED_BINARY_OPERATOR + operator);
+                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + operator);
+            }
         }
     }
 
@@ -1119,7 +1125,10 @@ public class CodeGenerator extends AstNodeVisitorBase {
                  BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
                  LESS, LESS_EQUALS, GREATER, GREATER_EQUALS, EQUALS, NOT_EQUALS ->
                     emitBinaryOp(node.getOperator(), operandType);
-            case INVALID -> throw new IllegalStateException("Unexpected binary operator: " + node.getOperator());
+            case INVALID -> {
+                JaverLogger.error(UNEXPECTED_BINARY_OPERATOR + node.getOperator());
+                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + node.getOperator());
+            }
         }
     }
 
@@ -1146,7 +1155,8 @@ public class CodeGenerator extends AstNodeVisitorBase {
             emitIndexAddress(index);
             return;
         }
-        emitMemberAddress((MemberAccessExpression) expression);
+        if (expression instanceof MemberAccessExpression memberExpression)
+            emitMemberAddress(memberExpression);
     }
 
     private void emitStorageAddress(StorageEntry storage) {
@@ -1154,7 +1164,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         if (storage instanceof ParameterEntry) {
             offset += currentFunction.getLocalBytes();
         }
-        writeLine("LOCAL, " + offset);
+        writeLine(LOCAL + offset);
     }
 
     private void emitIndexAddress(IndexExpression node) {
@@ -1167,7 +1177,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         int elementSize = memoryBytes(elementType);
         writeLine("BOUNDS, " + elementSize);
         if (elementSize != VmLayout.BYTE_BYTES) {
-            writeLine("PUSHI, " + elementSize);
+            writeLine(PUSHI + elementSize);
             writeLine("IMUL");
         }
         emitArrayPayloadOffset();
@@ -1178,7 +1188,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         FieldEntry field = node.getResolvedField();
         node.getTarget().accept(this);
         if (field.getOffsetBytes() != 0) {
-            writeLine("PUSHI, " + field.getOffsetBytes());
+            writeLine(PUSHI + field.getOffsetBytes());
             writeLine("IADD");
         }
     }
@@ -1200,7 +1210,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitDup(TypeInfo type) {
-        writeLine("DUP, " + stackBytes(type));
+        writeLine(DUP + stackBytes(type));
     }
 
     private void emitPop(TypeInfo type) {

@@ -9,9 +9,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
  */
 public final class FunctionEntry extends SymbolEntry {
 
+    private final String label;
     private TypeInfo returnType = UnknownTypeInfo.INSTANCE;
     private FunctionScope scope;
-    private final String label;
     private int parameterBytes;
     private int localBytes;
     private int frameSizeBytes;

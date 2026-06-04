@@ -1,20 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
+
 import java.util.Objects;
 
-/**
- * Represents a literal expression in the Abstract Syntax Tree (AST).
- *
- * @param <V> the type of the value held by this literal expression
- */
 /**
  * Expression node representing a literal value.
  *
  * @param <V> Java value type stored for the literal
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class LiteralExpression<V> extends ExpressionAstNodeBase {
 
     private final LiteralKind kind;

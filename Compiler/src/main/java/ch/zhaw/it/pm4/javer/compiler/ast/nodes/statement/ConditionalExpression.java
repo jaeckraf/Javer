@@ -1,12 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Expression node representing a ternary conditional expression.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class ConditionalExpression extends ExpressionAstNodeBase {
 
     private final ExpressionAstNode condition;
@@ -21,6 +19,23 @@ public final class ConditionalExpression extends ExpressionAstNodeBase {
 
     public static Builder builder(ExpressionAstNode condition) {
         return new Builder(condition);
+    }
+
+    public ExpressionAstNode getCondition() {
+        return condition;
+    }
+
+    public ExpressionAstNode getTrueExpression() {
+        return trueExpression;
+    }
+
+    public ExpressionAstNode getFalseExpression() {
+        return falseExpression;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 
     public static final class Builder {
@@ -45,22 +60,5 @@ public final class ConditionalExpression extends ExpressionAstNodeBase {
         public ConditionalExpression build() {
             return new ConditionalExpression(this);
         }
-    }
-
-    public ExpressionAstNode getCondition() {
-        return condition;
-    }
-
-    public ExpressionAstNode getTrueExpression() {
-        return trueExpression;
-    }
-
-    public ExpressionAstNode getFalseExpression() {
-        return falseExpression;
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

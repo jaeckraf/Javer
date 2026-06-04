@@ -1,12 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
@@ -14,7 +13,6 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
  * Performs semantic checks that depend on control-flow context, such as
  * validating break and continue placement.
  */
-@JacocoGenerated("jacoco-ignore")
 public class SemanticChecker extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
@@ -180,17 +178,10 @@ public class SemanticChecker extends AstNodeVisitorBase {
     }
 
     private Completion analyzeWhile(WhileStatement statement) {
-        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
-            return Completion.NORMAL;
-        }
-        Completion bodyCompletion = analyzeCompletion(statement.getBody());
-        if (bodyCompletion == Completion.RETURNS) {
-            return Completion.RETURNS;
-        }
-        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
-            warnComplexInfiniteLoop(statement);
-        }
-        return Completion.DOES_NOT_COMPLETE;
+        return analyzeInfiniteLoop(
+                statement.getCondition(),
+                statement.getBody(),
+                statement);
     }
 
     private Completion analyzeFor(ForStatement statement) {
@@ -208,16 +199,31 @@ public class SemanticChecker extends AstNodeVisitorBase {
     }
 
     private Completion analyzeDoWhile(DoWhileStatement statement) {
-        if (isNotBooleanLiteralTrue(statement.getCondition()) || containsBreak(statement.getBody())) {
+        return analyzeInfiniteLoop(
+                statement.getCondition(),
+                statement.getBody(),
+                statement);
+    }
+
+    private Completion analyzeInfiniteLoop(
+            ExpressionAstNode condition,
+            StatementAstNode body,
+            StatementAstNode loopStatement) {
+
+        if (isNotBooleanLiteralTrue(condition) || containsBreak(body)) {
             return Completion.NORMAL;
         }
-        Completion bodyCompletion = analyzeCompletion(statement.getBody());
+
+        Completion bodyCompletion = analyzeCompletion(body);
+
         if (bodyCompletion == Completion.RETURNS) {
             return Completion.RETURNS;
         }
-        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
-            warnComplexInfiniteLoop(statement);
+
+        if (bodyCompletion == Completion.NORMAL && containsReturn(body)) {
+            warnComplexInfiniteLoop(loopStatement);
         }
+
         return Completion.DOES_NOT_COMPLETE;
     }
 

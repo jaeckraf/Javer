@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
@@ -29,7 +29,7 @@
         <jacoco.minimum-coverage>0.10</jacoco.minimum-coverage>
         <junit.version>5.12.1</junit.version>
         <mockito.version>5.23.0</mockito.version>
-        <argLine></argLine>
+        <argLine/>
         <mockito.agent.skip>false</mockito.agent.skip>
 
         <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
@@ -114,7 +114,9 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven.surefire.plugin.version}</version>
                     <configuration>
-                        <argLine>@{argLine} "-javaagent:${project.build.directory}/agents/mockito-core.jar" -Xshare:off -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8</argLine>
+                        <argLine>@{argLine} "-javaagent:${project.build.directory}/agents/mockito-core.jar" -Xshare:off
+                            -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8
+                        </argLine>
                     </configuration>
                 </plugin>
 

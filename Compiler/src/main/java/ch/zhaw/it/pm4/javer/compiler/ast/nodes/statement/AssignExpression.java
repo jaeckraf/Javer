@@ -1,12 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Expression node representing assignment to a target expression.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class AssignExpression extends ExpressionAstNodeBase {
 
     private final ExpressionAstNode target;
@@ -21,6 +19,23 @@ public final class AssignExpression extends ExpressionAstNodeBase {
 
     public static Builder builder(ExpressionAstNode target) {
         return new Builder(target);
+    }
+
+    public ExpressionAstNode getTarget() {
+        return target;
+    }
+
+    public AssignOperator getOperator() {
+        return operator;
+    }
+
+    public ExpressionAstNode getValue() {
+        return value;
+    }
+
+    @Override
+    public void accept(AstNodeVisitor visitor) {
+        visitor.visit(this);
     }
 
     public static final class Builder {
@@ -45,22 +60,5 @@ public final class AssignExpression extends ExpressionAstNodeBase {
         public AssignExpression build() {
             return new AssignExpression(this);
         }
-    }
-
-    public ExpressionAstNode getTarget() {
-        return target;
-    }
-
-    public AssignOperator getOperator() {
-        return operator;
-    }
-
-    public ExpressionAstNode getValue() {
-        return value;
-    }
-
-    @Override
-    public void accept(AstNodeVisitor visitor) {
-        visitor.visit(this);
     }
 }

@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes;
 
-import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
+import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Common contract for every AST node in the compiler.

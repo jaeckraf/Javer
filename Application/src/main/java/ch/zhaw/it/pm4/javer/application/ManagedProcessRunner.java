@@ -36,9 +36,9 @@ public class ManagedProcessRunner {
     /**
      * Creates a runner for a named process.
      *
-     * @param name process name used in log messages and worker thread names
-     * @param stdoutListener receives decoded stdout lines
-     * @param stderrListener receives decoded stderr lines
+     * @param name                 process name used in log messages and worker thread names
+     * @param stdoutListener       receives decoded stdout lines
+     * @param stderrListener       receives decoded stderr lines
      * @param runningStateListener receives process running-state changes
      */
     public ManagedProcessRunner(
@@ -58,7 +58,7 @@ public class ManagedProcessRunner {
      *
      * @param command complete command line passed to {@link ProcessBuilder}
      * @return completion future for the process result, or empty if already
-     *         running
+     * running
      */
     public synchronized Optional<CompletableFuture<ProcessResult>> start(List<String> command) {
         if (running) {
@@ -172,8 +172,8 @@ public class ManagedProcessRunner {
         boolean interrupted = false;
         int exitCode = -1;
         Throwable failure = null;
-        Thread stdoutThread = null;
-        Thread stderrThread = null;
+        Thread stdoutThread;
+        Thread stderrThread;
 
         try {
             ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -254,35 +254,6 @@ public class ManagedProcessRunner {
     }
 
     /**
-     * Immutable summary of one process run.
-     *
-     * @param name process name
-     * @param started whether the process was started successfully
-     * @param exitCode process exit code, or -1 if unavailable
-     * @param stopped whether the run ended after an explicit stop request
-     * @param interrupted whether the runner thread was interrupted
-     * @param failure startup or supervision failure, if any
-     */
-    public record ProcessResult(
-            String name,
-            boolean started,
-            int exitCode,
-            boolean stopped,
-            boolean interrupted,
-            Throwable failure
-    ) {
-        /**
-         * Reports whether the process completed normally.
-         *
-         * @return true if the process started, exited with code 0, and did not
-         *         fail or stop early
-         */
-        public boolean isSuccess() {
-            return started && exitCode == 0 && !stopped && !interrupted && failure == null;
-        }
-    }
-
-    /**
      * Receives process output decoded as UTF-8 text.
      */
     @FunctionalInterface
@@ -305,6 +276,36 @@ public class ManagedProcessRunner {
          *
          * @param running true while the process is running
          */
+        @SuppressWarnings("unused")
         void onRunningStateChanged(boolean running);
+    }
+
+    /**
+     * Immutable summary of one process run.
+     *
+     * @param name        process name
+     * @param started     whether the process was started successfully
+     * @param exitCode    process exit code, or -1 if unavailable
+     * @param stopped     whether the run ended after an explicit stop request
+     * @param interrupted whether the runner thread was interrupted
+     * @param failure     startup or supervision failure, if any
+     */
+    public record ProcessResult(
+            String name,
+            boolean started,
+            int exitCode,
+            boolean stopped,
+            boolean interrupted,
+            Throwable failure
+    ) {
+        /**
+         * Reports whether the process completed normally.
+         *
+         * @return true if the process started, exited with code 0, and did not
+         * fail or stop early
+         */
+        public boolean isSuccess() {
+            return started && exitCode == 0 && !stopped && !interrupted && failure == null;
+        }
     }
 }

@@ -1,15 +1,12 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Switch case label backed by a literal expression.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class LiteralCaseLabel extends AstNodeBase implements CaseLabelAstNode {
 
     private final LiteralExpression<?> literal;
@@ -18,6 +15,8 @@ public final class LiteralCaseLabel extends AstNodeBase implements CaseLabelAstN
         this.literal = literal;
     }
 
+    @SuppressWarnings("java:S1452")
+    // Type parameter cannot be concretized due to heterogeneous literal types in AST design.
     public LiteralExpression<?> getLiteral() {
         return literal;
     }

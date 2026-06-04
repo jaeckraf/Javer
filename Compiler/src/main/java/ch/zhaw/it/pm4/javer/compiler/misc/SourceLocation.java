@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
@@ -10,10 +9,9 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
  * <p>Used by tokens, AST nodes, and diagnostics.</p>
  *
  * @param startColumn first 1-based column covered by the location
- * @param endColumn last 1-based column covered by the location
- * @param lineNumber 1-based source line number
+ * @param endColumn   last 1-based column covered by the location
+ * @param lineNumber  1-based source line number
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public record SourceLocation(int startColumn, int endColumn, int lineNumber) {
 
     /**

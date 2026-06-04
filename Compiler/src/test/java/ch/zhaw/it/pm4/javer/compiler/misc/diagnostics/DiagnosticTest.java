@@ -12,8 +12,8 @@ class DiagnosticTest {
         SourceLocation location = new SourceLocation(1, 4, 2);
         Diagnostic diagnostic = new Diagnostic(location, Severity.ERROR, "Type mismatch");
 
-        assertEquals(location, diagnostic.getLocation());
-        assertEquals(Severity.ERROR, diagnostic.getSeverity());
+        assertEquals(location, diagnostic.location());
+        assertEquals(Severity.ERROR, diagnostic.severity());
         assertEquals("[ERROR] at [2 : 1 : 4]: Type mismatch", diagnostic.toString());
     }
 }

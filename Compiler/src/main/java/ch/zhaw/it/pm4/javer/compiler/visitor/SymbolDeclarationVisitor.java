@@ -1,45 +1,23 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.DeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FieldEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * Builds scopes and symbol-table entries for declarations before name
@@ -62,6 +40,10 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
      */
     public SymbolDeclarationVisitor(DiagnosticBag diagnosticBag) {
         this.diagnosticBag = diagnosticBag;
+    }
+
+    private static Object defaultValueOf(TypeInfo type) {
+        return TypeRules.defaultValue(type);
     }
 
     @Override
@@ -94,7 +76,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     private void registerTopLevelDeclaration(DeclarationAstNode declaration) {
         if (declaration instanceof FunctionDeclaration function) {
             FunctionEntry entry = new FunctionEntry(function.getName());
-            FunctionScope scope = new FunctionScope(entry);
+            FunctionScope scope = new FunctionScope();
             entry.setScope(scope);
             function.setSymbolEntry(entry);
             function.setFunctionScope(scope);
@@ -178,7 +160,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                     entry.getElementSizeBytes(),
                     offsetBytes,
                     entry.getDataLabel());
-            item.setSymbolEntry(valueEntry);
 
             if (!scope.defineEnumValue(valueEntry)) {
                 diagnosticBag.add(item.getSourceRange().start(), Severity.ERROR, "Duplicate enum item: " + item.getName());
@@ -240,7 +221,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                     offsetBytes,
                     validVariadic,
                     validVariadic ? elementType : null);
-            parameter.setSymbolEntry(entry);
             if (validVariadic) {
                 function.setVariadicParameter(entry);
             }
@@ -265,7 +245,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             TypeInfo type = resolveType(field.getType());
             int sizeBytes = type.sizeBytes();
             FieldEntry entry = new FieldEntry(field.getName(), type, sizeBytes, offsetBytes);
-            field.setSymbolEntry(entry);
 
             if (!structScope.defineField(entry)) {
                 diagnosticBag.add(field.getSourceRange().start(), Severity.ERROR, "Duplicate field: " + field.getName());
@@ -278,9 +257,26 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     @Override
     public void visit(BlockStatement node) {
+        visitWithNewBlockScope(
+                node::setBlockScope,
+                () -> super.visit(node));
+    }
+
+    @Override
+    public void visit(ForStatement node) {
+        visitWithNewBlockScope(
+                node::setBlockScope,
+                () -> super.visit(node));
+    }
+
+    private void visitWithNewBlockScope(
+            Consumer<BlockScope> scopeSetter,
+            Runnable visitBody) {
+
         BlockScope previousBlock = currentBlock;
         BlockScope blockScope = new BlockScope(currentBlock, currentFunctionScope);
-        node.setBlockScope(blockScope);
+
+        scopeSetter.accept(blockScope);
 
         if (currentBlock == null) {
             currentFunctionScope.setRootBlock(blockScope);
@@ -289,34 +285,11 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         }
 
         currentBlock = blockScope;
-        super.visit(node);
-        currentBlock = previousBlock;
-    }
-
-    @Override
-    public void visit(ForStatement node) {
-        BlockScope previousBlock = currentBlock;
-        BlockScope forScope = new BlockScope(currentBlock, currentFunctionScope);
-        node.setBlockScope(forScope);
-
-        if (currentBlock == null) {
-            currentFunctionScope.setRootBlock(forScope);
-        } else {
-            currentBlock.addChild(forScope);
+        try {
+            visitBody.run();
+        } finally {
+            currentBlock = previousBlock;
         }
-
-        currentBlock = forScope;
-        if (node.getForInit() != null) {
-            node.getForInit().accept(this);
-        }
-        if (node.getCondition() != null) {
-            node.getCondition().accept(this);
-        }
-        if (node.getUpdate() != null) {
-            node.getUpdate().forEach(expression -> expression.accept(this));
-        }
-        node.getBody().accept(this);
-        currentBlock = previousBlock;
     }
 
     @Override
@@ -369,23 +342,8 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         return offsets;
     }
 
-    private TypeInfo resolveType(TypeAstNode type) {
-        if (type instanceof PrimitiveType primitiveType) {
-            return PrimitiveTypeInfo.of(primitiveType.getKind());
-        }
-        if (type instanceof ArrayType arrayType) {
-            return new ArrayTypeInfo(resolveType(arrayType.getBaseType()));
-        }
-        if (type instanceof VoidType) {
-            return VoidTypeInfo.INSTANCE;
-        }
-        if (type instanceof NamedType namedType) {
-            return resolveNamedType(namedType);
-        }
-        return UnknownTypeInfo.INSTANCE;
-    }
-
-    private TypeInfo resolveNamedType(NamedType namedType) {
+    @Override
+    protected  TypeInfo resolveNamedType(NamedType namedType) {
         return switch (namedType.getKind()) {
             case STRUCT -> {
                 StructEntry entry = globalScope.resolveStruct(namedType.getName());
@@ -405,9 +363,5 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             }
             case INVALID -> UnknownTypeInfo.INSTANCE;
         };
-    }
-
-    private static Object defaultValueOf(TypeInfo type) {
-        return TypeRules.defaultValue(type);
     }
 }

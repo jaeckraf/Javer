@@ -2,13 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.bytecode;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.NullTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

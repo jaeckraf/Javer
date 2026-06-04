@@ -1,13 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.bytecode;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.NullTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
+import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Centralizes the byte layout expected by the VM bytecode target.
@@ -25,6 +20,13 @@ public final class VmLayout {
     private VmLayout() {
     }
 
+    /**
+     * Returns the number of stack bytes required to represent the given type.
+     *
+     * @param type the type to evaluate
+     * @return the number of bytes required on the stack
+     * @throws IllegalArgumentException if the type has no stack representation
+     */
     public static int stackBytes(TypeInfo type) {
         if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
             return DOUBLE_BYTES;
@@ -32,9 +34,16 @@ public final class VmLayout {
         if (isWordStackType(type)) {
             return WORD_BYTES;
         }
+        JaverLogger.error("Type has no stack representation: " + type);
         throw new IllegalArgumentException("Type has no stack representation: " + type);
     }
 
+    /**
+     * Returns the number of bytes used for returning the given type from a function.
+     *
+     * @param type the return type to evaluate
+     * @return number of bytes used for returning the value (0 for void)
+     */
     public static int returnBytes(TypeInfo type) {
         if (type instanceof VoidTypeInfo) {
             return 0;
@@ -42,6 +51,13 @@ public final class VmLayout {
         return stackBytes(type);
     }
 
+    /**
+     * Maps a high-level type to its corresponding VM memory width.
+     *
+     * @param type the type to evaluate
+     * @return the memory width used for load/store operations
+     * @throws IllegalArgumentException if the type has no memory representation
+     */
     public static MemoryWidth memoryWidth(TypeInfo type) {
         if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
             return switch (kind) {
@@ -55,6 +71,7 @@ public final class VmLayout {
         if (type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo) {
             return MemoryWidth.WORD;
         }
+        JaverLogger.error("Type has no memory width: " + type);
         throw new IllegalArgumentException("Type has no memory width: " + type);
     }
 

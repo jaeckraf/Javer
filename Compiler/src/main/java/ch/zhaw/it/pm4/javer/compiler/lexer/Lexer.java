@@ -8,6 +8,7 @@ import ch.zhaw.it.pm4.misc.JaverLogger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * The Lexer class is responsible for converting the raw source code into a
@@ -20,6 +21,7 @@ import java.util.Objects;
  */
 
 public class Lexer {
+    public static final String UNTERMINATED_CHAR_LITERAL = "Unterminated char literal";
     private final String sourceCode;
     private final DiagnosticBag diagnostics;
 
@@ -163,40 +165,66 @@ public class Lexer {
     private void skipWhitespaceAndComments() {
         while (indexInSourceCode < sourceCode.length()) {
             char currentChar = currentChar();
-            if (Character.isWhitespace(currentChar)) {
-                advance();
-                continue;
+
+            boolean skipped =
+                    skipWhitespace(currentChar)
+                            || skipLineComment(currentChar)
+                            || skipBlockComment(currentChar);
+
+            if (!skipped) {
+                break;
             }
-            if (currentChar == '/' && peek(1) == '/') {
-                while (indexInSourceCode < sourceCode.length() && !isLineTerminator(currentChar())) {
-                    advance();
-                }
-                continue;
-            }
-            if (currentChar == '/' && peek(1) == '*') {
-                // Remember start of the block comment so error reporting points here.
-                tokenStartIndex = indexInSourceCode;
-                tokenStartLine = line;
-                tokenStartColumn = column;
-                advance();
-                advance();
-                boolean closed = false;
-                while (indexInSourceCode < sourceCode.length()) {
-                    if (currentChar() == '*' && peek(1) == '/') {
-                        advance();
-                        advance();
-                        closed = true;
-                        break;
-                    }
-                    advance();
-                }
-                if (!closed) {
-                    error("Unterminated block comment");
-                }
-                continue;
-            }
-            break;
         }
+    }
+
+    private boolean skipWhitespace(char currentChar) {
+        if (Character.isWhitespace(currentChar)) {
+            advance();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean skipLineComment(char currentChar) {
+        if (currentChar == '/' && peek() == '/') {
+            while (indexInSourceCode < sourceCode.length()
+                    && !isLineTerminator(currentChar())) {
+                advance();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean skipBlockComment(char currentChar) {
+        if (!(currentChar == '/' && peek() == '*')) {
+            return false;
+        }
+
+        tokenStartIndex = indexInSourceCode;
+        tokenStartLine = line;
+        tokenStartColumn = column;
+
+        advance();
+        advance();
+
+        boolean closed = false;
+
+        while (indexInSourceCode < sourceCode.length()) {
+            if (currentChar() == '*' && peek() == '/') {
+                advance();
+                advance();
+                closed = true;
+                break;
+            }
+            advance();
+        }
+
+        if (!closed) {
+            error("Unterminated block comment");
+        }
+
+        return true;
     }
 
     /**
@@ -206,66 +234,117 @@ public class Lexer {
      * (0x..), octal (0o..) and binary (0b..) literals.
      */
     private Token lexNumber() {
-        if (currentChar() == '0' && (peek(1) == 'x' || peek(1) == 'X')) {
-            advance();
-            advance();
-            int digitsStartIndex = indexInSourceCode;
-            if (!isHexDigit(currentChar())) {
-                error("Hexadecimal literal must have at least one digit");
-            }
-            consumeDigitsForBase(16);
-            return makeToken(TokenType.LITERAL_HEX, sourceCode.substring(digitsStartIndex, indexInSourceCode));
-        }
-        if (currentChar() == '0' && (peek(1) == 'o' || peek(1) == 'O')) {
-            advance();
-            advance();
-            int digitsStartIndex = indexInSourceCode;
-            if (!isOctalDigit(currentChar())) {
-                error("Octal literal must have at least one digit");
-            }
-            consumeDigitsForBase(8);
-            return makeToken(TokenType.LITERAL_OCTAL, sourceCode.substring(digitsStartIndex, indexInSourceCode));
-        }
-        if (currentChar() == '0' && (peek(1) == 'b' || peek(1) == 'B')) {
-            advance();
-            advance();
-            int digitsStartIndex = indexInSourceCode;
-            if (!isBinaryDigit(currentChar())) {
-                error("Binary literal must have at least one digit");
-            }
-            consumeDigitsForBase(2);
-            return makeToken(TokenType.LITERAL_BINARY, sourceCode.substring(digitsStartIndex, indexInSourceCode));
+        Token prefixed = lexPrefixedNumber();
+        if (prefixed != null) {
+            return prefixed;
         }
 
         // Decimal integer / double
         consumeDigitsForBase(10);
 
         // "10..2"
-        if (currentChar() == '.' && peek(1) == '.') {
-            error("Malformed number literal: consecutive decimal points");
-            advance();
-            advance();
-            consumeDigitsForBase(10);
-            return makeToken(TokenType.LITERAL_DOUBLE);
+        if (isMalformedRangeLiteral()) {
+            return lexMalformedRangeLiteral();
         }
 
-        boolean isDouble = false;
-        if (currentChar() == '.' && isDecimalDigit(peek(1))) {
-            isDouble = true;
-            advance();
-            consumeDigitsForBase(10);
-        }
+        boolean isDouble = lexFractionalPart();
 
-        // "10.2.3" 
-        if (isDouble && currentChar() == '.') {
-            error("Malformed number literal: too many decimal points");
-            while (currentChar() == '.') {
-                advance();
-                consumeDigitsForBase(10);
-            }
+        if (isMalformedDoubleLiteral(isDouble)) {
+            recoverMalformedDoubleLiteral();
         }
 
         return makeToken(isDouble ? TokenType.LITERAL_DOUBLE : TokenType.LITERAL_INTEGER);
+    }
+
+    private Token lexPrefixedNumber() {
+        if (currentChar() != '0') {
+            return null;
+        }
+
+        return switch (peek()) {
+            case 'x', 'X' -> lexBasedLiteral(
+                    16,
+                    TokenType.LITERAL_HEX,
+                    "Hexadecimal literal must have at least one digit",
+                    this::isHexDigit
+            );
+
+            case 'o', 'O' -> lexBasedLiteral(
+                    8,
+                    TokenType.LITERAL_OCTAL,
+                    "Octal literal must have at least one digit",
+                    this::isOctalDigit
+            );
+
+            case 'b', 'B' -> lexBasedLiteral(
+                    2,
+                    TokenType.LITERAL_BINARY,
+                    "Binary literal must have at least one digit",
+                    this::isBinaryDigit
+            );
+
+            default -> null;
+        };
+    }
+
+    private Token lexBasedLiteral(
+            int base,
+            TokenType tokenType,
+            String errorMessage,
+            Predicate<Character> digitValidator
+    ) {
+        advance();
+        advance();
+
+        int digitsStartIndex = indexInSourceCode;
+
+        if (!digitValidator.test(currentChar())) {
+            error(errorMessage);
+        }
+
+        consumeDigitsForBase(base);
+
+        return makeToken(
+                tokenType,
+                sourceCode.substring(digitsStartIndex, indexInSourceCode)
+        );
+    }
+
+    private boolean isMalformedRangeLiteral() {
+        return currentChar() == '.' && peek() == '.';
+    }
+
+    private Token lexMalformedRangeLiteral() {
+        error("Malformed number literal: consecutive decimal points");
+
+        advance();
+        advance();
+
+        consumeDigitsForBase(10);
+
+        return makeToken(TokenType.LITERAL_DOUBLE);
+    }
+
+    private boolean lexFractionalPart() {
+        if (currentChar() == '.' && isDecimalDigit(peek())) {
+            advance();
+            consumeDigitsForBase(10);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isMalformedDoubleLiteral(boolean isDouble) {
+        return isDouble && currentChar() == '.';
+    }
+
+    private void recoverMalformedDoubleLiteral() {
+        error("Malformed number literal: too many decimal points");
+
+        while (currentChar() == '.') {
+            advance();
+            consumeDigitsForBase(10);
+        }
     }
 
     /**
@@ -292,17 +371,17 @@ public class Lexer {
                     break;
                 }
                 char esc = currentChar();
-                if (!isValidEscape(esc)) {
+                if (isInvalidEscape(esc)) {
                     error("Invalid escape sequence: \\" + esc);
                     value.append(esc);
                 } else {
                     value.append(resolveEscape(esc));
                 }
                 advance();
-                continue;
+            } else {
+                value.append(currentChar);
+                advance();
             }
-            value.append(currentChar);
-            advance();
         }
         error("Unterminated string literal");
         return makeToken(TokenType.SPECIAL_UNKNOWN);
@@ -315,10 +394,9 @@ public class Lexer {
      * quotes.
      */
     private Token lexChar() {
-        String value;
         advance();
         if (indexInSourceCode >= sourceCode.length() || isLineTerminator(currentChar())) {
-            error("Unterminated char literal");
+            error(UNTERMINATED_CHAR_LITERAL);
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
         if (currentChar() == '\'') {
@@ -326,39 +404,69 @@ public class Lexer {
             advance();
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
-        if (currentChar() == '\\') {
-            advance();
-            if (indexInSourceCode >= sourceCode.length()) {
-                error("Unterminated char literal");
-                return makeToken(TokenType.SPECIAL_UNKNOWN);
-            }
-            char esc = currentChar();
-            if (!isValidEscape(esc)) {
-                error("Invalid escape sequence: \\" + esc);
-                value = String.valueOf(esc);
-            } else {
-                value = String.valueOf(resolveEscape(esc));
-            }
-            advance();
-        } else {
-            value = String.valueOf(currentChar());
-            advance();
-        }
-        if (indexInSourceCode >= sourceCode.length() || currentChar() != '\'') {
-            error("Unterminated char literal");
-            // Attempt to resynchronise at the next single quote or newline.
-            while (indexInSourceCode < sourceCode.length()
-                    && currentChar() != '\''
-                    && !isLineTerminator(currentChar())) {
-                advance();
-            }
-            if (indexInSourceCode < sourceCode.length() && currentChar() == '\'') {
-                advance();
-            }
+
+        String value = currentChar() == '\\'
+                ? lexEscapedChar()
+                : lexRegularChar();
+
+        if (isMissingClosingQuote()) {
+            recoverUnterminatedCharLiteral();
             return makeToken(TokenType.SPECIAL_UNKNOWN);
         }
+
         advance();
+
         return makeToken(TokenType.LITERAL_CHAR, value);
+    }
+
+    private String lexEscapedChar() {
+        advance();
+
+        if (indexInSourceCode >= sourceCode.length()) {
+            error(UNTERMINATED_CHAR_LITERAL);
+            return "";
+        }
+
+        char esc = currentChar();
+
+        String value;
+
+        if (isInvalidEscape(esc)) {
+            error("Invalid escape sequence: \\" + esc);
+            value = String.valueOf(esc);
+        } else {
+            value = String.valueOf(resolveEscape(esc));
+        }
+
+        advance();
+
+        return value;
+    }
+
+    private String lexRegularChar() {
+        String value = String.valueOf(currentChar());
+        advance();
+        return value;
+    }
+
+    private boolean isMissingClosingQuote() {
+        return indexInSourceCode >= sourceCode.length()
+                || currentChar() != '\'';
+    }
+
+    private void recoverUnterminatedCharLiteral() {
+        error(UNTERMINATED_CHAR_LITERAL);
+
+        while (indexInSourceCode < sourceCode.length()
+                && currentChar() != '\''
+                && !isLineTerminator(currentChar())) {
+            advance();
+        }
+
+        if (indexInSourceCode < sourceCode.length()
+                && currentChar() == '\'') {
+            advance();
+        }
     }
 
     /**
@@ -427,8 +535,8 @@ public class Lexer {
      * based on upcoming characters (e.g., distinguishing between '=' and
      * '==').
      */
-    private char peek(int offset) {
-        return indexInSourceCode + offset < sourceCode.length() ? sourceCode.charAt(indexInSourceCode + offset) : '\0';
+    private char peek() {
+        return indexInSourceCode + 1 < sourceCode.length() ? sourceCode.charAt(indexInSourceCode + 1) : '\0';
     }
 
     /**
@@ -585,13 +693,13 @@ public class Lexer {
     }
 
     /**
-     * @return returns true if the given character is a recognised escape sequence
+     * @return returns true if the given character is not a recognised escape sequence
      * character inside a string or char literal.
      * Recognised escapes: n, r, t, b, f, 0, ", ', \.
      */
-    private boolean isValidEscape(char c) {
-        return c == 'n' || c == 'r' || c == 't' || c == 'b' || c == 'f'
-                || c == '0' || c == '"' || c == '\'' || c == '\\';
+    private boolean isInvalidEscape(char c) {
+        return c != 'n' && c != 'r' && c != 't' && c != 'b' && c != 'f'
+                && c != '0' && c != '"' && c != '\'' && c != '\\';
     }
 
     private char resolveEscape(char c) {

@@ -17,11 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ParserRecoveryTest {
 
@@ -294,7 +290,7 @@ class ParserRecoveryTest {
         return parseSource(sourceFile);
     }
 
-    private ParseResult parseSource(Path sourceFile) throws Exception {
+    private ParseResult parseSource(Path sourceFile) {
         SourceCache sourceCache = new SourceCache(sourceFile.toString());
         DiagnosticBag diagnosticBag = new DiagnosticBag(
                 sourceFile.toString(),
@@ -322,7 +318,7 @@ class ParserRecoveryTest {
     }
 
     private void assertDiagnosticMessagesContain(ParseResult result, String... expectedFragments) {
-        String allMessages = String.join("\n", result.diagnostics().stream().map(Diagnostic::getMessage).toList());
+        String allMessages = String.join("\n", result.diagnostics().stream().map(Diagnostic::message).toList());
         for (String expectedFragment : expectedFragments) {
             assertTrue(
                     allMessages.contains(expectedFragment),
@@ -334,14 +330,14 @@ class ParserRecoveryTest {
 
     private void assertMessageContains(Diagnostic diagnostic, String expectedFragment) {
         assertTrue(
-                diagnostic.getMessage().contains(expectedFragment),
+                diagnostic.message().contains(expectedFragment),
                 () -> "Expected diagnostic to contain '%s' but got '%s'"
-                        .formatted(expectedFragment, diagnostic.getMessage())
+                        .formatted(expectedFragment, diagnostic.message())
         );
     }
 
     private void assertLocation(Diagnostic diagnostic, int lineNumber, int startColumn) {
-        SourceLocation location = diagnostic.getLocation();
+        SourceLocation location = diagnostic.location();
         assertNotNull(location);
         assertEquals(lineNumber, location.lineNumber());
         assertEquals(startColumn, location.startColumn());

@@ -1,13 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.scope;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 
 /**
  * Top-level symbol scope for functions, structs, and enums.
@@ -17,6 +13,14 @@ public final class GlobalScope {
     private final Map<String, FunctionEntry> functions = new LinkedHashMap<>();
     private final Map<String, StructEntry> structs = new LinkedHashMap<>();
     private final Map<String, EnumEntry> enums = new LinkedHashMap<>();
+
+    private static <T extends SymbolEntry> boolean putIfAbsent(Map<String, T> entries, T entry) {
+        if (entries.containsKey(entry.getName())) {
+            return false;
+        }
+        entries.put(entry.getName(), entry);
+        return true;
+    }
 
     public boolean defineFunction(FunctionEntry entry) {
         return putIfAbsent(functions, entry);
@@ -28,14 +32,6 @@ public final class GlobalScope {
 
     public boolean defineEnum(EnumEntry entry) {
         return putIfAbsent(enums, entry);
-    }
-
-    private static <T extends SymbolEntry> boolean putIfAbsent(Map<String, T> entries, T entry) {
-        if (entries.containsKey(entry.getName())) {
-            return false;
-        }
-        entries.put(entry.getName(), entry);
-        return true;
     }
 
     public FunctionEntry resolveFunction(String name) {
@@ -53,17 +49,15 @@ public final class GlobalScope {
     public EnumValueEntry resolveUniqueEnumValue(String name) {
         EnumValueEntry found = null;
         for (EnumEntry enumEntry : enums.values()) {
-            if (enumEntry.getScope() == null) {
-                continue;
+            if (enumEntry.getScope() != null) {
+                EnumValueEntry candidate = enumEntry.getScope().resolveEnumValue(name);
+                if (candidate != null) {
+                    if (found != null) {
+                        return null;
+                    }
+                    found = candidate;
+                }
             }
-            EnumValueEntry candidate = enumEntry.getScope().resolveEnumValue(name);
-            if (candidate == null) {
-                continue;
-            }
-            if (found != null) {
-                return null;
-            }
-            found = candidate;
         }
         return found;
     }
@@ -80,18 +74,6 @@ public final class GlobalScope {
             found = true;
         }
         return false;
-    }
-
-    public Map<String, FunctionEntry> getFunctions() {
-        return functions;
-    }
-
-    public Map<String, StructEntry> getStructs() {
-        return structs;
-    }
-
-    public Map<String, EnumEntry> getEnums() {
-        return enums;
     }
 
     public Map<String, SymbolEntry> getAllEntries() {

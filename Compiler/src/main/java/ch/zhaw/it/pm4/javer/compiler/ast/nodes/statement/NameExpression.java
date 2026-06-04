@@ -1,13 +1,11 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * Expression node representing a named value reference.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class NameExpression extends ExpressionAstNodeBase {
 
     private final String name;
@@ -27,11 +25,11 @@ public final class NameExpression extends ExpressionAstNodeBase {
         visitor.visit(this);
     }
 
-    public void setSymbolEntry(SymbolEntry symbolEntry) {
-        this.symbolEntry = symbolEntry;
-    }
-
     public SymbolEntry getSymbolEntry() {
         return symbolEntry;
+    }
+
+    public void setSymbolEntry(SymbolEntry symbolEntry) {
+        this.symbolEntry = symbolEntry;
     }
 }

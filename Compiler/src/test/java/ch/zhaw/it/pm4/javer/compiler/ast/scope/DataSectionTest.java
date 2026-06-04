@@ -13,6 +13,30 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class DataSectionTest {
 
+    private static EnumEntry enumEntryWithValues(String name, EnumValueEntry... values) {
+        EnumEntry enumEntry = new EnumEntry(name);
+        EnumScope scope = new EnumScope();
+        enumEntry.setScope(scope);
+
+        for (EnumValueEntry value : values) {
+            EnumValueEntry ownedValue = new EnumValueEntry(
+                    value.getName(),
+                    enumEntry,
+                    value.getValue(),
+                    value.getSizeBytes(),
+                    value.getOffsetBytes(),
+                    enumEntry.getDataLabel()
+            );
+            scope.defineEnumValue(ownedValue);
+        }
+
+        return enumEntry;
+    }
+
+    private static EnumValueEntry enumValue(String name, int value, int offsetBytes) {
+        return new EnumValueEntry(name, null, value, 4, offsetBytes, "");
+    }
+
     @Test
     void internStringDeduplicatesAndEncodesUtf16PayloadWithLengthPrefix() {
         DataSection dataSection = new DataSection();
@@ -120,7 +144,7 @@ class DataSectionTest {
         DataSection dataSection = new DataSection();
 
         DataEntry bools = dataSection.addArrayTemplate(PrimitiveTypeInfo.BOOL, Arrays.asList(true, false, null));
-        DataEntry chars = dataSection.addArrayTemplate(PrimitiveTypeInfo.CHAR, List.of('A', '\u20AC'));
+        DataEntry chars = dataSection.addArrayTemplate(PrimitiveTypeInfo.CHAR, List.of('A', '€'));
         DataEntry ints = dataSection.addArrayTemplate(PrimitiveTypeInfo.INT, Arrays.asList(1, -1, null));
         DataEntry doubles = dataSection.addArrayTemplate(PrimitiveTypeInfo.DOUBLE, Arrays.asList(1.5, null));
 
@@ -137,29 +161,5 @@ class DataSectionTest {
         DataEntry entry = dataSection.addArrayTemplate(PrimitiveTypeInfo.INT, List.of("not-static"));
 
         assertEquals("array_template_0 4 00000000", entry.toString());
-    }
-
-    private static EnumEntry enumEntryWithValues(String name, EnumValueEntry... values) {
-        EnumEntry enumEntry = new EnumEntry(name);
-        EnumScope scope = new EnumScope();
-        enumEntry.setScope(scope);
-
-        for (EnumValueEntry value : values) {
-            EnumValueEntry ownedValue = new EnumValueEntry(
-                    value.getName(),
-                    enumEntry,
-                    value.getValue(),
-                    value.getSizeBytes(),
-                    value.getOffsetBytes(),
-                    enumEntry.getDataLabel()
-            );
-            scope.defineEnumValue(ownedValue);
-        }
-
-        return enumEntry;
-    }
-
-    private static EnumValueEntry enumValue(String name, int value, int offsetBytes) {
-        return new EnumValueEntry(name, null, value, 4, offsetBytes, "");
     }
 }

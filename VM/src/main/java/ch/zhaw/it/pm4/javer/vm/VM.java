@@ -1,33 +1,36 @@
 package ch.zhaw.it.pm4.javer.vm;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
+import java.util.function.BiPredicate;
+import java.util.function.IntBinaryOperator;
 
 /**
  * Stack-based virtual machine for Javer bytecode.
  */
 public class VM {
 
+    public static final String CODE_SECTION = ".code";
+    public static final String DATA_SECTION = ".data";
+    public static final String SEPARATOR = "========================================";
+    public static final String LINE = "Line ";
+    public static final String SIZE = ", size=";
+    public static final String INVALID_KIND = "Invalid kind: ";
+    public static final String ERROR = "Error";
     private static final int DEFAULT_STACK_SIZE = 1024 * 1024;
     private static final int MAX_STACK_SIZE = 16 * 1024 * 1024;
     private static final int STACK_WINDOW = 32;
-
     private static final int NULL_REF = 0;
     private static final int DATA_BASE = 0x00001000;
     private static final int CODE_BASE = 0x01000000;
     private static final int HEAP_BASE = 0x10000000;
     private static final long ADDRESS_SPACE_SIZE = 1L << 32;
-
     private static final int FRAME_LOCAL_BYTES_OFFSET = 0;
     private static final int FRAME_ARG_BYTES_OFFSET = 4;
     private static final int FRAME_RETURN_PC_OFFSET = 8;
@@ -35,10 +38,13 @@ public class VM {
     private static final int FRAME_HEADER_SIZE = 16;
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
-
+    private static final long STACK_LIMIT = ADDRESS_SPACE_SIZE;
+    private static final IntBinaryOperator LT = (a, b) -> a < b ? 1 : 0;
+    private static final IntBinaryOperator LE = (a, b) -> a <= b ? 1 : 0;
+    private static final IntBinaryOperator GT = (a, b) -> a > b ? 1 : 0;
+    private static final IntBinaryOperator GE = (a, b) -> a >= b ? 1 : 0;
     private final byte[] stack;
     private final long stackBase;
-    private final long stackTop = ADDRESS_SPACE_SIZE;
     private final Map<Integer, Instruction> code = new HashMap<>();
     private final Map<Integer, Integer> instructionLineNumbers = new HashMap<>();
     private final Map<String, Integer> dataLabels = new HashMap<>();
@@ -53,6 +59,36 @@ public class VM {
     private int nextHeapAddress = HEAP_BASE;
     private int programEndAddress = CODE_BASE;
     private boolean halted;
+
+    /**
+     * Loads and parses a bytecode program.
+     *
+     * @param filePath path to the bytecode file
+     * @throws IOException    if the bytecode file cannot be read
+     * @throws ParseException if bytecode parsing fails
+     */
+    public VM(String filePath) throws IOException, ParseException {
+        this(filePath, DEFAULT_STACK_SIZE);
+    }
+
+    /**
+     * Loads and parses a bytecode program with a custom VM stack size.
+     *
+     * @param filePath       path to the bytecode file
+     * @param stackSizeBytes stack size in bytes
+     * @throws IOException    if the bytecode file cannot be read
+     * @throws ParseException if bytecode parsing fails
+     */
+    public VM(String filePath, int stackSizeBytes) throws IOException, ParseException {
+        validateStackSize(stackSizeBytes);
+        this.stack = new byte[stackSizeBytes];
+        this.stackBase = ADDRESS_SPACE_SIZE - stackSizeBytes;
+        this.sp = STACK_LIMIT;
+        this.fp = 0;
+        this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
+        addRegion(new MemoryRegion((int) stackBase, stackSizeBytes, true, "stack", stack));
+        parse();
+    }
 
     /**
      * Starts the VM for a bytecode file.
@@ -85,7 +121,7 @@ public class VM {
         } catch (VMExecutionException e) {
             System.err.println("Runtime error: " + e.getMessage());
             if (options.dumpOnRuntimeError() && vm != null) {
-                vm.dumpState(System.err);
+                vm.dumpState();
             }
         }
     }
@@ -112,27 +148,35 @@ public class VM {
         boolean dumpOnRuntimeError = false;
         String filePath = null;
 
-        for (int i = 0; i < args.length; i++) {
+        int i = 0;
+        while (i < args.length) {
             String arg = args[i];
             if ("--stack-size".equals(arg)) {
                 if (i + 1 >= args.length) {
+                    JaverLogger.error("Missing value for --stack-size");
                     throw new OptionParseException("Missing value for --stack-size");
                 }
-                stackSizeBytes = parseStackSize(args[++i]);
+                i++;
+                stackSizeBytes = parseStackSize(args[i]);
             } else if (arg.startsWith("--stack-size=")) {
                 stackSizeBytes = parseStackSize(arg.substring("--stack-size=".length()));
             } else if ("--dump-on-error".equals(arg)) {
                 dumpOnRuntimeError = true;
             } else if (arg.startsWith("-")) {
+                JaverLogger.error("Unknown option: " + arg);
                 throw new OptionParseException("Unknown option: " + arg);
             } else if (filePath == null) {
                 filePath = arg;
             } else {
+                JaverLogger.error("Unexpected argument: " + arg);
                 throw new OptionParseException("Unexpected argument: " + arg);
             }
+
+            i++;
         }
 
         if (filePath == null) {
+            JaverLogger.error("Missing bytecode file path");
             throw new OptionParseException("Missing bytecode file path");
         }
 
@@ -142,21 +186,23 @@ public class VM {
     private static int parseStackSize(String rawValue) throws OptionParseException {
         String value = rawValue.trim().replace("_", "");
         if (value.isEmpty()) {
+            JaverLogger.error("Invalid --stack-size value: " + rawValue);
             throw new OptionParseException("Invalid --stack-size value: " + rawValue);
         }
 
         String upper = value.toUpperCase(Locale.ROOT);
         long multiplier = 1;
         String number = upper;
+        String substring = upper.substring(0, upper.length() - 2);
         if (upper.endsWith("KB")) {
             multiplier = 1024;
-            number = upper.substring(0, upper.length() - 2);
+            number = substring;
         } else if (upper.endsWith("K")) {
             multiplier = 1024;
             number = upper.substring(0, upper.length() - 1);
         } else if (upper.endsWith("MB")) {
             multiplier = 1024 * 1024L;
-            number = upper.substring(0, upper.length() - 2);
+            number = substring;
         } else if (upper.endsWith("M")) {
             multiplier = 1024 * 1024L;
             number = upper.substring(0, upper.length() - 1);
@@ -165,48 +211,21 @@ public class VM {
         try {
             long stackSize = Math.multiplyExact(Long.parseLong(number), multiplier);
             if (stackSize < 1 || stackSize > MAX_STACK_SIZE) {
+                JaverLogger.error("--stack-size must be between 1 and " + MAX_STACK_SIZE + " bytes");
                 throw new OptionParseException(
                         "--stack-size must be between 1 and " + MAX_STACK_SIZE + " bytes"
                 );
             }
             return (int) stackSize;
         } catch (NumberFormatException | ArithmeticException e) {
+            JaverLogger.error("Invalid --stack-size value: " + rawValue);
             throw new OptionParseException("Invalid --stack-size value: " + rawValue);
         }
     }
 
-    /**
-     * Loads and parses a bytecode program.
-     *
-     * @param filePath path to the bytecode file
-     * @throws IOException    if the bytecode file cannot be read
-     * @throws ParseException if bytecode parsing fails
-     */
-    public VM(String filePath) throws IOException, ParseException {
-        this(filePath, DEFAULT_STACK_SIZE);
-    }
-
-    /**
-     * Loads and parses a bytecode program with a custom VM stack size.
-     *
-     * @param filePath       path to the bytecode file
-     * @param stackSizeBytes stack size in bytes
-     * @throws IOException    if the bytecode file cannot be read
-     * @throws ParseException if bytecode parsing fails
-     */
-    public VM(String filePath, int stackSizeBytes) throws IOException, ParseException {
-        validateStackSize(stackSizeBytes);
-        this.stack = new byte[stackSizeBytes];
-        this.stackBase = ADDRESS_SPACE_SIZE - stackSizeBytes;
-        this.sp = stackTop;
-        this.fp = 0;
-        this.lines = Files.readAllLines(Paths.get(filePath), StandardCharsets.UTF_8);
-        addRegion(new MemoryRegion((int) stackBase, stackSizeBytes, true, "stack", stack));
-        parse();
-    }
-
     private static void validateStackSize(int stackSizeBytes) {
         if (stackSizeBytes < 1 || stackSizeBytes > MAX_STACK_SIZE) {
+            JaverLogger.error("stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes");
             throw new IllegalArgumentException(
                     "stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes"
             );
@@ -217,39 +236,12 @@ public class VM {
         List<String> errors = new ArrayList<>();
         List<PendingJumpCheck> pendingJumpChecks = new ArrayList<>();
 
-        int codeLineIndex = -1;
-        int dataLineIndex = -1;
+        SectionBounds result = findSections(errors);
 
-        for (int i = 0; i < lines.size(); i++) {
-            String line = stripComment(lines.get(i)).trim();
-            switch (line) {
-                case "" -> {
-                }
-                case ".code" -> {
-                    if (codeLineIndex != -1) {
-                        errors.add("Line " + (i + 1) + ": duplicate '.code' section");
-                    } else {
-                        codeLineIndex = i;
-                    }
-                }
-                case ".data" -> {
-                    if (codeLineIndex == -1) {
-                        errors.add("Line " + (i + 1) + ": '.data' section must appear after '.code'");
-                    } else if (dataLineIndex != -1) {
-                        errors.add("Line " + (i + 1) + ": duplicate '.data' section");
-                    } else {
-                        dataLineIndex = i;
-                    }
-                }
-                default -> {
-                }
-            }
-        }
-
-        if (codeLineIndex == -1) {
+        if (result.codeLineIndex() == -1) {
             errors.add("Missing required '.code' section");
         }
-        if (dataLineIndex == -1) {
+        if (result.dataLineIndex() == -1) {
             errors.add("Missing required '.data' section");
         }
         if (!errors.isEmpty()) {
@@ -257,35 +249,67 @@ public class VM {
             throw new ParseException(errors);
         }
 
-        int instructionAddress = CODE_BASE;
-        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
-            String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (line.equals(".code") || line.equals(".data")) {
-                errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
-                continue;
-            }
-            if (isLabel(line)) {
-                String labelName = extractLabelName(line);
-                if (labels.containsKey(labelName)) {
-                    errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
-                } else {
-                    labels.put(labelName, instructionAddress);
-                }
-            } else {
-                instructionAddress = nextCodeAddress(instructionAddress, i + 1, errors);
-            }
-        }
-
-        programEndAddress = instructionAddress;
-        allocateCodeRegion(CODE_BASE, Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
+        programEndAddress = analyzeCodeSection(result, errors);
+        allocateCodeRegion(Integer.compareUnsigned(programEndAddress, CODE_BASE) < 0
                 ? 0
                 : programEndAddress - CODE_BASE + 1);
 
-        instructionAddress = CODE_BASE;
-        for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
+        parseInstructions(result, pendingJumpChecks, errors);
+
+        validateEnterInstructions(result.codeLineIndex(), result.dataLineIndex(), errors);
+
+        parseDataSection(result, errors);
+
+        validatePendingJumps(pendingJumpChecks, errors);
+
+        finalizeProgram(errors);
+    }
+
+    private void finalizeProgram(List<String> errors) throws ParseException {
+        code.put(programEndAddress, VM::halt);
+
+        if (!errors.isEmpty()) {
+            printErrors(errors);
+            throw new ParseException(errors);
+        }
+    }
+
+    private void validatePendingJumps(List<PendingJumpCheck> pendingJumpChecks, List<String> errors) {
+        for (PendingJumpCheck check : pendingJumpChecks) {
+            if (!labels.containsKey(check.labelName())) {
+                errors.add(LINE + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
+            }
+        }
+    }
+
+    private void parseDataSection(SectionBounds result, List<String> errors) {
+        for (int i = result.dataLineIndex() + 1; i < lines.size(); i++) {
+            handleDataLine(errors, i);
+        }
+    }
+
+    private void handleDataLine(List<String> errors, int i) {
+        String line = stripComment(lines.get(i)).trim();
+        if (!line.isEmpty()) {
+            if (line.equals(CODE_SECTION) || line.equals(DATA_SECTION)) {
+                errors.add(LINE + (i + 1) + ": section marker not allowed inside data section");
+            } else {
+                if (isLabel(line)) {
+                    errors.add(LINE + (i + 1) + ": labels are only allowed in code section");
+                } else {
+                    try {
+                        parseDataLine(line, i + 1);
+                    } catch (ParseException e) {
+                        errors.addAll(e.getErrors());
+                    }
+                }
+            }
+        }
+    }
+
+    private void parseInstructions(SectionBounds result, List<PendingJumpCheck> pendingJumpChecks, List<String> errors) {
+        int instructionAddress = CODE_BASE;
+        for (int i = result.codeLineIndex() + 1; i < result.dataLineIndex(); i++) {
             String line = stripComment(lines.get(i)).trim();
             if (line.isEmpty() || isLabel(line)) {
                 continue;
@@ -299,61 +323,80 @@ public class VM {
                 errors.addAll(e.getErrors());
             }
         }
+    }
 
-        validateEnterInstructions(codeLineIndex, dataLineIndex, errors);
-
-        for (int i = dataLineIndex + 1; i < lines.size(); i++) {
+    private int analyzeCodeSection(SectionBounds result, List<String> errors) {
+        int instructionAddress = CODE_BASE;
+        for (int i = result.codeLineIndex() + 1; i < result.dataLineIndex(); i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (line.equals(".code") || line.equals(".data")) {
-                errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
-                continue;
-            }
-            if (isLabel(line)) {
-                errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
-                continue;
-            }
-            try {
-                parseDataLine(line, i + 1);
-            } catch (ParseException e) {
-                errors.addAll(e.getErrors());
+            if (!line.isEmpty()) {
+                if (line.equals(CODE_SECTION) || line.equals(DATA_SECTION)) {
+                    errors.add(LINE + (i + 1) + ": nested section marker not allowed inside code section");
+                } else if (isLabel(line)) {
+                    String labelName = extractLabelName(line);
+                    if (labels.containsKey(labelName)) {
+                        errors.add(LINE + (i + 1) + ": duplicate label '" + labelName + "'");
+                    } else {
+                        labels.put(labelName, instructionAddress);
+                    }
+                } else {
+                    instructionAddress = nextCodeAddress(instructionAddress, i + 1, errors);
+                }
             }
         }
+        return instructionAddress;
+    }
 
-        for (PendingJumpCheck check : pendingJumpChecks) {
-            if (!labels.containsKey(check.labelName())) {
-                errors.add("Line " + check.lineNumber() + ": unknown label '" + check.labelName() + "'");
+    private SectionBounds findSections(List<String> errors) {
+        int codeLineIndex = -1;
+        int dataLineIndex = -1;
+
+        for (int i = 0; i < lines.size(); i++) {
+            String line = stripComment(lines.get(i)).trim();
+            switch (line) {
+                case CODE_SECTION -> {
+                    if (codeLineIndex != -1) {
+                        errors.add(LINE + (i + 1) + ": duplicate '.code' section");
+                    } else {
+                        codeLineIndex = i;
+                    }
+                }
+                case DATA_SECTION -> {
+                    if (codeLineIndex == -1) {
+                        errors.add(LINE + (i + 1) + ": '.data' section must appear after '.code'");
+                    } else if (dataLineIndex != -1) {
+                        errors.add(LINE + (i + 1) + ": duplicate '.data' section");
+                    } else {
+                        dataLineIndex = i;
+                    }
+                }
+                default -> {
+                    // line that can be ignored.
+                }
             }
         }
-
-        code.put(programEndAddress, VM::halt);
-
-        if (!errors.isEmpty()) {
-            printErrors(errors);
-            throw new ParseException(errors);
-        }
+        return new SectionBounds(codeLineIndex, dataLineIndex);
     }
 
     private int nextCodeAddress(int address, int lineNumber, List<String> errors) {
         long next = Integer.toUnsignedLong(address) + 1;
         if (next >= Integer.toUnsignedLong(HEAP_BASE)) {
-            errors.add("Line " + lineNumber + ": code section exceeds reserved address range");
+            errors.add(LINE + lineNumber + ": code section exceeds reserved address range");
             return address;
         }
         return (int) next;
     }
 
-    private void allocateCodeRegion(int base, int size) {
+    private void allocateCodeRegion(int size) {
         if (size <= 0) {
             return;
         }
-        long end = Integer.toUnsignedLong(base) + size;
+        long end = Integer.toUnsignedLong(VM.CODE_BASE) + size;
         if (end > Integer.toUnsignedLong(HEAP_BASE)) {
+            JaverLogger.error("Code section exceeds reserved address range");
             throw new VMExecutionException("Code section exceeds reserved address range");
         }
-        addRegion(new MemoryRegion(base, size, false, "code", new byte[size]));
+        addRegion(new MemoryRegion(VM.CODE_BASE, size, false, "code", new byte[size]));
     }
 
     private void validateEnterInstructions(int codeLineIndex, int dataLineIndex, List<String> errors) {
@@ -364,38 +407,78 @@ public class VM {
 
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
+
             if (line.isEmpty()) {
                 continue;
             }
+
             if (isLabel(line)) {
                 lastLabelName = extractLabelName(line);
                 lastWasLabel = true;
+
                 if (lastLabelName.startsWith("_")) {
                     currentFunctionLabel = lastLabelName;
                     enterSeenInCurrentFunction = false;
                 }
+
                 continue;
             }
 
-            String instrName = line.split(",")[0].trim().toUpperCase(Locale.ROOT);
-            if ("ENTER".equals(instrName)) {
-                if (!lastWasLabel || lastLabelName == null || !lastLabelName.startsWith("_")) {
-                    errors.add("Line " + (i + 1) + ": ENTER must come directly after a function label (starting with _)");
-                }
-                if (enterSeenInCurrentFunction) {
-                    errors.add("Line " + (i + 1) + ": multiple ENTER instructions in function '" + currentFunctionLabel + "' are not allowed");
-                }
-                enterSeenInCurrentFunction = true;
-            }
+            enterSeenInCurrentFunction = validateEnterInstruction(
+                    line,
+                    i,
+                    lastWasLabel,
+                    lastLabelName,
+                    currentFunctionLabel,
+                    enterSeenInCurrentFunction,
+                    errors
+            );
+
             lastWasLabel = false;
         }
+    }
+
+    private boolean validateEnterInstruction(
+            String line,
+            int lineIndex,
+            boolean lastWasLabel,
+            String lastLabelName,
+            String currentFunctionLabel,
+            boolean enterSeenInCurrentFunction,
+            List<String> errors
+    ) {
+        String instrName = line.split(",")[0]
+                .trim()
+                .toUpperCase(Locale.ROOT);
+
+        if (!"ENTER".equals(instrName)) {
+            return enterSeenInCurrentFunction;
+        }
+
+        if (!lastWasLabel
+                || lastLabelName == null
+                || !lastLabelName.startsWith("_")) {
+
+            errors.add(LINE + (lineIndex + 1)
+                    + ": ENTER must come directly after a function label (starting with _)");
+        }
+
+        if (enterSeenInCurrentFunction) {
+            errors.add(LINE + (lineIndex + 1)
+                    + ": multiple ENTER instructions in function '"
+                    + currentFunctionLabel
+                    + "' are not allowed");
+        }
+
+        return true;
     }
 
     private Instruction parseInstruction(String line, int lineNumber, List<PendingJumpCheck> pendingJumpChecks)
             throws ParseException {
         String[] parts = splitOperands(line);
         if (parts.length == 0 || parts[0].isBlank()) {
-            throw new ParseException("Line " + lineNumber + ": empty instruction");
+            JaverLogger.error(LINE + lineNumber + ": empty instruction");
+            throw new ParseException(LINE + lineNumber + ": empty instruction");
         }
 
         String instrName = parts[0].trim().toUpperCase(Locale.ROOT);
@@ -403,30 +486,23 @@ public class VM {
         try {
             kind = InstructionKind.valueOf(instrName);
         } catch (IllegalArgumentException e) {
-            throw new ParseException("Line " + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
+            JaverLogger.error(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
+            throw new ParseException(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
         }
 
+        return buildInstruction(kind, parts, instrName, lineNumber, pendingJumpChecks);
+    }
+
+    private Instruction buildInstruction(
+            InstructionKind kind,
+            String[] parts,
+            String instrName,
+            int lineNumber,
+            List<PendingJumpCheck> pendingJumpChecks
+    ) throws ParseException {
+
         return switch (kind) {
-            case PUSHI -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                int value = parseIntOperand(parts[1], instrName, lineNumber);
-                yield vm -> vm.pushInt(value);
-            }
-            case PUSHD -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                double value = parseDoubleOperand(parts[1], instrName, lineNumber);
-                yield vm -> vm.pushDouble(value);
-            }
-            case PUSHR -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                String name = parseIdentifier(parts[1], instrName, "data name", lineNumber);
-                yield vm -> vm.pushInt(vm.makeDataReference(name));
-            }
-            case LOCAL -> {
-                ensureOperandCount(parts, 2, instrName, lineNumber);
-                int offset = parseIntOperand(parts[1], instrName, lineNumber);
-                yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
-            }
+            case PUSHI, PUSHD, PUSHR, LOCAL -> pushCase(kind, parts, instrName, lineNumber);
             case LOAD1 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readByte(vm.popInt())));
             case LOAD2 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readChar(vm.popInt())));
             case LOAD4 -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.readInt(vm.popInt())));
@@ -473,90 +549,14 @@ public class VM {
                 int size = parseStackValueSize(parts[1], instrName, lineNumber, false);
                 yield vm -> vm.pushRaw(vm.peekRaw(size));
             }
-            case IADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() + vm.popInt()));
-            case ISUB -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a - b);
-            });
-            case IMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() * vm.popInt()));
-            case IDIV -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                if (b == 0) {
-                    throw new VMExecutionException("Division by zero");
-                }
-                vm.pushInt(a / b);
-            });
-            case IMOD -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                if (b == 0) {
-                    throw new VMExecutionException("Modulo by zero");
-                }
-                vm.pushInt(a % b);
-            });
-            case DADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() + vm.popDouble()));
-            case DSUB -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushDouble(a - b);
-            });
-            case DMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() * vm.popDouble()));
-            case DDIV -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                if (b == 0.0) {
-                    throw new VMExecutionException("Division by zero");
-                }
-                vm.pushDouble(a / b);
-            });
-            case ILT -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a < b ? 1 : 0);
-            });
-            case ILE -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a <= b ? 1 : 0);
-            });
-            case IGT -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a > b ? 1 : 0);
-            });
-            case IGE -> noOperand(parts, instrName, lineNumber, vm -> {
-                int b = vm.popInt();
-                int a = vm.popInt();
-                vm.pushInt(a >= b ? 1 : 0);
-            });
-            case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
-            case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
-            case DLT -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a < b ? 1 : 0);
-            });
-            case DLE -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a <= b ? 1 : 0);
-            });
-            case DGT -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a > b ? 1 : 0);
-            });
-            case DGE -> noOperand(parts, instrName, lineNumber, vm -> {
-                double b = vm.popDouble();
-                double a = vm.popDouble();
-                vm.pushInt(a >= b ? 1 : 0);
-            });
-            case DEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
-            case DNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
-            case STREQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
-            case STRNE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
+            case IADD, ISUB, IMUL, IDIV, IMOD, DADD, DSUB, DMUL, DDIV ->
+                    arithmeticCase(kind, parts, instrName, lineNumber);
+            case ILT, ILE, IGT, IGE, IEQ, INE -> integerComparisonCase(kind, parts, instrName, lineNumber);
+            case DLT, DLE, DGT, DGE, DEQ, DNE -> doubleComparisonCase(kind, parts, instrName, lineNumber);
+            case STREQ ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
+            case STRNE ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(!vm.compareStrings(vm.popInt(), vm.popInt()) ? 1 : 0));
             case ISHL -> noOperand(parts, instrName, lineNumber, vm -> {
                 int b = vm.popInt();
                 int a = vm.popInt();
@@ -582,15 +582,18 @@ public class VM {
                 ensureOperandCount(parts, 3, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
                 if (!label.startsWith("_")) {
-                    throw new ParseException("Line " + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
+                    JaverLogger.error(LINE + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
+                    throw new ParseException(LINE + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
                 }
                 int argBytes = parseIntOperand(parts[2], instrName, lineNumber);
                 if (argBytes < 0) {
-                    throw new ParseException("Line " + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
+                    JaverLogger.error(LINE + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
+                    throw new ParseException(LINE + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
                 }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield vm -> {
                     if (argBytes > vm.currentOperandBytes()) {
+                        JaverLogger.error(LINE + lineNumber + ": not enough bytes on stack for CALL argument (needed " + argBytes + ", but only " + vm.currentOperandBytes() + " available)");
                         throw new VMExecutionException("CALL: not enough bytes on stack for " + argBytes + " argument byte(s)");
                     }
                     vm.pushFrame(vm.pc + 1, argBytes);
@@ -601,7 +604,8 @@ public class VM {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 int size = parseIntOperand(parts[1], instrName, lineNumber);
                 if (size < 0) {
-                    throw new ParseException("Line " + lineNumber + ": ENTER size must be non-negative, got " + size);
+                    JaverLogger.error(LINE + lineNumber + ": ENTER size must be non-negative, got " + size);
+                    throw new ParseException(LINE + lineNumber + ": ENTER size must be non-negative, got " + size);
                 }
                 yield vm -> vm.allocateStackBytes(size);
             }
@@ -619,6 +623,148 @@ public class VM {
         };
     }
 
+    private Instruction pushCase(InstructionKind kind,
+                                 String[] parts,
+                                 String instrName,
+                                 int lineNumber) throws ParseException {
+        return switch (kind) {
+            case PUSHI -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int value = parseIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushInt(value);
+            }
+            case PUSHD -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                double value = parseDoubleOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushDouble(value);
+            }
+            case PUSHR -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                String name = parseIdentifier(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushInt(vm.makeDataReference(name));
+            }
+            case LOCAL -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int offset = parseIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
+            }
+            default -> {
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
+            }
+        };
+    }
+
+    private Instruction arithmeticCase(InstructionKind kind,
+                                       String[] parts,
+                                       String instrName,
+                                       int lineNumber) throws ParseException {
+        return switch (kind) {
+            case IADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() + vm.popInt()));
+            case ISUB -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                vm.pushInt(a - b);
+            });
+            case IMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() * vm.popInt()));
+            case IDIV -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                if (b == 0) {
+                    JaverLogger.error(LINE + lineNumber + ": division by zero");
+                    throw new VMExecutionException("Division by zero");
+                }
+                vm.pushInt(a / b);
+            });
+            case IMOD -> noOperand(parts, instrName, lineNumber, vm -> {
+                int b = vm.popInt();
+                int a = vm.popInt();
+                if (b == 0) {
+                    JaverLogger.error(LINE + lineNumber + ": modulo by zero");
+                    throw new VMExecutionException("Modulo by zero");
+                }
+                vm.pushInt(a % b);
+            });
+            case DADD -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() + vm.popDouble()));
+            case DSUB -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                vm.pushDouble(a - b);
+            });
+            case DMUL -> noOperand(parts, instrName, lineNumber, vm -> vm.pushDouble(vm.popDouble() * vm.popDouble()));
+            case DDIV -> noOperand(parts, instrName, lineNumber, vm -> {
+                double b = vm.popDouble();
+                double a = vm.popDouble();
+                if (b == 0.0) {
+                    JaverLogger.error(LINE + lineNumber + ": division by zero");
+                    throw new VMExecutionException("Division by zero");
+                }
+                vm.pushDouble(a / b);
+            });
+            default -> {
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
+            }
+        };
+    }
+
+    private Instruction integerComparisonCase(InstructionKind kind,
+                                              String[] parts,
+                                              String instrName,
+                                              int lineNumber) throws ParseException {
+        return switch (kind) {
+            case ILT -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, LT));
+            case ILE -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, LE));
+            case IGT -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, GT));
+            case IGE -> noOperand(parts, instrName, lineNumber, vm -> compareInts(vm, GE));
+            case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
+            case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
+            default -> {
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
+            }
+        };
+    }
+
+    private void compareInts(VM vm, IntBinaryOperator op) {
+        int b = vm.popInt();
+        int a = vm.popInt();
+        vm.pushInt(op.applyAsInt(a, b));
+    }
+
+    private Instruction doubleComparisonCase(InstructionKind kind,
+                                             String[] parts,
+                                             String instrName,
+                                             int lineNumber) throws ParseException {
+        return switch (kind) {
+            case DLT -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a < b));
+
+            case DLE -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a <= b));
+
+            case DGT -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a > b));
+
+            case DGE -> noOperand(parts, instrName, lineNumber,
+                    vm -> compareDoubles(vm, (a, b) -> a >= b));
+            case DEQ ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() == vm.popDouble() ? 1 : 0));
+            case DNE ->
+                    noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
+            default -> {
+                JaverLogger.error(INVALID_KIND + kind);
+                yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
+            }
+        };
+    }
+
+    private void compareDoubles(VM vm, BiPredicate<Double, Double> op) {
+        double b = vm.popDouble();
+        double a = vm.popDouble();
+        vm.pushInt(op.test(a, b) ? 1 : 0);
+    }
+
     private Instruction parseJump(
             String[] parts,
             String instrName,
@@ -629,7 +775,8 @@ public class VM {
         ensureOperandCount(parts, 2, instrName, lineNumber);
         String label = parseLabelOperand(parts[1], instrName, lineNumber);
         if (label.startsWith("_")) {
-            throw new ParseException("Line " + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
+            JaverLogger.error(LINE + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
+            throw new ParseException(LINE + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
         }
         pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
         if (!conditional) {
@@ -655,22 +802,26 @@ public class VM {
     private void parseDataLine(String line, int lineNumber) throws ParseException {
         String[] parts = line.split("\\s+");
         if (parts.length < 3) {
-            throw new ParseException("Line " + lineNumber + ": invalid data declaration");
+            JaverLogger.error(LINE + lineNumber + ": invalid data declaration");
+            throw new ParseException(LINE + lineNumber + ": invalid data declaration");
         }
 
         String name = parts[0];
         if (dataLabels.containsKey(name)) {
-            throw new ParseException("Line " + lineNumber + ": duplicate data symbol '" + name + "'");
+            JaverLogger.error(LINE + lineNumber + ": duplicate data symbol '" + name + "'");
+            throw new ParseException(LINE + lineNumber + ": duplicate data symbol '" + name + "'");
         }
 
         int size;
         try {
             size = Integer.parseInt(parts[1]);
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid data element size '" + parts[1] + "'");
+            JaverLogger.error(LINE + lineNumber + ": invalid data element size '" + parts[1] + "'");
+            throw new ParseException(LINE + lineNumber + ": invalid data element size '" + parts[1] + "'");
         }
         if (size != 1 && size != 2 && size != 4 && size != 8) {
-            throw new ParseException("Line " + lineNumber + ": unsupported data element size " + size);
+            JaverLogger.error(LINE + lineNumber + ": unsupported data element size " + size);
+            throw new ParseException(LINE + lineNumber + ": unsupported data element size " + size);
         }
 
         String[] hexes = parts[2].split(",");
@@ -683,7 +834,8 @@ public class VM {
                 }
             }
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid hex literal in data section");
+            JaverLogger.error(LINE + lineNumber + ": invalid hex literal in data section");
+            throw new ParseException(LINE + lineNumber + ": invalid hex literal in data section");
         }
 
         byte[] dataBytes = new byte[byteList.size()];
@@ -696,8 +848,10 @@ public class VM {
     private void ensureOperandCount(String[] parts, int expectedCount, String instrName, int lineNumber)
             throws ParseException {
         if (parts.length != expectedCount) {
+            JaverLogger.error(LINE + lineNumber + ": instruction '" + instrName + "' expects "
+                    + (expectedCount - 1) + " operand(s), got " + (parts.length - 1));
             throw new ParseException(
-                    "Line " + lineNumber + ": instruction '" + instrName + "' expects "
+                    LINE + lineNumber + ": instruction '" + instrName + "' expects "
                             + (expectedCount - 1) + " operand(s), got " + (parts.length - 1)
             );
         }
@@ -716,7 +870,9 @@ public class VM {
             return size;
         }
         if (size != 4 && size != 8) {
-            throw new ParseException("Line " + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size);
+            String message = LINE + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size;
+            JaverLogger.error(message);
+            throw new ParseException(message);
         }
         return size;
     }
@@ -725,14 +881,16 @@ public class VM {
         try {
             return Integer.parseInt(operand.trim());
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
+            JaverLogger.error(LINE + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private int parsePositiveIntOperand(String operand, String instrName, int lineNumber) throws ParseException {
         int value = parseIntOperand(operand, instrName, lineNumber);
         if (value <= 0) {
-            throw new ParseException("Line " + lineNumber + ": " + instrName + " operand must be positive, got " + value);
+            JaverLogger.error(LINE + lineNumber + ": " + instrName + " operand must be positive, got " + value);
+            throw new ParseException(LINE + lineNumber + ": " + instrName + " operand must be positive, got " + value);
         }
         return value;
     }
@@ -741,23 +899,26 @@ public class VM {
         try {
             return Double.parseDouble(operand.trim());
         } catch (NumberFormatException e) {
-            throw new ParseException("Line " + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
+            JaverLogger.error(LINE + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
 
     private String parseLabelOperand(String operand, String instrName, int lineNumber) throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            throw new ParseException("Line " + lineNumber + ": missing label operand for instruction '" + instrName + "'");
+            JaverLogger.error(LINE + lineNumber + ": missing label operand for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": missing label operand for instruction '" + instrName + "'");
         }
         return value;
     }
 
-    private String parseIdentifier(String operand, String instrName, String description, int lineNumber)
+    private String parseIdentifier(String operand, String instrName, int lineNumber)
             throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            throw new ParseException("Line " + lineNumber + ": missing " + description + " for instruction '" + instrName + "'");
+            JaverLogger.error(LINE + lineNumber + ": missing data name for instruction '" + instrName + "'");
+            throw new ParseException(LINE + lineNumber + ": missing data name for instruction '" + instrName + "'");
         }
         return value;
     }
@@ -768,7 +929,7 @@ public class VM {
     }
 
     private boolean isLabel(String line) {
-        return line.matches("^(_?[a-zA-Z][a-zA-Z0-9_]*):$");
+        return line.matches("^(_?[a-zA-Z]\\w*):$");
     }
 
     private String extractLabelName(String line) {
@@ -777,6 +938,7 @@ public class VM {
 
     private void printErrors(List<String> errors) {
         for (String error : errors) {
+            JaverLogger.error(error);
             System.err.println(error);
         }
     }
@@ -787,6 +949,7 @@ public class VM {
     public void run() {
         Integer main = labels.get("_main");
         if (main == null) {
+            JaverLogger.error("No _main function found");
             throw new VMExecutionException("No _main function found");
         }
 
@@ -799,6 +962,7 @@ public class VM {
             try {
                 instruction.execute(this);
             } catch (VMExecutionException e) {
+                JaverLogger.error("Error at instruction address " + formatAddress(instructionAddress) + ": " + e.getMessage());
                 throw withInstructionLine(instructionAddress, e);
             }
             if (!halted) {
@@ -812,7 +976,7 @@ public class VM {
         if (lineNumber == null) {
             return exception;
         }
-        return new VMExecutionException("Line " + lineNumber + ": " + exception.getMessage(), exception);
+        return new VMExecutionException(LINE + lineNumber + ": " + exception.getMessage(), exception);
     }
 
     private void halt() {
@@ -823,6 +987,7 @@ public class VM {
     private int resolveLabel(String labelName) {
         Integer target = labels.get(labelName);
         if (target == null) {
+            JaverLogger.error("Label '" + labelName + "' not found");
             throw new VMExecutionException("Label '" + labelName + "' not found");
         }
         return target;
@@ -831,6 +996,7 @@ public class VM {
     private int makeDataReference(String name) {
         Integer address = dataLabels.get(name);
         if (address == null) {
+            JaverLogger.error("Data object '" + name + "' not found");
             throw new VMExecutionException("Data object '" + name + "' not found");
         }
         return address;
@@ -840,6 +1006,7 @@ public class VM {
         int base = nextDataAddress;
         long end = Integer.toUnsignedLong(base) + Math.max(bytes.length, 1);
         if (end > Integer.toUnsignedLong(CODE_BASE)) {
+            JaverLogger.error("Data section exceeds reserved address range");
             throw new VMExecutionException("Data section exceeds reserved address range");
         }
         addRegion(new MemoryRegion(base, bytes.length, false, "data:" + name, bytes));
@@ -849,11 +1016,13 @@ public class VM {
 
     private int allocateHeapRegion(int size) {
         if (size < 0) {
+            JaverLogger.error("Negative heap allocation size: " + size);
             throw new VMExecutionException("Negative heap allocation size: " + size);
         }
         int base = nextHeapAddress;
         long end = Integer.toUnsignedLong(base) + Math.max(size, 1);
         if (end > stackBase) {
+            JaverLogger.error("Heap/stack address space exhausted");
             throw new VMExecutionException("Heap/stack address space exhausted");
         }
         addRegion(new MemoryRegion(base, size, true, "heap:" + formatAddress(base), new byte[size]));
@@ -867,14 +1036,17 @@ public class VM {
 
         Map.Entry<Integer, MemoryRegion> previous = regions.floorEntry(region.base());
         if (previous != null && previous.getKey().equals(region.base())) {
+            JaverLogger.error("Duplicate memory region at " + formatAddress(region.base()));
             throw new VMExecutionException("Duplicate memory region at " + formatAddress(region.base()));
         }
         if (previous != null && regionEnd(previous.getValue()) > base) {
+            JaverLogger.error("Memory region overlap at " + formatAddress(region.base()));
             throw new VMExecutionException("Memory region overlap at " + formatAddress(region.base()));
         }
 
         Map.Entry<Integer, MemoryRegion> next = regions.ceilingEntry(region.base());
         if (next != null && end > Integer.toUnsignedLong(next.getKey())) {
+            JaverLogger.error("Memory region overlap at " + formatAddress(region.base()));
             throw new VMExecutionException("Memory region overlap at " + formatAddress(region.base()));
         }
 
@@ -887,20 +1059,24 @@ public class VM {
 
     private MemoryAccess resolveRegion(int address, int size) {
         if (size < 0) {
+            JaverLogger.error("Negative memory access size: " + size);
             throw new VMExecutionException("Negative memory access size: " + size);
         }
         if (address == NULL_REF) {
+            JaverLogger.error("Memory access to null reference (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException("Null reference");
         }
 
         long start = Integer.toUnsignedLong(address);
         long end = start + size;
         if (end > ADDRESS_SPACE_SIZE) {
-            throw new VMExecutionException("Memory access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")");
+            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
+            throw new VMExecutionException("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
         }
 
         Map.Entry<Integer, MemoryRegion> entry = regions.floorEntry(address);
         if (entry == null) {
+            JaverLogger.error("Invalid memory address: " + formatAddress(address));
             throw new VMExecutionException("Invalid memory address: " + formatAddress(address));
         }
 
@@ -908,8 +1084,9 @@ public class VM {
         long regionBase = Integer.toUnsignedLong(region.base());
         long regionEnd = regionEnd(region);
         if (start < regionBase || end > regionEnd) {
+            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException(
-                    region.name() + " access out of bounds (address=" + formatAddress(address) + ", size=" + size + ")"
+                    region.name() + " access out of bounds (address=" + formatAddress(address) + SIZE + size + ")"
             );
         }
 
@@ -919,6 +1096,7 @@ public class VM {
     private MemoryAccess resolveWritableRegion(int address, int size) {
         MemoryAccess access = resolveRegion(address, size);
         if (!access.region().writable()) {
+            JaverLogger.error("Writable memory access to read-only region (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException(access.region().name() + " is read-only");
         }
         return access;
@@ -997,6 +1175,7 @@ public class VM {
         int sourceAddress = popInt();
         int targetAddress = popInt();
         if (size < 0) {
+            JaverLogger.error("MEMCPY: negative byte count " + size);
             throw new VMExecutionException("MEMCPY: negative byte count " + size);
         }
         if (size == 0) {
@@ -1016,12 +1195,14 @@ public class VM {
     private void executeNewArray(int elementSize) {
         int length = popInt();
         if (length < 0) {
+            JaverLogger.error("Negative array length: " + length);
             throw new VMExecutionException("Negative array length: " + length);
         }
 
         long payloadBytes = (long) length * elementSize;
         long allocationBytes = ARRAY_PAYLOAD_OFFSET_BYTES + payloadBytes;
         if (allocationBytes > Integer.MAX_VALUE) {
+            JaverLogger.error("Array allocation too large: length=" + length + ", elementSize=" + elementSize);
             throw new VMExecutionException("Array allocation too large: length=" + length + ", elementSize=" + elementSize);
         }
 
@@ -1035,15 +1216,18 @@ public class VM {
         int baseAddress = peekInt(4);
         MemoryAccess access = resolveRegion(baseAddress, ARRAY_LENGTH_BYTES);
         if (access.offset() != 0) {
+            JaverLogger.error("Array reference does not point to allocation start: " + formatAddress(baseAddress));
             throw new VMExecutionException("Array reference does not point to allocation start: " + formatAddress(baseAddress));
         }
 
         int length = readInt(baseAddress);
-        long requiredBytes = (long) ARRAY_PAYLOAD_OFFSET_BYTES + (long) length * elementSize;
+        long requiredBytes = ARRAY_PAYLOAD_OFFSET_BYTES + (long) length * elementSize;
         if (length < 0 || requiredBytes > access.region().size()) {
+            JaverLogger.error("Invalid array header at " + formatAddress(baseAddress));
             throw new VMExecutionException("Invalid array header at " + formatAddress(baseAddress));
         }
         if (index < 0 || index >= length) {
+            JaverLogger.error("Array index out of bounds: index=" + index + ", length=" + length);
             throw new VMExecutionException("Array index out of bounds: index=" + index + ", length=" + length);
         }
     }
@@ -1064,7 +1248,8 @@ public class VM {
         int previousFp = readInt(checkedAddress(fp + FRAME_PREVIOUS_FP_OFFSET, "RET"));
 
         sp = fp + FRAME_HEADER_SIZE + argBytes;
-        if (sp < stackBase || sp > stackTop) {
+        if (sp < stackBase || sp > STACK_LIMIT) {
+            JaverLogger.error("RET: restored stack pointer out of bounds");
             throw new VMExecutionException("RET: restored stack pointer is out of bounds");
         }
         fp = Integer.toUnsignedLong(previousFp);
@@ -1085,6 +1270,7 @@ public class VM {
 
     private int checkedAddress(long address, String sourceName) {
         if (address <= 0 || address >= ADDRESS_SPACE_SIZE) {
+            JaverLogger.error(sourceName + ": address out of bounds: " + formatAddress(address));
             throw new VMExecutionException(sourceName + ": address out of bounds: " + formatAddress(address));
         }
         return (int) address;
@@ -1101,7 +1287,7 @@ public class VM {
     }
 
     private int stackBytesUsed() {
-        long used = stackTop - sp;
+        long used = STACK_LIMIT - sp;
         if (used > Integer.MAX_VALUE) {
             return Integer.MAX_VALUE;
         }
@@ -1126,18 +1312,22 @@ public class VM {
 
     private void ensureStackCapacity(int bytesToPush) {
         if (bytesToPush < 0) {
+            JaverLogger.error("Negative stack push size: " + bytesToPush);
             throw new VMExecutionException("Negative stack push size: " + bytesToPush);
         }
         if (sp - bytesToPush < stackBase) {
+            JaverLogger.error("Stack overflow while pushing " + bytesToPush + " byte(s)");
             throw new VMExecutionException("Stack overflow while pushing " + bytesToPush + " byte(s)");
         }
     }
 
     private void ensureStackAvailable(int bytesToPop) {
         if (bytesToPop < 0) {
+            JaverLogger.error("Negative stack pop size: " + bytesToPop);
             throw new VMExecutionException("Negative stack pop size: " + bytesToPop);
         }
-        if (sp + bytesToPop > stackTop) {
+        if (sp + bytesToPop > STACK_LIMIT) {
+            JaverLogger.error("Stack underflow while popping " + bytesToPop + " byte(s)");
             throw new VMExecutionException("Stack underflow while popping " + bytesToPop + " byte(s)");
         }
     }
@@ -1177,8 +1367,7 @@ public class VM {
 
     private int peekInt(int offsetBytes) {
         ensureStackAvailable(offsetBytes + 4);
-        byte[] bytes = stack;
-        return intFromBytes(bytes, stackOffset(sp + offsetBytes));
+        return intFromBytes(stack, stackOffset(sp + offsetBytes));
     }
 
     private int intFromBytes(byte[] bytes, int offset) {
@@ -1211,6 +1400,7 @@ public class VM {
     private int stackOffset(long address) {
         long offset = address - stackBase;
         if (offset < 0 || offset > stack.length) {
+            JaverLogger.error("Stack address out of bounds: " + formatAddress(address));
             throw new VMExecutionException("Stack address out of bounds: " + formatAddress(address));
         }
         return (int) offset;
@@ -1219,16 +1409,18 @@ public class VM {
     private void printNullTerminatedCharString(int address) {
         MemoryAccess access = resolveRegion(address, ARRAY_LENGTH_BYTES);
         if (access.offset() != 0) {
+            JaverLogger.error("PRINTS " + formatAddress(address) + ": string reference does not point to allocation start");
             throw new VMExecutionException("PRINTS " + formatAddress(address) + ": string reference does not point to allocation start");
         }
         int length = readInt(address);
         long payloadBytes = (long) length * Character.BYTES;
         if (length < 0 || payloadBytes > Integer.MAX_VALUE) {
+            JaverLogger.error("PRINTS " + formatAddress(address) + ": invalid string length " + length);
             throw new VMExecutionException("PRINTS " + formatAddress(address) + ": invalid string length " + length);
         }
         resolveRegion(address + ARRAY_PAYLOAD_OFFSET_BYTES, (int) payloadBytes);
         byte[] bytes = access.region().bytes();
-        int offset = access.offset() + ARRAY_PAYLOAD_OFFSET_BYTES;
+        int offset = ARRAY_PAYLOAD_OFFSET_BYTES;
         for (int i = 0; i < length; i++, offset += Character.BYTES) {
             char c = (char) (((bytes[offset + 1] & 0xFF) << 8) | (bytes[offset] & 0xFF));
             System.out.print(c);
@@ -1243,12 +1435,14 @@ public class VM {
         MemoryAccess leftAccess = resolveRegion(leftAddress, ARRAY_LENGTH_BYTES);
         MemoryAccess rightAccess = resolveRegion(rightAddress, ARRAY_LENGTH_BYTES);
         if (leftAccess.offset() != 0 || rightAccess.offset() != 0) {
+            JaverLogger.error("COMPARESTRINGS: string reference does not point to allocation start");
             throw new VMExecutionException("String reference does not point to allocation start");
         }
 
         int leftLength = readInt(leftAddress);
         int rightLength = readInt(rightAddress);
         if (leftLength < 0 || rightLength < 0) {
+            JaverLogger.error("COMPARESTRINGS: invalid string length");
             throw new VMExecutionException("Invalid string length");
         }
         if (leftLength != rightLength) {
@@ -1280,26 +1474,26 @@ public class VM {
         return formatAddress((int) address);
     }
 
-    private void dumpState(PrintStream out) {
-        out.println("========================================");
-        out.println("VM STATE DUMP");
-        out.println("pc = " + formatAddress(pc));
-        out.println("sp = " + formatAddress(sp));
-        out.println("fp = " + formatAddress(fp));
-        out.println("halted = " + halted);
-        out.println("programEndAddress = " + formatAddress(programEndAddress));
-        out.println("========================================");
-        dumpStackWindow(out);
-        out.println();
-        dumpRegions(out);
-        out.println("========================================");
+    private void dumpState() {
+        System.err.println(SEPARATOR);
+        System.err.println("VM STATE DUMP");
+        System.err.println("pc = " + formatAddress(pc));
+        System.err.println("sp = " + formatAddress(sp));
+        System.err.println("fp = " + formatAddress(fp));
+        System.err.println("halted = " + halted);
+        System.err.println("programEndAddress = " + formatAddress(programEndAddress));
+        System.err.println(SEPARATOR);
+        dumpStackWindow();
+        System.err.println();
+        dumpRegions();
+        System.err.println(SEPARATOR);
     }
 
-    private void dumpStackWindow(PrintStream out) {
-        out.println("=== STACK WINDOW ===");
+    private void dumpStackWindow() {
+        System.err.println("=== STACK WINDOW ===");
         int used = stackBytesUsed();
         if (used == 0) {
-            out.println("<empty>");
+            System.err.println("<empty>");
             return;
         }
 
@@ -1307,14 +1501,14 @@ public class VM {
         int offset = stackOffset(sp);
         for (int i = 0; i < count; i++) {
             long address = sp + i;
-            out.printf("%s 0x%02X%n", formatAddress(address), stack[offset + i] & 0xFF);
+            System.err.printf("%s 0x%02X%n", formatAddress(address), stack[offset + i] & 0xFF);
         }
     }
 
-    private void dumpRegions(PrintStream out) {
-        out.println("=== MEMORY REGIONS ===");
+    private void dumpRegions() {
+        System.err.println("=== MEMORY REGIONS ===");
         for (MemoryRegion region : regions.values()) {
-            out.printf(
+            System.err.printf(
                     "%s %s..%s %s size=%d%n",
                     region.name(),
                     formatAddress(region.base()),
@@ -1323,11 +1517,6 @@ public class VM {
                     region.size()
             );
         }
-    }
-
-    @FunctionalInterface
-    private interface Instruction {
-        void execute(VM vm);
     }
 
     private enum InstructionKind {
@@ -1352,6 +1541,14 @@ public class VM {
         PRINTB, PRINTC, PRINTI, PRINTD, PRINTS
     }
 
+    @FunctionalInterface
+    private interface Instruction {
+        void execute(VM vm);
+    }
+
+    private record SectionBounds(int codeLineIndex, int dataLineIndex) {
+    }
+
     private record PendingJumpCheck(String labelName, int lineNumber) {
     }
 
@@ -1359,12 +1556,42 @@ public class VM {
     }
 
     private record MemoryRegion(int base, int size, boolean writable, String name, byte[] bytes) {
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof MemoryRegion(int base1, int size1, boolean writable1, String name1, byte[] bytes1)))
+                return false;
+
+            return base == base1
+                    && size == size1
+                    && writable == writable1
+                    && java.util.Objects.equals(name, name1)
+                    && java.util.Arrays.equals(bytes, bytes1);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = java.util.Objects.hash(base, size, writable, name);
+            result = 31 * result + java.util.Arrays.hashCode(bytes);
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "MemoryRegion{" +
+                    "base=" + base +
+                    SIZE + size +
+                    ", writable=" + writable +
+                    ", name='" + name + '\'' +
+                    ", bytes=" + java.util.Arrays.toString(bytes) +
+                    '}';
+        }
     }
 
     private record MemoryAccess(MemoryRegion region, int offset) {
     }
 
-    private static final class ParseException extends Exception {
+    public static final class ParseException extends Exception {
         private final List<String> errors;
 
         ParseException(String error) {

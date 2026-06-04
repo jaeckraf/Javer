@@ -1,11 +1,13 @@
 package ch.zhaw.it.pm4.javer.application;
 
+import ch.zhaw.it.pm4.misc.JaverLogger;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 /**
  * Loads JAR configuration from application.properties and sets system properties.
@@ -27,8 +29,8 @@ public final class JarConfigLoader {
     public static void loadConfiguration() {
         try {
             Properties props = loadPropertiesFromClasspath();
-            
-            if (props != null) {
+
+            if (!props.isEmpty()) {
                 setSystemProperties(props);
                 logLoadedConfiguration();
             } else {
@@ -48,9 +50,9 @@ public final class JarConfigLoader {
                 .getResourceAsStream(PROPERTIES_FILE)) {
             if (is == null) {
                 JaverLogger.warning("application.properties not found in classpath");
-                return null;
+                return new Properties();
             }
-            
+
             Properties props = new Properties();
             props.load(is);
             return props;
@@ -87,7 +89,7 @@ public final class JarConfigLoader {
         }
 
         Path path = Path.of(jarPath);
-        
+
         // If already absolute and exists, use it as-is
         if (path.isAbsolute() && Files.exists(path)) {
             return path.toAbsolutePath().toString();
@@ -120,12 +122,12 @@ public final class JarConfigLoader {
      * For JAR-based applications, this is the directory containing the JAR.
      * For IDE runs, this falls back to the working directory.
      */
-    private static Path getApplicationBaseDirectory() throws Exception {
+    private static Path getApplicationBaseDirectory() throws SecurityException, URISyntaxException {
         String codeSourceLocation = JarConfigLoader.class.getProtectionDomain()
                 .getCodeSource().getLocation().toURI().getPath();
-        
+
         Path codePath = Path.of(codeSourceLocation);
-        
+
         if (Files.isRegularFile(codePath)) {
             // Running from JAR - return parent directory
             return codePath.getParent();
@@ -133,7 +135,7 @@ public final class JarConfigLoader {
             // Running from IDE - return code path
             return codePath;
         }
-        
+
         // Fallback to working directory
         return Path.of(System.getProperty("user.dir"));
     }

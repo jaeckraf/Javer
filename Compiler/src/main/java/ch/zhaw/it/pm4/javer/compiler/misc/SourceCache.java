@@ -1,6 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
 import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
@@ -14,10 +14,8 @@ import java.util.List;
  * Holds the full source code of the single input file and maintains
  * an internal cache of the lines for fast O(1) lookups during error reporting.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class SourceCache {
 
-    private final String filePath;
     private final String sourceCode;
     private final List<String> cachedLines;
 
@@ -28,13 +26,12 @@ public class SourceCache {
      * @param filePath The path to the source file to be read.
      */
     public SourceCache(String filePath) {
-        this.filePath = filePath;
         try {
             this.sourceCode = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
             this.cachedLines = buildCache(this.sourceCode);
         } catch (IOException e) {
             JaverLogger.error(e.getMessage());
-            throw new RuntimeException(e);
+            throw new SourceFileReadException(filePath, e);
         }
     }
 
@@ -46,14 +43,6 @@ public class SourceCache {
      */
     private List<String> buildCache(String source) {
         return Arrays.asList(source.split("\\R", -1));
-    }
-
-    /**
-     * Retrieves the file path this cache was built from.
-     * Useful for the DiagnosticBag when printing error reports.
-     */
-    public String getFilePath() {
-        return filePath;
     }
 
     /**

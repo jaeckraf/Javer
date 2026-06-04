@@ -1,18 +1,16 @@
 package ch.zhaw.it.pm4.javer.compiler.misc.diagnostics;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Collects diagnostics for one compilation run and formats user-facing error
  * reports with source excerpts.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public class DiagnosticBag {
 
     private static final int TAB_WIDTH = 4;
@@ -20,10 +18,9 @@ public class DiagnosticBag {
     private final int errorLimit;
     private final String filePath;
     private final SourceCache sourceCache;
-
-    private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
     private final List<PhaseAbortListener> phaseAbortListeners = new ArrayList<>();
+    private CompilationPhase phase;
     private int errorCount;
     private boolean errorLimitReached;
     private boolean phaseAbortRequested;
@@ -31,10 +28,10 @@ public class DiagnosticBag {
     /**
      * Initializes a new DiagnosticBag.
      *
-     * @param filePath The path of the file being compiled.
-     * @param errorLimit The maximum number of errors before compilation aborts.
+     * @param filePath         The path of the file being compiled.
+     * @param errorLimit       The maximum number of errors before compilation aborts.
      * @param compilationPhase initial compiler phase
-     * @param sourceCache The cache holding the raw source code text.
+     * @param sourceCache      The cache holding the raw source code text.
      */
     public DiagnosticBag(String filePath, int errorLimit, CompilationPhase compilationPhase, SourceCache sourceCache) {
         this.filePath = filePath;
@@ -84,7 +81,7 @@ public class DiagnosticBag {
      *
      * @param location source location associated with the diagnostic
      * @param severity diagnostic severity
-     * @param message user-facing message
+     * @param message  user-facing message
      */
     public void add(SourceLocation location, Severity severity, String message) {
         add(new Diagnostic(location, severity, message));
@@ -109,7 +106,7 @@ public class DiagnosticBag {
     }
 
     private boolean isError(Diagnostic diagnostic) {
-        Severity severity = diagnostic.getSeverity();
+        Severity severity = diagnostic.severity();
         return severity == Severity.ERROR || severity == Severity.SEVERE;
     }
 
@@ -138,7 +135,7 @@ public class DiagnosticBag {
      * @return true if there are errors, false otherwise.
      */
     public boolean hasErrors() {
-        return diagnostics.stream().anyMatch(d -> d.getSeverity() == Severity.ERROR || d.getSeverity() == Severity.SEVERE);
+        return diagnostics.stream().anyMatch(d -> d.severity() == Severity.ERROR || d.severity() == Severity.SEVERE);
     }
 
     /**
@@ -179,13 +176,13 @@ public class DiagnosticBag {
     }
 
     private String formatDiagnostic(Diagnostic diagnostic) {
-        SourceLocation location = diagnostic.getLocation();
+        SourceLocation location = diagnostic.location();
         StringBuilder sb = new StringBuilder();
 
         sb.append("[")
-                .append(diagnostic.getSeverity().name())
+                .append(diagnostic.severity().name())
                 .append("] ")
-                .append(diagnostic.getMessage())
+                .append(diagnostic.message())
                 .append("\n");
 
         if (location == null) {
@@ -231,7 +228,7 @@ public class DiagnosticBag {
             char c = line.charAt(i);
             if (c == '\t') {
                 int spaces = TAB_WIDTH - ((column - 1) % TAB_WIDTH);
-                expanded.append(" ".repeat(spaces));
+                expanded.repeat(" ", spaces);
                 column += spaces;
             } else {
                 expanded.append(c);
@@ -242,20 +239,11 @@ public class DiagnosticBag {
     }
 
     /**
-     * Clears all diagnostics from the bag, preparing it for the next compiler phase.
-     */
-    public void flush() {
-        diagnostics.clear();
-        errorCount = 0;
-        errorLimitReached = false;
-        phaseAbortRequested = false;
-    }
-
-    /**
      * Listener for diagnostic-driven phase abort requests.
      */
     @FunctionalInterface
     public interface PhaseAbortListener {
+        @SuppressWarnings("unused")
         void phaseAbortRequested(CompilationPhase phase);
     }
 }

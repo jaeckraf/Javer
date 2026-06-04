@@ -2,28 +2,16 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.CaseLabelAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.VoidType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.NullTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.StructTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
@@ -88,6 +76,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.setResultingType(UnknownTypeInfo.INSTANCE);
     }
 
+    @Override
     public void visit(FunctionDeclaration node) {
         TypeInfo previous = currentFunctionReturnType;
 
@@ -103,11 +92,9 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         node.getType().accept(this);
 
         TypeInfo resolved = resolveType(node.getType());
-        if (resolved instanceof UnknownTypeInfo) {
-            if (diagnosticBag != null) {
-                diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
-                        "Undefined type for parameter: " + node.getName());
-            }
+        if (resolved instanceof UnknownTypeInfo && diagnosticBag != null) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Undefined type for parameter: " + node.getName());
         }
     }
 
@@ -425,6 +412,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
         boolean defaultSeen = false;
         Set<String> seenLabels = new HashSet<>();
+
         for (SwitchCase switchCase : node.getCases()) {
             if (switchCase.isDefault()) {
                 if (defaultSeen) {
@@ -434,18 +422,7 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
                 continue;
             }
 
-            for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
-                TypeInfo labelType = caseLabelType(label);
-                if (!isCaseLabelCompatible(switchType, labelType)) {
-                    report(label, "Case label type " + labelType + " does not exactly match switch type " + switchType + ".");
-                    continue;
-                }
-
-                String key = caseLabelKey(label, labelType);
-                if (key != null && !seenLabels.add(key)) {
-                    report(label, "Duplicate switch case label: " + key + ".");
-                }
-            }
+            validateCaseLabels(switchCase, switchType, seenLabels);
         }
     }
 
@@ -456,6 +433,21 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
 
     private boolean isSwitchType(TypeInfo type) {
         return TypeRules.isSwitchType(type);
+    }
+
+    private void validateCaseLabels(SwitchCase switchCase, TypeInfo switchType, Set<String> seenLabels) {
+        for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
+            TypeInfo labelType = caseLabelType(label);
+            if (!isCaseLabelCompatible(switchType, labelType)) {
+                report(label, "Case label type " + labelType + " does not exactly match switch type " + switchType + ".");
+                continue;
+            }
+
+            String key = caseLabelKey(label, labelType);
+            if (key != null && !seenLabels.add(key)) {
+                report(label, "Duplicate switch case label: " + key + ".");
+            }
+        }
     }
 
     private TypeInfo caseLabelType(CaseLabelAstNode label) {
@@ -477,9 +469,6 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         }
         if (labelType instanceof NullTypeInfo) {
             return TypeRules.isReferenceType(switchType);
-        }
-        if (TypeRules.isReferenceType(switchType)) {
-            return switchType.equals(labelType);
         }
         return switchType.equals(labelType);
     }
@@ -799,23 +788,8 @@ public class TypeCheckVisitor extends AstNodeVisitorBase {
         return null;
     }
 
-    private TypeInfo resolveType(TypeAstNode type) {
-        if (type instanceof PrimitiveType primitiveType) {
-            return PrimitiveTypeInfo.of(primitiveType.getKind());
-        }
-        if (type instanceof ArrayType arrayType) {
-            return new ArrayTypeInfo(resolveType(arrayType.getBaseType()));
-        }
-        if (type instanceof VoidType) {
-            return VoidTypeInfo.INSTANCE;
-        }
-        if (type instanceof NamedType namedType) {
-            return resolveNamedType(namedType);
-        }
-        return UnknownTypeInfo.INSTANCE;
-    }
-
-    private TypeInfo resolveNamedType(NamedType namedType) {
+    @Override
+    protected TypeInfo resolveNamedType(NamedType namedType) {
         SymbolEntry resolvedEntry = namedType.getResolvedEntry();
         if (resolvedEntry instanceof StructEntry structEntry) {
             return new StructTypeInfo(structEntry);

@@ -9,12 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
@@ -60,11 +55,6 @@ public final class E2EApplicationTest {
         if (exitCode != 0) {
             System.exit(exitCode);
         }
-    }
-
-    @Test
-    void runE2EWithMaven() throws Exception {
-        assertEquals(0, run(new String[0]));
     }
 
     public static int run(String[] args) throws Exception {
@@ -650,7 +640,7 @@ public final class E2EApplicationTest {
                 continue;
             }
 
-            if (result.length() > 0) {
+            if (!result.isEmpty()) {
                 result.append("\n");
             }
             result.append(line);
@@ -787,6 +777,11 @@ public final class E2EApplicationTest {
         }
 
         return Path.of("src", "test", "resources", "cases");
+    }
+
+    @Test
+    void runE2EWithMaven() throws Exception {
+        assertEquals(0, run(new String[0]));
     }
 
     private record RunResult(String stdout, String stderr, int exitCode) {

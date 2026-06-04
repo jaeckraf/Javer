@@ -1,27 +1,18 @@
 package ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
-
-import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.TypeAstNode;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 
 /**
  * AST node for a declared function parameter.
  */
-@JacocoGenerated("Skeleton only, remove when fully implemented")
 public final class FunctionParameter extends AstNodeBase implements AstNode {
 
     private final String name;
     private final TypeAstNode type;
     private final boolean variadic;
-    private ParameterEntry symbolEntry;
-
-    public FunctionParameter(String name, TypeAstNode type) {
-        this(name, type, false);
-    }
 
     public FunctionParameter(String name, TypeAstNode type, boolean variadic) {
         this.name = name;
@@ -39,14 +30,6 @@ public final class FunctionParameter extends AstNodeBase implements AstNode {
 
     public boolean isVariadic() {
         return variadic;
-    }
-
-    public ParameterEntry getSymbolEntry() {
-        return symbolEntry;
-    }
-
-    public void setSymbolEntry(ParameterEntry symbolEntry) {
-        this.symbolEntry = symbolEntry;
     }
 
     @Override
